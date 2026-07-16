@@ -9,7 +9,8 @@ export default auth((req) => {
     pathname.startsWith("/account") ||
     pathname.startsWith("/transactions") ||
     pathname.startsWith("/mileage") ||
-    pathname.startsWith("/clients");
+    pathname.startsWith("/clients") ||
+    pathname.startsWith("/documents");
 
   if (isProtected && !isLoggedIn) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
@@ -25,5 +26,6 @@ export const config = {
     "/transactions/:path*",
     "/mileage/:path*",
     "/clients/:path*",
+    "/documents/:path*",
   ],
 };

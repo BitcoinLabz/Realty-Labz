@@ -63,19 +63,21 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - Leads tracker with follow-up reminders
 
 ## Current Status
-Built so far: project scaffold, Prisma schema + migrations, the full auth/account-management workflow, expense & income tracking (V1 item 3), the mileage tracker (V1 item 4), and client management (V1 item 5). Document storage and the PDF export are still to build.
+Built so far: project scaffold, Prisma schema + migrations, the full auth/account-management workflow, expense & income tracking (V1 item 3), the mileage tracker (V1 item 4), client management (V1 item 5), and document storage (V1 item 6). **All of V1's feature list is now built** — only the PDF export deliverable remains before V1 is complete.
 
 - *Signup (solo or "start a team" choice, creates a `Team` + `TEAM_LEAD` user if team-mode), login, logout*
-- *Protected `/dashboard`, `/account`, `/transactions`, `/mileage`, and `/clients` routes (via `src/proxy.ts`)*
+- *Protected `/dashboard`, `/account`, `/transactions`, `/mileage`, `/clients`, and `/documents` routes (via `src/proxy.ts`)*
 - *Account settings: edit display name, change password, view account type (solo vs. team + role)*
 - *Income & expense tracking at `/transactions` (V1 item 3): add/edit/delete transactions, type toggle (income/expense), category for expenses (home office, phone, other business expense — `MILEAGE` category is reserved for the mileage tracker, not manually selectable), year filter, income/expense/net summary cards.*
 - *Mileage tracker at `/mileage` (V1 item 4, manual entry as decided): add/edit/delete trips, business/personal toggle, optional note, year filter. Deduction is computed server-side per trip (`miles × rate at time of trip`, via `src/lib/mileage-rate.ts`) and stored on the `mileage_logs` row — not recalculated on the fly — so historical trips keep the rate that applied when they were logged even after the seeded rate changes. Personal trips show "Not deductible" rather than `$0.00`.*
-- *Client management at `/clients` (V1 item 5): add/edit/delete client records (name, email, phone, notes). No document or property linkage yet — that arrives with document storage (V1 item 6) and the optional `properties/listings` model.*
-- *Dashboard's "Net income", "Mileage saved", and "Clients" cards now pull real data and link through to their respective pages.*
-- Document storage (V1 item 6) and the PDF export are **not built** — dashboard still notes this as a placeholder.
+- *Client management at `/clients` (V1 item 5): add/edit/delete client records (name, email, phone, notes).*
+- *Document storage at `/documents` (V1 item 6): upload PDFs/Word docs/images (15MB cap), optionally link to a client (reassignable after upload), download, delete. Files are **local disk only** for now (`src/lib/document-storage.ts`, stored under gitignored `/storage/`, outside `public/` so they're only reachable through the authenticated `GET /api/documents/[id]` route) — this will NOT persist on Vercel's serverless functions and must be swapped for a cloud storage provider (e.g. Vercel Blob) before deploying. Local-first was a deliberate choice to keep building without requiring an external account/token; revisit before production.*
+- *Dashboard's "Net income", "Mileage saved", "Clients", and "Documents" cards now pull real data and link through to their respective pages (4-column grid).*
+- The PDF export deliverable (net income/loss summary + itemized breakdown for accountants) is **not built** — this is the last piece before V1 is functionally complete.
 - Team invites / adding teammates to an existing team is **not built** — that's V2 ("Team features activation"). Today, signing up with "Start a team" only creates the team and its first `TEAM_LEAD`.
 - The seeded `MileageRate` row (`prisma/seed.ts`) is $0.725/mile (MI, 2026) — confirmed by the founder. Update this row (and re-run `npx prisma db seed`) whenever the IRS standard mileage rate changes; `getMileageRate()` falls back to the most recent prior-year rate if the exact year isn't seeded yet, so adding next year's row is a one-line change, not a code change.
-- Shared UI primitives now live in `src/components/ui/`: `button.tsx`, `field.tsx`, `select.tsx`, `summary-card.tsx`, `textarea.tsx`, `year-select.tsx`. Reuse these for new feature pages (documents) rather than redefining per-page — this is exactly the pattern `/transactions`, `/mileage`, and `/clients` all follow.
+- Shared UI primitives now live in `src/components/ui/`: `button.tsx`, `field.tsx`, `select.tsx`, `summary-card.tsx`, `textarea.tsx`, `year-select.tsx`. Reuse these for the PDF export UI rather than redefining per-page — this is exactly the pattern `/transactions`, `/mileage`, `/clients`, and `/documents` all follow.
+- The top nav (`src/app/(app)/layout.tsx`) now has 6 links plus name/sign-out and is starting to feel crowded per the "Apple-like" quality bar — worth a design pass (e.g. a sidebar) before adding more top-level sections.
 
 ## Local Development
 - **Database:** A local PostgreSQL 17 instance runs from `%LOCALAPPDATA%\RealtyLabzPg\` (binaries in `17.5\`, data in `data\`), listening on `127.0.0.1:5433`. It's not a Windows service — start/stop it explicitly:

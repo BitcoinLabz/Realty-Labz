@@ -38,6 +38,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               Clients
             </Link>
             <Link
+              href="/documents"
+              className="text-sm font-medium text-foreground hover:text-accent"
+            >
+              Documents
+            </Link>
+            <Link
               href="/account"
               className="text-sm font-medium text-foreground hover:text-accent"
             >

@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const start = new Date(Date.UTC(currentYear, 0, 1));
   const end = new Date(Date.UTC(currentYear + 1, 0, 1));
 
-  const [incomeAgg, expenseAgg, mileageAgg, clientCount] = await Promise.all([
+  const [incomeAgg, expenseAgg, mileageAgg, clientCount, documentCount] = await Promise.all([
     prisma.transaction.aggregate({
       _sum: { amount: true },
       where: { userId: session!.user.id, type: "INCOME", date: { gte: start, lt: end } },
@@ -32,6 +32,7 @@ export default async function DashboardPage() {
       },
     }),
     prisma.client.count({ where: { userId: session!.user.id } }),
+    prisma.document.count({ where: { userId: session!.user.id } }),
   ]);
 
   const income = Number(incomeAgg._sum.amount ?? 0);
@@ -50,7 +51,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label={`Net income (${currentYear})`} value={formatCurrency(netIncome)} />
         </Link>
@@ -60,12 +61,9 @@ export default async function DashboardPage() {
         <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label="Clients" value={clientCount.toString()} />
         </Link>
-      </div>
-
-      <div className="rounded-2xl border border-border bg-background p-8 text-center">
-        <p className="text-sm text-muted">
-          Document storage will show up here as it&apos;s built.
-        </p>
+        <Link href="/documents" className="block transition-transform hover:-translate-y-0.5">
+          <SummaryCard label="Documents" value={documentCount.toString()} />
+        </Link>
       </div>
     </div>
   );

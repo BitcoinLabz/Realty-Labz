@@ -108,10 +108,15 @@ model MileageLog {
 }
 
 model Document {
-  id        String   @id @default(cuid())
-  fileName  String
-  fileUrl   String
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  fileName   String
+  // Relative path under the private local storage root (see src/lib/document-storage.ts).
+  // Swap this for a cloud storage key/URL before deploying — local disk doesn't persist
+  // on Vercel's serverless functions.
+  storageKey String
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
