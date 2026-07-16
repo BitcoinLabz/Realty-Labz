@@ -1,9 +1,10 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import { SummaryCard } from "@/components/ui/summary-card";
+import { YearSelect } from "@/components/ui/year-select";
 import { TransactionForm } from "./transaction-form";
 import { TransactionList } from "./transaction-list";
-import { YearSelect } from "./year-select";
 import type { TransactionDTO } from "./types";
 
 export default async function TransactionsPage({
@@ -48,7 +49,7 @@ export default async function TransactionsPage({
           </h1>
           <p className="mt-1 text-sm text-muted">Track what you earn and spend for tax time.</p>
         </div>
-        <YearSelect year={year} options={yearOptions} />
+        <YearSelect year={year} options={yearOptions} basePath="/transactions" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -65,15 +66,6 @@ export default async function TransactionsPage({
       </section>
 
       <TransactionList transactions={dtos} />
-    </div>
-  );
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-background p-6">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }

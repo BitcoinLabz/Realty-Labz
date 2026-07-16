@@ -45,3 +45,10 @@ export const transactionSchema = z
     message: "Category is required for expenses",
     path: ["category"],
   });
+
+export const mileageLogSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  miles: z.coerce.number().positive("Miles must be greater than 0"),
+  isBusiness: z.enum(["true", "false"]).transform((v) => v === "true"),
+  note: z.string().trim().max(200).optional(),
+});

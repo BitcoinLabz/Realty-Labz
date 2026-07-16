@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import { SummaryCard } from "@/components/ui/summary-card";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -13,7 +14,7 @@ export default async function DashboardPage() {
   const start = new Date(Date.UTC(currentYear, 0, 1));
   const end = new Date(Date.UTC(currentYear + 1, 0, 1));
 
-  const [incomeAgg, expenseAgg] = await Promise.all([
+  const [incomeAgg, expenseAgg, mileageAgg] = await Promise.all([
     prisma.transaction.aggregate({
       _sum: { amount: true },
       where: { userId: session!.user.id, type: "INCOME", date: { gte: start, lt: end } },
@@ -22,11 +23,20 @@ export default async function DashboardPage() {
       _sum: { amount: true },
       where: { userId: session!.user.id, type: "EXPENSE", date: { gte: start, lt: end } },
     }),
+    prisma.mileageLog.aggregate({
+      _sum: { deduction: true },
+      where: {
+        userId: session!.user.id,
+        isBusiness: true,
+        date: { gte: start, lt: end },
+      },
+    }),
   ]);
 
   const income = Number(incomeAgg._sum.amount ?? 0);
   const expenses = Number(expenseAgg._sum.amount ?? 0);
   const netIncome = income - expenses;
+  const mileageSaved = Number(mileageAgg._sum.deduction ?? 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -43,25 +53,17 @@ export default async function DashboardPage() {
         <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label={`Net income (${currentYear})`} value={formatCurrency(netIncome)} />
         </Link>
-        <SummaryCard label="Mileage saved" value="$0.00" />
+        <Link href="/mileage" className="block transition-transform hover:-translate-y-0.5">
+          <SummaryCard label="Mileage saved" value={formatCurrency(mileageSaved)} />
+        </Link>
         <SummaryCard label="Clients" value="0" />
       </div>
 
       <div className="rounded-2xl border border-border bg-background p-8 text-center">
         <p className="text-sm text-muted">
-          Mileage logging, client management, and document storage will show up here as
-          they&apos;re built.
+          Client management and document storage will show up here as they&apos;re built.
         </p>
       </div>
-    </div>
-  );
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-border bg-background p-6">
-      <p className="text-sm text-muted">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
     </div>
   );
 }
