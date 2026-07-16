@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  AGENT
+  TEAM_LEAD
+  ADMIN
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users User[]
+
+  @@map("teams")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  role         Role     @default(AGENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  team   Team?   @relation(fields: [teamId], references: [id])
+  teamId String?
+
+  clients      Client[]
+  transactions Transaction[]
+  mileageLogs  MileageLog[]
+  documents    Document[]
+
+  @@map("users")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  documents Document[]
+
+  @@map("clients")
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum TransactionCategory {
+  MILEAGE
+  HOME_OFFICE
+  PHONE
+  OTHER
+}
+
+model Transaction {
+  id          String              @id @default(cuid())
+  type        TransactionType
+  category    TransactionCategory
+  amount      Decimal             @db.Decimal(10, 2)
+  description String?
+  date        DateTime
+  createdAt   DateTime            @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("transactions")
+}
+
+model MileageLog {
+  id         String   @id @default(cuid())
+  date       DateTime
+  miles      Decimal  @db.Decimal(7, 2)
+  isBusiness Boolean  @default(true)
+  note       String?
+  ratePerMile Decimal @db.Decimal(5, 3)
+  deduction  Decimal  @db.Decimal(10, 2)
+  createdAt  DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("mileage_logs")
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  fileName  String
+  fileUrl   String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
+  @@map("documents")
+}
+
+// Config table for state-specific mileage deduction rates, kept easy to
+// update annually and extend beyond Michigan (see CLAUDE.md architecture principles).
+model MileageRate {
+  id          String  @id @default(cuid())
+  state       String
+  year        Int
+  ratePerMile Decimal @db.Decimal(5, 3)
+
+  @@unique([state, year])
+  @@map("mileage_rates")
+}

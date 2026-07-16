@@ -1,0 +1,34 @@
+import { z } from "zod";
+
+export const signupSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(100),
+    email: z.email("Enter a valid email address").trim().toLowerCase(),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    accountType: z.enum(["solo", "team"]),
+    teamName: z.string().trim().max(100).optional(),
+  })
+  .refine((data) => data.accountType !== "team" || (data.teamName && data.teamName.length > 0), {
+    message: "Team name is required",
+    path: ["teamName"],
+  });
+
+export const loginSchema = z.object({
+  email: z.email("Enter a valid email address").trim().toLowerCase(),
+  password: z.string().min(1, "Password is required"),
+});
+
+export const profileSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100),
+});
+
+export const passwordChangeSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });

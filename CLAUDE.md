@@ -21,7 +21,7 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - **Database:** PostgreSQL
 - **Hosting:** Vercel
 - **Version Control:** GitHub
-- **Auth:** TBD — recommend NextAuth.js (Auth.js) for simplicity and cost (free tier friendly)
+- **Auth:** NextAuth.js (Auth.js v5) with the Credentials provider — email + password only for v1, JWT session strategy (no adapter/DB sessions needed). Google/social login is a possible later addition, not v1.
 - **UI:** Tailwind CSS + a small set of consistent, accessible primitives (e.g. shadcn/ui as a base) — favor a restrained design system over ad-hoc styling, in service of the Apple-like quality bar above.
 
 ## Architecture Principles
@@ -61,6 +61,25 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - Team features activation (shared client/document access, team lead reporting dashboard)
 - CRM-style notes per client
 - Leads tracker with follow-up reminders
+
+## Current Status
+Built so far: project scaffold, Prisma schema + migrations, and the full auth/account-management workflow (items in *italics* below). Everything else in the roadmap above is still to build.
+
+- *Signup (solo or "start a team" choice, creates a `Team` + `TEAM_LEAD` user if team-mode), login, logout*
+- *Protected `/dashboard` and `/account` routes (via `src/proxy.ts`)*
+- *Account settings: edit display name, change password, view account type (solo vs. team + role)*
+- *Dashboard is currently a placeholder shell (empty summary cards) — income/expense, mileage, clients, and documents modules still need to be built into it per the V1 order above*
+- Team invites / adding teammates to an existing team is **not built** — that's V2 ("Team features activation"). Today, signing up with "Start a team" only creates the team and its first `TEAM_LEAD`.
+- The seeded `MileageRate` row (`prisma/seed.ts`) uses a placeholder rate — verify the real IRS standard mileage rate before it's used in any actual deduction calculation.
+
+## Local Development
+- **Database:** A local PostgreSQL 17 instance runs from `%LOCALAPPDATA%\RealtyLabzPg\` (binaries in `17.5\`, data in `data\`), listening on `127.0.0.1:5433`. It's not a Windows service — start/stop it explicitly:
+  - `npm run db:start` / `npm run db:stop` (wraps `scripts/db-start.ps1` / `scripts/db-stop.ps1`, which call `pg_ctl`)
+  - Superuser is `postgres` / `postgres` (dev-only credentials, not for production). App database is `realtylabz`.
+  - These binaries came from Maven Central's zonky embedded-postgres package, not the official EDB installer — the EDB installer's CDN (`get.enterprisedb.com`) returns 403 in this environment, so if PostgreSQL ever needs reinstalling, prefer `winget install PostgreSQL.PostgreSQL.17` first and only fall back to the Maven route if that 403s again.
+- **Env vars:** `.env.local` (gitignored) holds `DATABASE_URL` and `AUTH_SECRET`. `prisma.config.ts` loads `.env.local` explicitly (not the Prisma-default `.env`).
+- **Prisma:** schema at `prisma/schema.prisma`, client generated to `src/generated/prisma` (gitignored, regenerate with `npx prisma generate`). Prisma 7's client generator requires a driver adapter — see `src/lib/db.ts` for the shared `PrismaClient` singleton using `@prisma/adapter-pg`. Run `npx prisma migrate dev` for schema changes, `npx prisma db seed` to re-seed.
+- **Routing convention:** this Next.js version (16.2.10) renamed `middleware.ts` to `proxy.ts` (defaults to the Node.js runtime, which is required here since the Prisma-based auth check can't run on the Edge runtime) — see `src/proxy.ts`, not `middleware.ts`.
 
 ## Known Pain Points to Avoid (from competitor research — SkySlope)
 - Buggy text box / signature field behavior in contracts — be extra careful with form field and e-signature implementation and testing.
