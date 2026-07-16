@@ -5,6 +5,8 @@ Realty Labs is a web application built for real estate agents (starting with Mic
 
 **Founder context:** Built by a working Michigan realtor who wants a lean, low-cost MVP first, with an eye toward pitching this to their brokerage for team-wide use later.
 
+**Long-term direction:** the goal is for Realty Labs to grow into a one-stop shop for an agent's entire business and financial life — personal finances, investments and other assets, clients, listings, and contracts, not just business income/expense bookkeeping. See "Long-Term Vision" below. V1 stays scoped to the business-finance core defined in the roadmap; this broader direction should inform architecture decisions (e.g., keep data models extensible rather than assuming "only business transactions" will ever exist) without pulling future scope forward into the current build.
+
 ## Design & Quality Bar (read this before building anything)
 This is the top priority of the project, alongside cost-consciousness — **the app should feel like it was designed by Apple.** That means:
 - Clean, minimal, uncluttered UI. Generous whitespace. Restrained color palette. No visual noise.
@@ -61,6 +63,12 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - Team features activation (shared client/document access, team lead reporting dashboard)
 - CRM-style notes per client
 - Leads tracker with follow-up reminders
+
+### Long-Term Vision (beyond V2 — directional, no committed timeline)
+- **Data visualization**: charts/graphs for income & expenses over time (trends, category breakdowns), not just the current at-a-glance summary cards — applies to both existing business transactions and the investments/assets below once built.
+- **Investments & other assets**: track personal investments and other assets, not just business income/expenses — broadens the app from a business-expense tracker into full personal finance management for the agent. Will need new data models (e.g. `investments`, `assets`); not designed yet.
+- **Positioning**: the aim is a one-stop shop covering personal finances, clients, listings, and contracts — an agent's entire business and financial life in one app, beyond just tax-deduction bookkeeping.
+- Directional only — don't pull these into V1/V2 scope. Use this section to inform architecture decisions (extensible data models, room for a "financial trends" view) rather than to schedule work.
 
 ## Current Status
 Built so far: project scaffold, Prisma schema + migrations, the full auth/account-management workflow, expense & income tracking (V1 item 3), the mileage tracker (V1 item 4), client management (V1 item 5), and document storage (V1 item 6). **All of V1's feature list is now built** — only the PDF export deliverable remains before V1 is complete.
