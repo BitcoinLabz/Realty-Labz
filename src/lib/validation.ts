@@ -32,3 +32,16 @@ export const passwordChangeSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   });
+
+export const transactionSchema = z
+  .object({
+    type: z.enum(["INCOME", "EXPENSE"]),
+    category: z.enum(["HOME_OFFICE", "PHONE", "OTHER"]).optional(),
+    amount: z.coerce.number().positive("Amount must be greater than 0"),
+    description: z.string().trim().max(200).optional(),
+    date: z.string().min(1, "Date is required"),
+  })
+  .refine((data) => data.type !== "EXPENSE" || !!data.category, {
+    message: "Category is required for expenses",
+    path: ["category"],
+  });

@@ -1,11 +1,32 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { formatCurrency } from "@/lib/format";
 
 export default async function DashboardPage() {
   const session = await auth();
   const team = session?.user?.teamId
     ? await prisma.team.findUnique({ where: { id: session.user.teamId } })
     : null;
+
+  const currentYear = new Date().getFullYear();
+  const start = new Date(Date.UTC(currentYear, 0, 1));
+  const end = new Date(Date.UTC(currentYear + 1, 0, 1));
+
+  const [incomeAgg, expenseAgg] = await Promise.all([
+    prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { userId: session!.user.id, type: "INCOME", date: { gte: start, lt: end } },
+    }),
+    prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { userId: session!.user.id, type: "EXPENSE", date: { gte: start, lt: end } },
+    }),
+  ]);
+
+  const income = Number(incomeAgg._sum.amount ?? 0);
+  const expenses = Number(expenseAgg._sum.amount ?? 0);
+  const netIncome = income - expenses;
 
   return (
     <div className="flex flex-col gap-8">
@@ -19,15 +40,17 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <SummaryCard label="Net income" value="$0.00" />
+        <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
+          <SummaryCard label={`Net income (${currentYear})`} value={formatCurrency(netIncome)} />
+        </Link>
         <SummaryCard label="Mileage saved" value="$0.00" />
         <SummaryCard label="Clients" value="0" />
       </div>
 
       <div className="rounded-2xl border border-border bg-background p-8 text-center">
         <p className="text-sm text-muted">
-          Income &amp; expense tracking, mileage logging, client management, and document
-          storage will show up here as they&apos;re built.
+          Mileage logging, client management, and document storage will show up here as
+          they&apos;re built.
         </p>
       </div>
     </div>
