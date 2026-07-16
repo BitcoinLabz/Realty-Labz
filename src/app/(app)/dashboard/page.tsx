@@ -14,7 +14,7 @@ export default async function DashboardPage() {
   const start = new Date(Date.UTC(currentYear, 0, 1));
   const end = new Date(Date.UTC(currentYear + 1, 0, 1));
 
-  const [incomeAgg, expenseAgg, mileageAgg] = await Promise.all([
+  const [incomeAgg, expenseAgg, mileageAgg, clientCount] = await Promise.all([
     prisma.transaction.aggregate({
       _sum: { amount: true },
       where: { userId: session!.user.id, type: "INCOME", date: { gte: start, lt: end } },
@@ -31,6 +31,7 @@ export default async function DashboardPage() {
         date: { gte: start, lt: end },
       },
     }),
+    prisma.client.count({ where: { userId: session!.user.id } }),
   ]);
 
   const income = Number(incomeAgg._sum.amount ?? 0);
@@ -56,12 +57,14 @@ export default async function DashboardPage() {
         <Link href="/mileage" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label="Mileage saved" value={formatCurrency(mileageSaved)} />
         </Link>
-        <SummaryCard label="Clients" value="0" />
+        <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
+          <SummaryCard label="Clients" value={clientCount.toString()} />
+        </Link>
       </div>
 
       <div className="rounded-2xl border border-border bg-background p-8 text-center">
         <p className="text-sm text-muted">
-          Client management and document storage will show up here as they&apos;re built.
+          Document storage will show up here as it&apos;s built.
         </p>
       </div>
     </div>

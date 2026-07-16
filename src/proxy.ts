@@ -8,7 +8,8 @@ export default auth((req) => {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/account") ||
     pathname.startsWith("/transactions") ||
-    pathname.startsWith("/mileage");
+    pathname.startsWith("/mileage") ||
+    pathname.startsWith("/clients");
 
   if (isProtected && !isLoggedIn) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
@@ -18,5 +19,11 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/account/:path*", "/transactions/:path*", "/mileage/:path*"],
+  matcher: [
+    "/dashboard/:path*",
+    "/account/:path*",
+    "/transactions/:path*",
+    "/mileage/:path*",
+    "/clients/:path*",
+  ],
 };

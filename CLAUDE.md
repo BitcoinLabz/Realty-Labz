@@ -63,18 +63,19 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - Leads tracker with follow-up reminders
 
 ## Current Status
-Built so far: project scaffold, Prisma schema + migrations, the full auth/account-management workflow, expense & income tracking (V1 item 3), and the mileage tracker (V1 item 4). Client management, document storage, and the PDF export are still to build.
+Built so far: project scaffold, Prisma schema + migrations, the full auth/account-management workflow, expense & income tracking (V1 item 3), the mileage tracker (V1 item 4), and client management (V1 item 5). Document storage and the PDF export are still to build.
 
 - *Signup (solo or "start a team" choice, creates a `Team` + `TEAM_LEAD` user if team-mode), login, logout*
-- *Protected `/dashboard`, `/account`, `/transactions`, and `/mileage` routes (via `src/proxy.ts`)*
+- *Protected `/dashboard`, `/account`, `/transactions`, `/mileage`, and `/clients` routes (via `src/proxy.ts`)*
 - *Account settings: edit display name, change password, view account type (solo vs. team + role)*
 - *Income & expense tracking at `/transactions` (V1 item 3): add/edit/delete transactions, type toggle (income/expense), category for expenses (home office, phone, other business expense — `MILEAGE` category is reserved for the mileage tracker, not manually selectable), year filter, income/expense/net summary cards.*
 - *Mileage tracker at `/mileage` (V1 item 4, manual entry as decided): add/edit/delete trips, business/personal toggle, optional note, year filter. Deduction is computed server-side per trip (`miles × rate at time of trip`, via `src/lib/mileage-rate.ts`) and stored on the `mileage_logs` row — not recalculated on the fly — so historical trips keep the rate that applied when they were logged even after the seeded rate changes. Personal trips show "Not deductible" rather than `$0.00`.*
-- *Dashboard's "Net income" and "Mileage saved" cards now pull real current-year totals and link through to `/transactions` and `/mileage` respectively.*
-- Client management and document storage (V1 items 5-6) are **not built** — dashboard still shows a placeholder "Clients" card.
+- *Client management at `/clients` (V1 item 5): add/edit/delete client records (name, email, phone, notes). No document or property linkage yet — that arrives with document storage (V1 item 6) and the optional `properties/listings` model.*
+- *Dashboard's "Net income", "Mileage saved", and "Clients" cards now pull real data and link through to their respective pages.*
+- Document storage (V1 item 6) and the PDF export are **not built** — dashboard still notes this as a placeholder.
 - Team invites / adding teammates to an existing team is **not built** — that's V2 ("Team features activation"). Today, signing up with "Start a team" only creates the team and its first `TEAM_LEAD`.
 - The seeded `MileageRate` row (`prisma/seed.ts`) is $0.725/mile (MI, 2026) — confirmed by the founder. Update this row (and re-run `npx prisma db seed`) whenever the IRS standard mileage rate changes; `getMileageRate()` falls back to the most recent prior-year rate if the exact year isn't seeded yet, so adding next year's row is a one-line change, not a code change.
-- Shared UI primitives now live in `src/components/ui/`: `button.tsx`, `field.tsx`, `select.tsx`, `summary-card.tsx`, `year-select.tsx`. Reuse these for new feature pages (clients, documents) rather than redefining per-page — this is exactly the pattern `/transactions` and `/mileage` both follow.
+- Shared UI primitives now live in `src/components/ui/`: `button.tsx`, `field.tsx`, `select.tsx`, `summary-card.tsx`, `textarea.tsx`, `year-select.tsx`. Reuse these for new feature pages (documents) rather than redefining per-page — this is exactly the pattern `/transactions`, `/mileage`, and `/clients` all follow.
 
 ## Local Development
 - **Database:** A local PostgreSQL 17 instance runs from `%LOCALAPPDATA%\RealtyLabzPg\` (binaries in `17.5\`, data in `data\`), listening on `127.0.0.1:5433`. It's not a Windows service — start/stop it explicitly:
