@@ -70,7 +70,7 @@ Built so far: project scaffold, Prisma schema + migrations, and the full auth/ac
 - *Account settings: edit display name, change password, view account type (solo vs. team + role)*
 - *Dashboard is currently a placeholder shell (empty summary cards) — income/expense, mileage, clients, and documents modules still need to be built into it per the V1 order above*
 - Team invites / adding teammates to an existing team is **not built** — that's V2 ("Team features activation"). Today, signing up with "Start a team" only creates the team and its first `TEAM_LEAD`.
-- The seeded `MileageRate` row (`prisma/seed.ts`) uses a placeholder rate — verify the real IRS standard mileage rate before it's used in any actual deduction calculation.
+- The seeded `MileageRate` row (`prisma/seed.ts`) is $0.725/mile (MI, 2026) — confirmed by the founder. Update this row (and re-run `npx prisma db seed`) whenever the IRS standard mileage rate changes, rather than hardcoding a new value in application logic.
 
 ## Local Development
 - **Database:** A local PostgreSQL 17 instance runs from `%LOCALAPPDATA%\RealtyLabzPg\` (binaries in `17.5\`, data in `data\`), listening on `127.0.0.1:5433`. It's not a Windows service — start/stop it explicitly:
