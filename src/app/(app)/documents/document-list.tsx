@@ -1,15 +1,17 @@
 "use client";
 
-import { deleteDocumentAction, updateDocumentClientAction } from "@/app/actions/documents";
+import { deleteDocumentAction, updateDocumentLinksAction } from "@/app/actions/documents";
 import { formatFileSize } from "@/lib/format";
-import type { ClientOption, DocumentDTO } from "./types";
+import type { ClientOption, DealOption, DocumentDTO } from "./types";
 
 export function DocumentList({
   documents,
   clients,
+  deals,
 }: {
   documents: DocumentDTO[];
   clients: ClientOption[];
+  deals: DealOption[];
 }) {
   if (documents.length === 0) {
     return (
@@ -44,10 +46,13 @@ export function DocumentList({
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-4">
-            <form action={updateDocumentClientAction} className="flex items-center">
+            <form
+              action={updateDocumentLinksAction}
+              className="flex items-center gap-2"
+              key={`${doc.clientId ?? "none"}-${doc.dealId ?? "none"}`}
+            >
               <input type="hidden" name="id" value={doc.id} />
               <select
-                key={doc.clientId ?? "none"}
                 name="clientId"
                 defaultValue={doc.clientId ?? ""}
                 onChange={(e) => e.currentTarget.form?.requestSubmit()}
@@ -57,6 +62,19 @@ export function DocumentList({
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                name="dealId"
+                defaultValue={doc.dealId ?? ""}
+                onChange={(e) => e.currentTarget.form?.requestSubmit()}
+                className="rounded-xl border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+              >
+                <option value="">No deal</option>
+                {deals.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.propertyAddress}
                   </option>
                 ))}
               </select>

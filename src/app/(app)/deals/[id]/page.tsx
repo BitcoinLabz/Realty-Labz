@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamOrOwnFilter } from "@/lib/authorization";
+import { formatFileSize } from "@/lib/format";
 import { DealForm, type DealFormValues } from "../deal-form";
 import { DeadlineList } from "./deadline-list";
 import { DeleteDealButton } from "./delete-deal-button";
@@ -18,7 +20,10 @@ export default async function DealDetailPage({
   const [deal, clients] = await Promise.all([
     prisma.deal.findFirst({
       where: { id, ...teamOrOwnFilter(session!.user) },
-      include: { deadlines: { orderBy: { dueDate: "asc" } } },
+      include: {
+        deadlines: { orderBy: { dueDate: "asc" } },
+        documents: { orderBy: { createdAt: "desc" } },
+      },
     }),
     prisma.client.findMany({
       where: teamOrOwnFilter(session!.user),
@@ -74,6 +79,33 @@ export default async function DealDetailPage({
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Deadlines</h2>
         <DeadlineList dealId={deal.id} deadlines={deadlineDtos} />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <div className="mb-6 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-foreground">Documents</h2>
+          <Link href="/documents" className="text-sm font-medium text-accent hover:opacity-80">
+            Manage on Documents page
+          </Link>
+        </div>
+        {deal.documents.length === 0 ? (
+          <p className="text-sm text-muted">
+            No documents linked yet. Upload one on the Documents page and link it here.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {deal.documents.map((doc) => (
+              <a
+                key={doc.id}
+                href={`/api/documents/${doc.id}`}
+                className="flex items-center justify-between rounded-xl border border-border px-4 py-3 hover:border-accent"
+              >
+                <span className="text-sm font-medium text-foreground">{doc.fileName}</span>
+                <span className="text-sm text-muted">{formatFileSize(doc.size)}</span>
+              </a>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">

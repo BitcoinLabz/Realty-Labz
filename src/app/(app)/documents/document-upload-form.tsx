@@ -5,11 +5,17 @@ import { uploadDocumentAction } from "@/app/actions/documents";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import type { ClientOption } from "./types";
+import type { ClientOption, DealOption } from "./types";
 
 const initialState: FormState = {};
 
-export function DocumentUploadForm({ clients }: { clients: ClientOption[] }) {
+export function DocumentUploadForm({
+  clients,
+  deals,
+}: {
+  clients: ClientOption[];
+  deals: DealOption[];
+}) {
   const [state, formAction, isPending] = useActionState(uploadDocumentAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -47,6 +53,17 @@ export function DocumentUploadForm({ clients }: { clients: ClientOption[] }) {
           {clients.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+
+      {deals.length > 0 ? (
+        <Select label="Deal (optional)" name="dealId" defaultValue="">
+          <option value="">No deal</option>
+          {deals.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.propertyAddress}
             </option>
           ))}
         </Select>

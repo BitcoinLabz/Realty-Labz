@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { teamOrOwnFilter } from "@/lib/authorization";
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
@@ -25,6 +26,22 @@ async function resolveClientId(
   return { ok: true, clientId };
 }
 
+async function resolveDealId(
+  dealId: FormDataEntryValue | null,
+  sessionUser: Parameters<typeof teamOrOwnFilter>[0],
+): Promise<{ ok: true; dealId: string | null } | { ok: false; error: string }> {
+  if (typeof dealId !== "string" || dealId === "") {
+    return { ok: true, dealId: null };
+  }
+
+  const deal = await prisma.deal.findFirst({
+    where: { id: dealId, ...teamOrOwnFilter(sessionUser) },
+  });
+  if (!deal) return { ok: false, error: "Deal not found" };
+
+  return { ok: true, dealId };
+}
+
 export async function uploadDocumentAction(
   _prevState: FormState,
   formData: FormData,
@@ -45,8 +62,11 @@ export async function uploadDocumentAction(
     return { fieldErrors: { file: "File must be under 15MB" } };
   }
 
-  const resolved = await resolveClientId(formData.get("clientId"), session.user.id);
-  if (!resolved.ok) return { error: resolved.error };
+  const resolvedClient = await resolveClientId(formData.get("clientId"), session.user.id);
+  if (!resolvedClient.ok) return { error: resolvedClient.error };
+
+  const resolvedDeal = await resolveDealId(formData.get("dealId"), session.user);
+  if (!resolvedDeal.ok) return { error: resolvedDeal.error };
 
   const storageKey = await saveDocumentFile(session.user.id, file);
 
@@ -57,31 +77,37 @@ export async function uploadDocumentAction(
       storageKey,
       mimeType: file.type,
       size: file.size,
-      clientId: resolved.clientId,
+      clientId: resolvedClient.clientId,
+      dealId: resolvedDeal.dealId,
     },
   });
 
   revalidatePath("/documents");
   revalidatePath("/dashboard");
+  revalidatePath("/deals");
   return {};
 }
 
-export async function updateDocumentClientAction(formData: FormData) {
+export async function updateDocumentLinksAction(formData: FormData) {
   const session = await auth();
   if (!session?.user) return;
 
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return;
 
-  const resolved = await resolveClientId(formData.get("clientId"), session.user.id);
-  if (!resolved.ok) return;
+  const resolvedClient = await resolveClientId(formData.get("clientId"), session.user.id);
+  if (!resolvedClient.ok) return;
+
+  const resolvedDeal = await resolveDealId(formData.get("dealId"), session.user);
+  if (!resolvedDeal.ok) return;
 
   await prisma.document.updateMany({
     where: { id, userId: session.user.id },
-    data: { clientId: resolved.clientId },
+    data: { clientId: resolvedClient.clientId, dealId: resolvedDeal.dealId },
   });
 
   revalidatePath("/documents");
+  revalidatePath("/deals");
 }
 
 export async function deleteDocumentAction(formData: FormData) {
@@ -99,4 +125,5 @@ export async function deleteDocumentAction(formData: FormData) {
 
   revalidatePath("/documents");
   revalidatePath("/dashboard");
+  revalidatePath("/deals");
 }
