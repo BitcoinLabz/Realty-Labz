@@ -59,3 +59,14 @@ export const clientSchema = z.object({
   phone: z.string().trim().max(30).optional(),
   notes: z.string().trim().max(1000).optional(),
 });
+
+export const createInviteSchema = z.object({
+  role: z.enum(["AGENT", "TEAM_LEAD"]),
+});
+
+export const joinTeamSchema = z.object({
+  inviteId: z.string().min(1, "Missing invite"),
+  name: z.string().trim().min(1, "Name is required").max(100),
+  email: z.email("Enter a valid email address").trim().toLowerCase(),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});

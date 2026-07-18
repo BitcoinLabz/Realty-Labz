@@ -7,19 +7,23 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  // Prisma CLI commands (migrate, studio) get their main URL from
-  // prisma.config.ts's `datasource.url`. directUrl can't be set there
-  // (@prisma/config's Datasource type has no such field), so it's declared
-  // here instead — required for Supabase, whose pooled connection string
-  // (DATABASE_URL) can't run migrations; DIRECT_URL is the unpooled one.
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  // NOTE: directUrl is deliberately omitted. Prisma 7.8.0 rejects it in
+  // schema.prisma ("no longer supported... move to prisma.config.ts") but
+  // @prisma/config's Datasource type has no directUrl field either — a real
+  // gap in this Prisma version, not a choice. Not an issue yet since local
+  // dev connects directly (no pgbouncer pooling). MUST be resolved before
+  // connecting to Supabase's pooled DATABASE_URL for real: check whether a
+  // newer Prisma release restores support, or fall back to running
+  // `prisma migrate` with DATABASE_URL temporarily swapped to the direct
+  // (unpooled) connection string.
 }
 
 enum Role {
   AGENT
   TEAM_LEAD
   ADMIN
+  BROKER
 }
 
 model Team {
@@ -28,7 +32,8 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users User[]
+  users   User[]
+  invites TeamInvite[]
 
   @@map("teams")
 }
@@ -49,6 +54,7 @@ model User {
   transactions Transaction[]
   mileageLogs  MileageLog[]
   documents    Document[]
+  sentInvites  TeamInvite[]
 
   @@map("users")
 }
@@ -131,6 +137,24 @@ model Document {
   clientId String?
 
   @@map("documents")
+}
+
+// Shareable invite link for adding an agent to a team (see CLAUDE.md Platform
+// Expansion Roadmap, Phase 2 — no email delivery yet, links are shared manually).
+model TeamInvite {
+  id        String    @id @default(cuid())
+  role      Role      @default(AGENT)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String
+
+  createdByUser User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdBy     String
+
+  @@map("team_invites")
 }
 
 // Config table for state-specific mileage deduction rates, kept easy to
