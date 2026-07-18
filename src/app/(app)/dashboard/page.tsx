@@ -37,8 +37,8 @@ export default async function DashboardPage() {
 
   const income = Number(incomeAgg._sum.amount ?? 0);
   const expenses = Number(expenseAgg._sum.amount ?? 0);
-  const netIncome = income - expenses;
   const mileageSaved = Number(mileageAgg._sum.deduction ?? 0);
+  const netIncome = income - expenses - mileageSaved;
 
   return (
     <div className="flex flex-col gap-8">
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
         <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label={`Net income (${currentYear})`} value={formatCurrency(netIncome)} />
         </Link>
-        <Link href="/mileage" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label="Mileage saved" value={formatCurrency(mileageSaved)} />
         </Link>
         <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">

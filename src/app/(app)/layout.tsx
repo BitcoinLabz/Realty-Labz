@@ -23,13 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               href="/transactions"
               className="text-sm font-medium text-foreground hover:text-accent"
             >
-              Income &amp; Expenses
-            </Link>
-            <Link
-              href="/mileage"
-              className="text-sm font-medium text-foreground hover:text-accent"
-            >
-              Mileage
+              Finances
             </Link>
             <Link
               href="/clients"
