@@ -1,9 +1,9 @@
 # Realty Labs — Project Guide for Claude Code
 
 ## Overview
-Realty Labs is a web application built for real estate agents (starting with Michigan) to manage their business finances, mileage/tax deductions, and client documents in one place. It's designed to eventually support teams (brokerages), but launches as an individual-agent tool.
+Realty Labs is a web application built for real estate agents (starting with Michigan) to manage their business finances, mileage/tax deductions, and client documents in one place. It launched as an individual-agent tool and is now formally expanding into a multi-tenant SaaS platform — individual agents, teams, and brokerages/offices as first-class account types, with role-based permissions (Broker, Admin, Team Lead, Agent) and complete data separation between organizations. See "Platform Expansion Roadmap" below for the phased plan.
 
-**Founder context:** Built by a working Michigan realtor who wants a lean, low-cost MVP first, with an eye toward pitching this to their brokerage for team-wide use later.
+**Founder context:** Built by a working Michigan realtor who wants a lean, low-cost MVP first, with an eye toward pitching this to their brokerage for team-wide use later — the Platform Expansion Roadmap below is that pitch made concrete.
 
 **Long-term direction:** the goal is for Realty Labs to grow into a one-stop shop for an agent's entire business and financial life — personal finances, investments and other assets, clients, listings, and contracts, not just business income/expense bookkeeping. See "Long-Term Vision" below. V1 stays scoped to the business-finance core defined in the roadmap; this broader direction should inform architecture decisions (e.g., keep data models extensible rather than assuming "only business transactions" will ever exist) without pulling future scope forward into the current build.
 
@@ -32,15 +32,25 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - Build with a `users` → `teams` relationship from day one (roles: `agent`, `team_lead`, `admin`), even though v1 only needs individual-agent functionality. Do not hardcode single-user assumptions.
 - Web-first, fully responsive — no native mobile or desktop app for v1. Mobile wrapping (React Native/Expo) is a possible future phase, not now.
 - Michigan-only tax/mileage rules for v1. Store state-specific rates/rules (e.g., mileage deduction rate) in a config/table that's easy to update annually and easy to extend to other states later — not hardcoded in logic.
+- **Multi-tenant data isolation is enforced in application code, not database RLS.** Because auth stays on NextAuth (not Supabase Auth — see Tech Stack), Postgres Row-Level Security keyed to `auth.uid()` isn't available to us. Every query touching tenant-scoped data (transactions, deals, documents, clients, templates, etc.) **must** filter by the owning `userId` and/or `teamId` explicitly in the Prisma call — the same pattern already used in every `src/app/actions/*.ts` file (e.g. `deleteMany({ where: { id, userId } })`). This is the load-bearing security boundary for the whole multi-tenant platform; treat any query missing that scoping as a bug, not a style nit.
+- **Team = tenant/organization**, regardless of size. A `Team` row represents anything from a 2-agent team to a full brokerage — there is deliberately no separate "Brokerage/Office" model layered above `Team`. Simpler data model, avoids premature nesting; revisit only if a real customer needs teams-within-a-brokerage.
 
 ## Core Data Model (initial draft)
 - **users** — agent accounts, auth info, role, team_id (nullable for solo agents)
-- **teams** — optional grouping for brokerages/team features (v2 activation)
+- **teams** — optional grouping for brokerages/team features (v2 activation); also the multi-tenant unit — see Architecture Principles ("Team = tenant/organization")
 - **clients** — belongs to a user; contact info, notes
 - **properties/listings** — optional, tied to clients
 - **transactions** — income/expenses; category field (mileage, home office, phone, other); tied to user
 - **mileage_logs** — trip records: date, distance (miles, manually entered), business/personal flag, note (e.g. client name/purpose), calculated deduction amount (rate × miles at time of trip)
 - **documents** — contracts/PDFs; tied to client and/or user; supports e-mail-a-link-to-client flow for client-filled info (v2)
+
+**⚠️ Naming collision to plan around:** the existing `Transaction` model means an *income/expense ledger entry*. The Platform Expansion Roadmap's "Transaction Management" (Phase 2) means a *real estate deal* (buyer/seller side, timeline, deadlines, commission). These are different things that will both need to exist — when Phase 2 is built, the deal-tracking model needs its own name (e.g. `Deal` or `RealEstateTransaction`), not `Transaction`. Flagging now so it isn't a surprise later.
+
+**Not yet in the schema, needed for Phase 2+ (see Platform Expansion Roadmap):**
+- `Role` enum needs a `BROKER` value added (currently `AGENT` / `TEAM_LEAD` / `ADMIN`) to match the doc's Broker / Admin / Team Lead / Agent hierarchy.
+- A deal-tracking model (see naming collision above): buyer/seller workflow state, timeline, deadlines, commission, shared team access.
+- Reminder/notification records tied to deal deadlines (Phase 3).
+- Document template model for brokerage-level shared templates with auto-filled office/agent info (Phase 2 Document Management).
 
 ## Feature Roadmap
 
@@ -58,12 +68,42 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - **Automatic, location-based mileage/trip detection** (background GPS logging, auto-classify business/personal) is explicitly deferred until the app is wrapped as a native app (React Native/Expo). Continuous background location tracking is not reliably achievable in a responsive web app (mobile browsers, especially iOS Safari, restrict background GPS access), so don't attempt to build this into the web app — manual entry is the correct v1 approach, not a stopgap to route around technically.
 
 ### V2 (Post-MVP)
-- AI-powered image editor for listing photos
+- AI-powered image editor for listing photos — **superseded by Platform Expansion Phase 5 below**, which covers this plus broader marketing/AI tooling
 - Expanded export options (Excel, CSV in addition to PDF)
 - Email-a-link contract flow — client fills in their own info remotely (SkySlope-style, but aiming for fewer bugs, especially around signature fields)
-- Team features activation (shared client/document access, team lead reporting dashboard)
+- Team features activation (shared client/document access, team lead reporting dashboard) — **superseded by Platform Expansion Phase 2 below**, which expands this into full broker/office multi-tenancy
 - CRM-style notes per client
 - Leads tracker with follow-up reminders
+
+## Platform Expansion Roadmap (Multi-Tenant SaaS)
+Added 2026-07-17, from the founder's "Real Estate Agent SaaS Platform — Project Vision & Roadmap" doc. This **builds on top of** V1/V2 above, not a replacement — V1 is functionally complete (pending the PDF export item) and already covers more than this doc's own Phase 1 (it also includes mileage tracking and client management, which this doc places under Phase 4 and doesn't explicitly mention, respectively). Finish the V1 PDF export before starting Phase 2 work.
+
+**Stack notes specific to this expansion** (see Tech Stack above for the full picture): auth stays NextAuth, not Supabase Auth — decided 2026-07-16, holds for this expansion too. That means multi-tenant data separation is an application-layer responsibility (see Architecture Principles), not automatic via Postgres RLS. Keep that front-of-mind for every Phase 2+ feature below; a missed `teamId`/`userId` filter is a cross-tenant data leak, not a cosmetic bug.
+
+#### Phase 2 — Transaction Management, Broker/Office Dashboard, Team Management
+- Deal tracking: creation, buyer/seller workflows, timelines, deadline tracking, commission tracking — needs its own model, **not** the existing `Transaction` (income/expense) model (see naming collision note under Core Data Model)
+- Shared deal access for teams
+- Contract document storage tied to a deal (builds on the existing `/documents` + Supabase Storage system)
+- Office-wide dashboard: agent management, permission management (needs the `BROKER` role — see Core Data Model), shared templates, compliance monitoring, missing-document alerts, upcoming-deadline alerts, office performance reporting
+- Document Management System upgrade: document library, brokerage-level templates with auto-filled office/agent info, version control, search/organization — builds on the existing `/documents` page rather than replacing it
+- Team invites / adding teammates to an existing team (this is the concrete first step — today "Start a team" only creates the team and its first `TEAM_LEAD`; see Current Status)
+
+#### Phase 3 — AI Document Recognition, Deadline Automation, Notifications
+- Document recognition: automatic classification of uploaded forms, data extraction from contracts
+- Automatic deadline detection from contract data; missing-document identification
+- AI-generated transaction (deal) summaries; natural-language search across deals
+- Reminders: auto-generated from deal deadlines, with email + in-app notifications to agents and clients, task-completion tracking, and automatic reminder cancellation once the underlying task is done
+- Financial tools upgrade: commission reporting, tax-prep reports, business-deduction tracking, year-end summaries — builds on the existing `/transactions` page and the V1 PDF export deliverable rather than replacing them
+
+#### Phase 4 — Mobile App (iOS & Android)
+- Automatic mileage/drive detection and business-vs-personal trip classification — **this is the same thing already described under "Future — Native App Phase" above**, just formalized here as part of the mobile app phase. The manual mileage tracker already built in V1 stays as the web-based entry method regardless; this phase is additive (automatic detection), not a replacement.
+- Receipt scanning and expense capture
+- Mobile push notifications
+
+#### Phase 5 — Marketing Tools & Advanced AI
+- Listing description generation, social media content generation
+- Photo background removal, basic photo editing tools (supersedes V2's "AI-powered image editor" item above)
+- Marketing automation
 
 ### Long-Term Vision (beyond V2 — directional, no committed timeline)
 - **Data visualization**: charts/graphs for income & expenses over time (trends, category breakdowns), not just the current at-a-glance summary cards — applies to both existing business transactions and the investments/assets below once built.
@@ -83,7 +123,7 @@ Built so far: project scaffold, Prisma schema + migrations, the full auth/accoun
 - *Dashboard's "Net income", "Mileage saved", "Clients", and "Documents" cards now pull real data and link through to their respective pages (4-column grid); Net income and Mileage saved both link to `/transactions` since that page covers both.*
 - **Supabase migration is code-complete but unverified** — waiting on real project credentials (see "Local Development" below). `getSupabaseAdmin()` in `src/lib/supabase.ts` constructs its client lazily on first use specifically so the app still builds and every other route still works with those env vars unset; only document upload/download/delete will fail until they're added.
 - The PDF export deliverable (net income/loss summary + itemized breakdown for accountants) is **not built** — this is the last piece before V1 is functionally complete.
-- Team invites / adding teammates to an existing team is **not built** — that's V2 ("Team features activation"). Today, signing up with "Start a team" only creates the team and its first `TEAM_LEAD`.
+- Team invites / adding teammates to an existing team is **not built** — that's Platform Expansion Phase 2 now (was V2 "Team features activation," superseded — see above). Today, signing up with "Start a team" only creates the team and its first `TEAM_LEAD`.
 - The seeded `MileageRate` row (`prisma/seed.ts`) is $0.725/mile (MI, 2026) — confirmed by the founder. Update this row (and re-run `npx prisma db seed`) whenever the IRS standard mileage rate changes; `getMileageRate()` falls back to the most recent prior-year rate if the exact year isn't seeded yet, so adding next year's row is a one-line change, not a code change.
 - Shared UI primitives now live in `src/components/ui/`: `button.tsx`, `field.tsx`, `select.tsx`, `summary-card.tsx`, `textarea.tsx`, `year-select.tsx`. Reuse these for the PDF export UI rather than redefining per-page — this is exactly the pattern `/transactions`, `/clients`, and `/documents` all follow.
 - The top nav (`src/app/(app)/layout.tsx`) has 5 links plus name/sign-out (Dashboard, Finances, Clients, Documents, Account) — the mileage tracker was merged into `/transactions` (now labeled "Finances" in the nav) rather than getting its own top-level link, both to keep income/expense/mileage tax-time data in one place and to keep the nav from growing further. Still worth a design pass (e.g. a sidebar) before adding more top-level sections.
@@ -113,6 +153,7 @@ Built so far: project scaffold, Prisma schema + migrations, the full auth/accoun
 - **Quality and user-friendliness (the "Apple" bar above) is a first-class priority — weigh it alongside cost-consciousness, not after it.** When a cheaper/faster technical option would visibly hurt UX or design quality, flag the tradeoff rather than silently picking the cheap option.
 - Keep suggestions cost-conscious (free/low-cost tiers, minimal third-party services) unless told otherwise.
 - Default to simple, maintainable patterns over premature optimization — this is an MVP.
-- When in doubt about a feature's priority, check the V1 vs V2 list above before building it.
+- When in doubt about a feature's priority, check the V1 vs V2 list above before building it; once V1 is complete, check the Platform Expansion Roadmap's phase order (finish each phase before starting the next — don't jump ahead to Phase 3 AI features while Phase 2 deal-tracking is unbuilt, for example).
+- Maintain compatibility with the stated stack — Next.js/React, Vercel, GitHub, Supabase (DB + Storage only, not Auth) — rather than introducing alternatives. Build every new multi-tenant feature (Phase 2+) with the application-layer tenant-isolation pattern described in Architecture Principles; treat role-based permission checks as a security requirement, not an afterthought, especially anywhere a `BROKER`/`ADMIN` can see across agents.
 
 @AGENTS.md
