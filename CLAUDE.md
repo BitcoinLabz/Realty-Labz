@@ -76,17 +76,32 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - Leads tracker with follow-up reminders
 
 ## Platform Expansion Roadmap (Multi-Tenant SaaS)
-Added 2026-07-17, from the founder's "Real Estate Agent SaaS Platform — Project Vision & Roadmap" doc. This **builds on top of** V1/V2 above, not a replacement — V1 is functionally complete (pending the PDF export item) and already covers more than this doc's own Phase 1 (it also includes mileage tracking and client management, which this doc places under Phase 4 and doesn't explicitly mention, respectively). Finish the V1 PDF export before starting Phase 2 work.
+Added 2026-07-17, from the founder's "Real Estate Agent SaaS Platform — Project Vision & Roadmap" doc. This **builds on top of** V1/V2 above, not a replacement — V1 is functionally complete (including the PDF export) and already covers more than this doc's own Phase 1 (it also includes mileage tracking and client management, which this doc places under Phase 4 and doesn't explicitly mention, respectively).
 
 **Stack notes specific to this expansion** (see Tech Stack above for the full picture): auth stays NextAuth, not Supabase Auth — decided 2026-07-16, holds for this expansion too. That means multi-tenant data separation is an application-layer responsibility (see Architecture Principles), not automatic via Postgres RLS. Keep that front-of-mind for every Phase 2+ feature below; a missed `teamId`/`userId` filter is a cross-tenant data leak, not a cosmetic bug.
 
 #### Phase 2 — Transaction Management, Broker/Office Dashboard, Team Management
-- Deal tracking: creation, buyer/seller workflows, timelines, deadline tracking, commission tracking — needs its own model, **not** the existing `Transaction` (income/expense) model (see naming collision note under Core Data Model)
-- Shared deal access for teams
-- Contract document storage tied to a deal (builds on the existing `/documents` + Supabase Storage system)
-- Office-wide dashboard: agent management, permission management (needs the `BROKER` role — see Core Data Model), shared templates, compliance monitoring, missing-document alerts, upcoming-deadline alerts, office performance reporting
-- Document Management System upgrade: document library, brokerage-level templates with auto-filled office/agent info, version control, search/organization — builds on the existing `/documents` page rather than replacing it
-- Team invites / adding teammates to an existing team (this is the concrete first step — today "Start a team" only creates the team and its first `TEAM_LEAD`; see Current Status)
+Planned 2026-07-17. Decisions locked in during planning:
+- **Team invites are shareable links, not real emails** — no transactional email provider yet (keeps cost/setup at zero for now). A manager generates a link with an expiring token; they send it themselves via whatever channel. **Pre-launch TODO:** once Vercel + Supabase are live, revisit this — at minimum the invite link needs a real base URL instead of `localhost:3000`, and real email delivery (e.g. Resend) is worth adding at that point instead of staying manual-link-only forever.
+- **Deal deadlines are a flexible task list**, not fixed fields (inspection/financing/closing hardcoded on the deal itself) — a generic `label` + `dueDate` + `completedAt` per deadline, added freely per deal. Chosen specifically because Phase 3's automatic deadline detection and reminders need to create arbitrary deadlines, not just fill in three predetermined slots.
+- **Team Lead has team-wide visibility**, same as Admin and Broker — all three see every deal/agent on the team; only Agent is scoped to their own. Practically, `TEAM_LEAD` / `ADMIN` / `BROKER` are one "manager tier" for data-access purposes in Phase 2 (a shared `isManager(role)` check), even though they're separate enum values and may earn distinct capabilities later (e.g. billing, removing the team itself — not designed yet).
+
+**New data models needed** (none of these exist yet):
+- `Role` enum gains `BROKER` (currently `AGENT` / `TEAM_LEAD` / `ADMIN`).
+- `Deal` — the buyer/seller transaction/workflow itself. Fields: `side` (BUYER/SELLER/DUAL), `status` (ACTIVE/UNDER_CONTRACT/PENDING/CLOSED/FELL_THROUGH), `propertyAddress`, `mlsNumber`, `listPrice`, `salePrice`, `commissionRate`, `commissionAmount`, `closingDate`, `notes`. Scoped by `userId` (the assigned agent) exactly like every other model — **not** a `teamId` field; team-wide visibility for managers is a query-time join through `user.teamId`, not stored redundantly on the deal. Optionally linked to an existing `Client`. This is the model that resolves the naming collision noted under Core Data Model — it is explicitly **not** named `Transaction`.
+- `DealDeadline` — the flexible task list per the decision above: `label`, `dueDate`, `completedAt` (nullable — set when done), belongs to a `Deal`.
+- `Document.dealId` (new nullable field, same pattern as the existing `Document.clientId`) — so contracts can be tied to a deal.
+- `TeamInvite` — `token` (unique, expiring), `teamId`, `role` (what the invitee becomes), `expiresAt`, `usedAt` (nullable), `createdBy`.
+
+**Build order:**
+1. `Role` enum: add `BROKER` (small migration, no UI yet).
+2. Team invites: `TeamInvite` model; an invite-generation UI for managers; a public `/join/[token]` page (no auth required to view) that behaves like signup but pre-fills the team/role from the token instead of asking solo-vs-team; mark the invite used on signup.
+3. `isManager(role)` helper (`src/lib/authorization.ts` or similar) — the one place that defines "team-wide visibility" so every Phase 2+ query uses the same rule instead of each feature reinventing it.
+4. `Deal` + `DealDeadline` models and migration.
+5. Deals CRUD page(s): create/edit/delete a deal, manage its deadline list (add/complete/delete), optionally link a client — following the same add/edit/delete-with-inline-form pattern already used for transactions, mileage, and clients.
+6. Contract documents tied to a deal: extend the existing `/documents` upload/reassign flow so a document can link to a `dealId` in addition to (or instead of) a `clientId`.
+7. Broker/office dashboard (new page, e.g. `/team`): agent list with basic per-agent stats (active deals, closed deals, commission this period), upcoming/overdue deadline alerts across the team, missing-document alerts (a deal missing an expected document type — simple heuristic first pass), basic performance reporting. This is the piece that most depends on everything above already working.
+8. Document Management System upgrades (library view, brokerage-level templates with auto-filled office/agent info, version control, search) — lower priority within Phase 2; can follow once 1–7 are solid rather than blocking them.
 
 #### Phase 3 — AI Document Recognition, Deadline Automation, Notifications
 - Document recognition: automatic classification of uploaded forms, data extraction from contracts
@@ -150,6 +165,7 @@ Built so far: project scaffold, Prisma schema + migrations, the full auth/accoun
 - No location data is collected in v1 (mileage is manually entered) — revisit privacy/consent/storage requirements when the native app phase adds GPS tracking.
 
 ## Working Style Notes for Claude
+- **Stay local-only until told otherwise (confirmed 2026-07-17).** Keep developing and testing against `localhost:3000` (local dev DB or a Supabase dev project) — no deploying to Vercel, no pushing to a public GitHub remote — until the founder explicitly says it's time to go online. This is a standing instruction, not scoped to any one feature.
 - **Quality and user-friendliness (the "Apple" bar above) is a first-class priority — weigh it alongside cost-consciousness, not after it.** When a cheaper/faster technical option would visibly hurt UX or design quality, flag the tradeoff rather than silently picking the cheap option.
 - Keep suggestions cost-conscious (free/low-cost tiers, minimal third-party services) unless told otherwise.
 - Default to simple, maintainable patterns over premature optimization — this is an MVP.
