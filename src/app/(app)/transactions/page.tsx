@@ -80,7 +80,15 @@ export default async function TransactionsPage({
             Income, expenses, and mileage — everything for tax time in one place.
           </p>
         </div>
-        <YearSelect year={year} options={yearOptions} basePath="/transactions" />
+        <div className="flex items-center gap-3">
+          <a
+            href={`/api/reports/pdf?year=${year}`}
+            className="inline-flex items-center justify-center rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-border/40"
+          >
+            Download PDF report
+          </a>
+          <YearSelect year={year} options={yearOptions} basePath="/transactions" />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
