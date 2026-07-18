@@ -7,7 +7,13 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider  = "postgresql"
+  // Prisma CLI commands (migrate, studio) get their main URL from
+  // prisma.config.ts's `datasource.url`. directUrl can't be set there
+  // (@prisma/config's Datasource type has no such field), so it's declared
+  // here instead — required for Supabase, whose pooled connection string
+  // (DATABASE_URL) can't run migrations; DIRECT_URL is the unpooled one.
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -110,9 +116,9 @@ model MileageLog {
 model Document {
   id         String   @id @default(cuid())
   fileName   String
-  // Relative path under the private local storage root (see src/lib/document-storage.ts).
-  // Swap this for a cloud storage key/URL before deploying — local disk doesn't persist
-  // on Vercel's serverless functions.
+  // Object key within the private Supabase Storage "documents" bucket
+  // (see src/lib/document-storage.ts). Not a public URL — files are only
+  // reachable through the authenticated GET /api/documents/[id] route.
   storageKey String
   mimeType   String
   size       Int
