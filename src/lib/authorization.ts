@@ -9,6 +9,20 @@ export function isManager(role: Role): boolean {
   return role === "TEAM_LEAD" || role === "ADMIN" || role === "BROKER";
 }
 
+type SessionUser = { id: string; role: Role; teamId: string | null };
+
+// Prisma where-fragment for any model with a `userId` + `user` relation
+// (Deal today, others later): managers get every record on their team,
+// everyone else is scoped to their own. Use this instead of hand-rolling an
+// OR clause per feature — see the "load-bearing security boundary" note in
+// CLAUDE.md's Architecture Principles.
+export function teamOrOwnFilter(sessionUser: SessionUser) {
+  if (isManager(sessionUser.role) && sessionUser.teamId) {
+    return { user: { teamId: sessionUser.teamId } };
+  }
+  return { userId: sessionUser.id };
+}
+
 export function roleLabel(role: Role): string {
   switch (role) {
     case "TEAM_LEAD":

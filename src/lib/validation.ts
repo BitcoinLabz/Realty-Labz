@@ -70,3 +70,22 @@ export const joinTeamSchema = z.object({
   email: z.email("Enter a valid email address").trim().toLowerCase(),
   password: z.string().min(8, "Password must be at least 8 characters"),
 });
+
+export const dealSchema = z.object({
+  side: z.enum(["BUYER", "SELLER", "DUAL"]),
+  status: z.enum(["ACTIVE", "UNDER_CONTRACT", "PENDING", "CLOSED", "FELL_THROUGH"]),
+  propertyAddress: z.string().trim().min(1, "Property address is required").max(300),
+  mlsNumber: z.string().trim().max(50).optional(),
+  listPrice: z.coerce.number().nonnegative("Must be 0 or more").optional(),
+  salePrice: z.coerce.number().nonnegative("Must be 0 or more").optional(),
+  commissionRate: z.coerce.number().min(0).max(100, "Enter a percent, e.g. 3").optional(),
+  commissionAmount: z.coerce.number().nonnegative("Must be 0 or more").optional(),
+  closingDate: z.string().optional(),
+  notes: z.string().trim().max(2000).optional(),
+  clientId: z.string().optional(),
+});
+
+export const dealDeadlineSchema = z.object({
+  label: z.string().trim().min(1, "Label is required").max(200),
+  dueDate: z.string().min(1, "Due date is required"),
+});
