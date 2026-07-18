@@ -77,7 +77,9 @@ export default async function DealDetailPage({
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Deadlines</h2>
+        <h2 className="mb-6 text-base font-semibold text-foreground">
+          Contingencies &amp; deadlines
+        </h2>
         <DeadlineList dealId={deal.id} deadlines={deadlineDtos} />
       </section>
 

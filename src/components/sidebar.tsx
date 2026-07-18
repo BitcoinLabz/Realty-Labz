@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  Building2,
   FileText,
   Handshake,
   LayoutDashboard,
@@ -15,18 +16,30 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 
-const navItems = [
+const baseNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/deals", label: "Deals", icon: Handshake },
   { href: "/transactions", label: "Finances", icon: Wallet },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/documents", label: "Documents", icon: FileText },
-  { href: "/account", label: "Account", icon: Settings },
 ];
 
-export function Sidebar({ userName }: { userName?: string | null }) {
+const teamNavItem = { href: "/team", label: "Team", icon: Building2 };
+
+const accountNavItem = { href: "/account", label: "Account", icon: Settings };
+
+export function Sidebar({
+  userName,
+  showTeamLink,
+}: {
+  userName?: string | null;
+  showTeamLink?: boolean;
+}) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const navItems = showTeamLink
+    ? [...baseNavItems, teamNavItem, accountNavItem]
+    : [...baseNavItems, accountNavItem];
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(`${href}/`);

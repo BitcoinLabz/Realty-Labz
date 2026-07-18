@@ -27,10 +27,10 @@ function AddDeadlineForm({ dealId }: { dealId: string }) {
       <input type="hidden" name="dealId" value={dealId} />
       <div className="flex-1">
         <Field
-          label="Deadline"
+          label="Contingency or deadline"
           name="label"
           type="text"
-          placeholder="e.g. Home inspection"
+          placeholder="e.g. Inspection contingency"
           required
           error={state.fieldErrors?.label}
         />
@@ -57,7 +57,9 @@ export function DeadlineList({
       <AddDeadlineForm dealId={dealId} />
 
       {deadlines.length === 0 ? (
-        <p className="text-sm text-muted">No deadlines yet.</p>
+        <p className="text-sm text-muted">
+          No contingencies or deadlines yet — e.g. inspection, financing, appraisal, closing.
+        </p>
       ) : (
         <div className="flex flex-col gap-2">
           {deadlines.map((d) => {

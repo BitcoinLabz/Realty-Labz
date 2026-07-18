@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { clientSchema } from "@/lib/validation";
@@ -66,6 +67,7 @@ export async function updateClientAction(
   if (result.count === 0) return { error: "Client not found" };
 
   revalidatePath("/clients");
+  revalidatePath(`/clients/${id}`);
   return {};
 }
 
@@ -79,4 +81,5 @@ export async function deleteClientAction(formData: FormData) {
   await prisma.client.deleteMany({ where: { id, userId: session.user.id } });
 
   revalidatePath("/clients");
+  redirect("/clients");
 }

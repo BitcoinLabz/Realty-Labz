@@ -33,7 +33,11 @@ export function ClientForm({
 
   useEffect(() => {
     if (succeeded) {
-      formRef.current?.reset();
+      // Only reset for create — see CLAUDE.md's note on the uncontrolled-form
+      // staleness bug. Edit mode relies on the parent keying this component
+      // by the client's updatedAt so a successful save remounts with fresh
+      // defaultValues instead.
+      if (!isEdit) formRef.current?.reset();
       onDone?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

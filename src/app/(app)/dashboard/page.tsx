@@ -13,27 +13,39 @@ export default async function DashboardPage() {
   const currentYear = new Date().getFullYear();
   const start = new Date(Date.UTC(currentYear, 0, 1));
   const end = new Date(Date.UTC(currentYear + 1, 0, 1));
+  const now = new Date();
+  const soon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [incomeAgg, expenseAgg, mileageAgg, clientCount, documentCount] = await Promise.all([
-    prisma.transaction.aggregate({
-      _sum: { amount: true },
-      where: { userId: session!.user.id, type: "INCOME", date: { gte: start, lt: end } },
-    }),
-    prisma.transaction.aggregate({
-      _sum: { amount: true },
-      where: { userId: session!.user.id, type: "EXPENSE", date: { gte: start, lt: end } },
-    }),
-    prisma.mileageLog.aggregate({
-      _sum: { deduction: true },
-      where: {
-        userId: session!.user.id,
-        isBusiness: true,
-        date: { gte: start, lt: end },
-      },
-    }),
-    prisma.client.count({ where: { userId: session!.user.id } }),
-    prisma.document.count({ where: { userId: session!.user.id } }),
-  ]);
+  const [incomeAgg, expenseAgg, mileageAgg, clientCount, documentCount, upcomingDeadlines] =
+    await Promise.all([
+      prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { userId: session!.user.id, type: "INCOME", date: { gte: start, lt: end } },
+      }),
+      prisma.transaction.aggregate({
+        _sum: { amount: true },
+        where: { userId: session!.user.id, type: "EXPENSE", date: { gte: start, lt: end } },
+      }),
+      prisma.mileageLog.aggregate({
+        _sum: { deduction: true },
+        where: {
+          userId: session!.user.id,
+          isBusiness: true,
+          date: { gte: start, lt: end },
+        },
+      }),
+      prisma.client.count({ where: { userId: session!.user.id } }),
+      prisma.document.count({ where: { userId: session!.user.id } }),
+      prisma.dealDeadline.findMany({
+        where: {
+          completedAt: null,
+          dueDate: { lte: soon },
+          deal: { userId: session!.user.id },
+        },
+        include: { deal: true },
+        orderBy: { dueDate: "asc" },
+      }),
+    ]);
 
   const income = Number(incomeAgg._sum.amount ?? 0);
   const expenses = Number(expenseAgg._sum.amount ?? 0);
@@ -65,6 +77,38 @@ export default async function DashboardPage() {
           <SummaryCard label="Documents" value={documentCount.toString()} />
         </Link>
       </div>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-6 text-base font-semibold text-foreground">
+          Your upcoming contingencies &amp; deadlines
+        </h2>
+        {upcomingDeadlines.length === 0 ? (
+          <p className="text-sm text-muted">Nothing due in the next 7 days.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {upcomingDeadlines.map((d) => {
+              const isOverdue = d.dueDate < now;
+              return (
+                <Link
+                  key={d.id}
+                  href={`/deals/${d.dealId}`}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
+                >
+                  <span className="text-sm font-medium text-foreground">
+                    {d.label} — {d.deal.propertyAddress}
+                  </span>
+                  <span
+                    className={`text-sm font-medium ${isOverdue ? "text-danger" : "text-muted"}`}
+                  >
+                    {d.dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {isOverdue ? " · Overdue" : ""}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
