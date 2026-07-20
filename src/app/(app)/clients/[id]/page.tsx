@@ -57,6 +57,12 @@ export default async function ClientDetailPage({
   return (
     <div className="flex flex-col gap-8">
       <div>
+        <Link
+          href="/clients"
+          className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
+        >
+          ← Back to Clients
+        </Link>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">{client.name}</h1>
         <p className="mt-1 text-sm text-muted">
           Contact info, properties, and documents for this client.

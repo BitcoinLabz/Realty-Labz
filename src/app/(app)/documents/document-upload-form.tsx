@@ -39,7 +39,7 @@ export function DocumentUploadForm({
           type="file"
           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
           required
-          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-foreground"
+          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/20 file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-foreground"
         />
         <p className="text-sm text-muted">PDF, Word, or image files up to 15MB.</p>
         {state.fieldErrors?.file ? (

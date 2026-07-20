@@ -68,8 +68,8 @@ export default async function AccountPage() {
         </p>
         {!user.team ? (
           <p className="mt-1 text-sm text-muted">
-            Team features (inviting teammates, shared client access) are coming in a future
-            update.
+            Solo accounts can&apos;t currently convert to a team — sign up again and choose
+            &quot;Start a team&quot; if you&apos;d like to invite teammates.
           </p>
         ) : null}
       </section>

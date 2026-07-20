@@ -39,7 +39,7 @@ function UploadTemplateForm() {
           type="file"
           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
           required
-          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-foreground"
+          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/20 file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-foreground"
         />
         {state.fieldErrors?.file ? (
           <p className="text-sm text-danger">{state.fieldErrors.file}</p>

@@ -23,6 +23,7 @@ export default async function DealDetailPage({
       include: {
         deadlines: { orderBy: { dueDate: "asc" } },
         documents: { orderBy: { createdAt: "desc" } },
+        client: { select: { id: true, name: true } },
       },
     }),
     prisma.client.findMany({
@@ -59,6 +60,12 @@ export default async function DealDetailPage({
   return (
     <div className="flex flex-col gap-8">
       <div>
+        <Link
+          href={deal.client ? `/clients/${deal.client.id}` : "/clients"}
+          className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
+        >
+          ← Back to {deal.client ? deal.client.name : "Clients"}
+        </Link>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           {deal.propertyAddress}
         </h1>
