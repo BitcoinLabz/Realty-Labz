@@ -91,6 +91,19 @@ export const dealDeadlineSchema = z.object({
   dueDate: z.string().min(1, "Due date is required"),
 });
 
+export const loanSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100),
+  type: z.enum(["MORTGAGE", "AUTO", "OTHER"]),
+  purchasePrice: z.coerce.number().positive("Must be greater than 0"),
+  downPayment: z.coerce.number().nonnegative("Must be 0 or more").optional().default(0),
+  interestRate: z.coerce.number().nonnegative("Must be 0 or more").max(100, "Enter a percent, e.g. 6.5"),
+  termMonths: z.coerce.number().int().positive("Must be greater than 0"),
+  startDate: z.string().min(1, "Start date is required"),
+  annualPropertyTax: z.coerce.number().nonnegative("Must be 0 or more").optional().default(0),
+  annualInsurance: z.coerce.number().nonnegative("Must be 0 or more").optional().default(0),
+  notes: z.string().trim().max(1000).optional(),
+});
+
 export const assetSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(100),
