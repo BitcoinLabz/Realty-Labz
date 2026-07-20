@@ -37,10 +37,12 @@ export function DealForm({
   clients,
   defaultValues,
   onDone,
+  lockedClientId,
 }: {
-  clients: ClientOption[];
+  clients?: ClientOption[];
   defaultValues?: DealFormValues;
   onDone?: () => void;
+  lockedClientId?: string;
 }) {
   const isEdit = !!defaultValues?.id;
   const action = isEdit ? updateDealAction : createDealAction;
@@ -165,7 +167,9 @@ export function DealForm({
         error={state.fieldErrors?.closingDate}
       />
 
-      {clients.length > 0 ? (
+      {lockedClientId ? (
+        <input type="hidden" name="clientId" value={lockedClientId} />
+      ) : clients && clients.length > 0 ? (
         <Select label="Client (optional)" name="clientId" defaultValue={defaultValues?.clientId ?? ""}>
           <option value="">No client</option>
           {clients.map((c) => (

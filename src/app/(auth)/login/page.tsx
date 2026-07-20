@@ -15,7 +15,7 @@ export default function LoginPage() {
     <form action={formAction} className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Welcome back</h1>
-        <p className="mt-1 text-sm text-muted">Log in to your Realty Labs account.</p>
+        <p className="mt-1 text-sm text-muted">Log in to your Realty Labz account.</p>
       </div>
 
       <Field label="Email" name="email" type="email" autoComplete="email" required />

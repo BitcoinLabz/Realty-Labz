@@ -84,7 +84,7 @@ export async function uploadDocumentAction(
 
   revalidatePath("/documents");
   revalidatePath("/dashboard");
-  revalidatePath("/deals");
+  if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
   return {};
 }
 
@@ -107,7 +107,7 @@ export async function updateDocumentLinksAction(formData: FormData) {
   });
 
   revalidatePath("/documents");
-  revalidatePath("/deals");
+  if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
 }
 
 export async function deleteDocumentAction(formData: FormData) {
@@ -125,5 +125,5 @@ export async function deleteDocumentAction(formData: FormData) {
 
   revalidatePath("/documents");
   revalidatePath("/dashboard");
-  revalidatePath("/deals");
+  if (doc.dealId) revalidatePath(`/deals/${doc.dealId}`);
 }

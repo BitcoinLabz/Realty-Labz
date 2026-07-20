@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Realty Labs",
+  title: "Realty Labz",
   description: "Finances, mileage, and client documents for real estate agents.",
 };
 

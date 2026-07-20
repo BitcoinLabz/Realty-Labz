@@ -9,7 +9,7 @@ export default async function Home() {
     <div className="flex flex-1 flex-col items-center justify-center bg-surface px-6">
       <div className="flex max-w-md flex-col items-center gap-6 text-center">
         <span className="text-2xl font-semibold tracking-tight text-foreground">
-          Realty Labs
+          Realty Labz
         </span>
         <p className="text-lg text-muted">
           Finances, mileage deductions, and client documents in one place — built for Michigan

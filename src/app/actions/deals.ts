@@ -58,7 +58,7 @@ export async function createDealAction(
     },
   });
 
-  revalidatePath("/deals");
+  if (clientId) revalidatePath(`/clients/${clientId}`);
   return {};
 }
 
@@ -101,8 +101,8 @@ export async function updateDealAction(
 
   if (result.count === 0) return { error: "Deal not found" };
 
-  revalidatePath("/deals");
   revalidatePath(`/deals/${id}`);
+  if (clientId) revalidatePath(`/clients/${clientId}`);
   return {};
 }
 
@@ -113,8 +113,17 @@ export async function deleteDealAction(formData: FormData) {
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return;
 
+  const deal = await prisma.deal.findFirst({
+    where: { id, ...teamOrOwnFilter(session.user) },
+    select: { clientId: true },
+  });
+
   await prisma.deal.deleteMany({ where: { id, ...teamOrOwnFilter(session.user) } });
 
-  revalidatePath("/deals");
-  redirect("/deals");
+  if (deal?.clientId) {
+    revalidatePath(`/clients/${deal.clientId}`);
+    redirect(`/clients/${deal.clientId}`);
+  } else {
+    redirect("/clients");
+  }
 }

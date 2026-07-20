@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { formatFileSize } from "@/lib/format";
 import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
+import { DealForm } from "../../deals/deal-form";
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Active",
@@ -70,18 +71,14 @@ export default async function ClientDetailPage({
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-foreground">Properties &amp; offers</h2>
-          <Link href="/deals" className="text-sm font-medium text-accent hover:opacity-80">
-            Add a deal for this client
-          </Link>
-        </div>
+        <h2 className="mb-6 text-base font-semibold text-foreground">Properties &amp; offers</h2>
+
         {deals.length === 0 ? (
-          <p className="text-sm text-muted">
-            No properties or offers yet for {client.name}. Add a deal and link it to this client.
+          <p className="mb-6 text-sm text-muted">
+            No properties or offers yet for {client.name}. Add one below.
           </p>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="mb-6 flex flex-col gap-2">
             {deals.map((deal) => (
               <Link
                 key={deal.id}
@@ -101,6 +98,11 @@ export default async function ClientDetailPage({
             ))}
           </div>
         )}
+
+        <div className="max-w-md border-t border-border pt-6">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Add a deal</h3>
+          <DealForm lockedClientId={client.id} />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">

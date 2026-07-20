@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
   const netIncome = income - expenses - mileageDeduction;
 
   const reportData: FinancialReportData = {
-    userName: user?.name ?? "Realty Labs Agent",
+    userName: user?.name ?? "Realty Labz Agent",
     teamName: user?.team?.name ?? null,
     year,
     income,

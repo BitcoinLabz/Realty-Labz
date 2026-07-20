@@ -4,7 +4,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <span className="text-lg font-semibold tracking-tight text-foreground">
-            Realty Labs
+            Realty Labz
           </span>
         </div>
         <div className="rounded-2xl border border-border bg-background p-8 shadow-sm">

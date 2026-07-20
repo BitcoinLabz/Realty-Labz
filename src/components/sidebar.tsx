@@ -6,7 +6,6 @@ import { useState } from "react";
 import {
   Building2,
   FileText,
-  Handshake,
   LayoutDashboard,
   Menu,
   Settings,
@@ -18,7 +17,6 @@ import { logoutAction } from "@/app/actions/auth";
 
 const baseNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/deals", label: "Deals", icon: Handshake },
   { href: "/transactions", label: "Finances", icon: Wallet },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/documents", label: "Documents", icon: FileText },
@@ -48,7 +46,7 @@ export function Sidebar({
   return (
     <>
       <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden">
-        <span className="text-sm font-semibold tracking-tight text-foreground">Realty Labs</span>
+        <span className="text-sm font-semibold tracking-tight text-foreground">Realty Labz</span>
         <button
           type="button"
           onClick={() => setIsOpen(true)}
@@ -74,7 +72,7 @@ export function Sidebar({
       >
         <div className="flex items-center justify-between px-6 py-5">
           <span className="text-sm font-semibold tracking-tight text-foreground">
-            Realty Labs
+            Realty Labz
           </span>
           <button
             type="button"
