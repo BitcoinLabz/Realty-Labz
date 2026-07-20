@@ -2,7 +2,9 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import { getAssetBreakdown, getPipelineValue } from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
+import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -16,41 +18,56 @@ export default async function DashboardPage() {
   const now = new Date();
   const soon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [incomeAgg, expenseAgg, mileageAgg, clientCount, documentCount, upcomingDeadlines] =
-    await Promise.all([
-      prisma.transaction.aggregate({
-        _sum: { amount: true },
-        where: { userId: session!.user.id, type: "INCOME", date: { gte: start, lt: end } },
-      }),
-      prisma.transaction.aggregate({
-        _sum: { amount: true },
-        where: { userId: session!.user.id, type: "EXPENSE", date: { gte: start, lt: end } },
-      }),
-      prisma.mileageLog.aggregate({
-        _sum: { deduction: true },
-        where: {
-          userId: session!.user.id,
-          isBusiness: true,
-          date: { gte: start, lt: end },
-        },
-      }),
-      prisma.client.count({ where: { userId: session!.user.id } }),
-      prisma.document.count({ where: { userId: session!.user.id } }),
-      prisma.dealDeadline.findMany({
-        where: {
-          completedAt: null,
-          dueDate: { lte: soon },
-          deal: { userId: session!.user.id },
-        },
-        include: { deal: true },
-        orderBy: { dueDate: "asc" },
-      }),
-    ]);
+  const [
+    incomeAgg,
+    expenseAgg,
+    mileageAgg,
+    clientCount,
+    documentCount,
+    upcomingDeadlines,
+    assetBreakdown,
+    pipeline,
+  ] = await Promise.all([
+    prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { userId: session!.user.id, scope: "BUSINESS", type: "INCOME", date: { gte: start, lt: end } },
+    }),
+    prisma.transaction.aggregate({
+      _sum: { amount: true },
+      where: { userId: session!.user.id, scope: "BUSINESS", type: "EXPENSE", date: { gte: start, lt: end } },
+    }),
+    prisma.mileageLog.aggregate({
+      _sum: { deduction: true },
+      where: {
+        userId: session!.user.id,
+        isBusiness: true,
+        date: { gte: start, lt: end },
+      },
+    }),
+    prisma.client.count({ where: { userId: session!.user.id } }),
+    prisma.document.count({ where: { userId: session!.user.id } }),
+    prisma.dealDeadline.findMany({
+      where: {
+        completedAt: null,
+        dueDate: { lte: soon },
+        deal: { userId: session!.user.id },
+      },
+      include: { deal: true },
+      orderBy: { dueDate: "asc" },
+    }),
+    getAssetBreakdown(session!.user.id),
+    getPipelineValue(session!.user.id),
+  ]);
 
   const income = Number(incomeAgg._sum.amount ?? 0);
   const expenses = Number(expenseAgg._sum.amount ?? 0);
   const mileageSaved = Number(mileageAgg._sum.deduction ?? 0);
   const netIncome = income - expenses - mileageSaved;
+
+  const financialPicture = [
+    { label: "Personal investments", value: assetBreakdown.total },
+    { label: "Real estate pipeline", value: pipeline.value },
+  ].filter((p) => p.value > 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -64,10 +81,10 @@ export default async function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/finances" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label={`Net income (${currentYear})`} value={formatCurrency(netIncome)} />
         </Link>
-        <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/finances/mileage" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label="Mileage saved" value={formatCurrency(mileageSaved)} />
         </Link>
         <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
@@ -80,7 +97,7 @@ export default async function DashboardPage() {
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">
-          Your upcoming contingencies &amp; deadlines
+          Due dates &amp; reminders
         </h2>
         {upcomingDeadlines.length === 0 ? (
           <p className="text-sm text-muted">Nothing due in the next 7 days.</p>
@@ -107,6 +124,23 @@ export default async function DashboardPage() {
               );
             })}
           </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <div className="mb-6 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-foreground">Your financial picture</h2>
+          <Link href="/finances" className="text-sm font-medium text-accent hover:opacity-80">
+            View Finances
+          </Link>
+        </div>
+        {financialPicture.length > 0 ? (
+          <BreakdownDonutChart data={financialPicture} />
+        ) : (
+          <p className="text-sm text-muted">
+            Add an investment or an active deal to see your combined personal + business value
+            here.
+          </p>
         )}
       </section>
     </div>

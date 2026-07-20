@@ -8,9 +8,12 @@ import type { FormState } from "@/app/actions/auth";
 
 function parseTransactionForm(formData: FormData) {
   const type = formData.get("type");
+  const scope = formData.get("scope") || "BUSINESS";
   return transactionSchema.safeParse({
     type,
-    category: type === "EXPENSE" ? (formData.get("category") ?? undefined) : undefined,
+    scope,
+    category:
+      scope === "BUSINESS" && type === "EXPENSE" ? (formData.get("category") ?? undefined) : undefined,
     amount: formData.get("amount"),
     description: formData.get("description") || undefined,
     date: formData.get("date"),
@@ -33,20 +36,21 @@ export async function createTransactionAction(
     return { fieldErrors };
   }
 
-  const { type, category, amount, description, date } = parsed.data;
+  const { type, scope, category, amount, description, date } = parsed.data;
 
   await prisma.transaction.create({
     data: {
       userId: session.user.id,
       type,
-      category: type === "EXPENSE" ? category! : "OTHER",
+      scope,
+      category: scope === "BUSINESS" && type === "EXPENSE" ? category! : null,
       amount,
       description,
       date: new Date(date),
     },
   });
 
-  revalidatePath("/transactions");
+  revalidatePath("/finances");
   revalidatePath("/dashboard");
   return {};
 }
@@ -70,13 +74,14 @@ export async function updateTransactionAction(
     return { fieldErrors };
   }
 
-  const { type, category, amount, description, date } = parsed.data;
+  const { type, scope, category, amount, description, date } = parsed.data;
 
   const result = await prisma.transaction.updateMany({
     where: { id, userId: session.user.id },
     data: {
       type,
-      category: type === "EXPENSE" ? category! : "OTHER",
+      scope,
+      category: scope === "BUSINESS" && type === "EXPENSE" ? category! : null,
       amount,
       description,
       date: new Date(date),
@@ -85,7 +90,7 @@ export async function updateTransactionAction(
 
   if (result.count === 0) return { error: "Transaction not found" };
 
-  revalidatePath("/transactions");
+  revalidatePath("/finances");
   revalidatePath("/dashboard");
   return {};
 }
@@ -99,6 +104,6 @@ export async function deleteTransactionAction(formData: FormData) {
 
   await prisma.transaction.deleteMany({ where: { id, userId: session.user.id } });
 
-  revalidatePath("/transactions");
+  revalidatePath("/finances");
   revalidatePath("/dashboard");
 }

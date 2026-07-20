@@ -57,6 +57,7 @@ model User {
   sentInvites       TeamInvite[]
   deals             Deal[]
   documentTemplates DocumentTemplate[]
+  assets            Asset[]
 
   @@map("users")
 }
@@ -91,14 +92,26 @@ enum TransactionCategory {
   OTHER
 }
 
+// BUSINESS is the original (and only, pre-2026-07-20) scope — real estate
+// income/expenses. PERSONAL covers everything outside the business (a W-2
+// job, a spouse's income, household expenses, etc.), per the Long-Term
+// Vision's "one-stop shop" direction in CLAUDE.md. Personal rows don't use
+// TransactionCategory (home office/phone/mileage are business-only concepts),
+// hence category is nullable below.
+enum TransactionScope {
+  BUSINESS
+  PERSONAL
+}
+
 model Transaction {
-  id          String              @id @default(cuid())
+  id          String               @id @default(cuid())
   type        TransactionType
-  category    TransactionCategory
-  amount      Decimal             @db.Decimal(10, 2)
+  scope       TransactionScope     @default(BUSINESS)
+  category    TransactionCategory?
+  amount      Decimal              @db.Decimal(10, 2)
   description String?
   date        DateTime
-  createdAt   DateTime            @default(now())
+  createdAt   DateTime             @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -248,6 +261,42 @@ model DocumentTemplate {
   userId String
 
   @@map("document_templates")
+}
+
+enum AssetType {
+  STOCKS
+  RETIREMENT
+  REAL_ESTATE
+  CRYPTO
+  SAVINGS
+  OTHER
+}
+
+// Personal investment/asset tracking (brokerage account, retirement, rental
+// property, crypto, savings, etc.) — part of the Long-Term Vision's shift
+// from a business-expense tracker to full personal finance (see CLAUDE.md).
+// Deliberately current-value-only for this first version, not a value-history
+// log — the user chose simplicity over a true net-worth trend line, which
+// would require logging updates over time rather than a single running value.
+//
+// IMPORTANT: unlike every other team-aware model in this schema, Asset is
+// ALWAYS scoped to userId alone, with no team-visibility path whatsoever —
+// see src/lib/authorization.ts. Personal finances are never a manager's
+// business, even for BROKER/ADMIN/TEAM_LEAD roles that see everything else
+// team-wide. Do not wire this into teamOrOwnFilter or teamSharedFilter.
+model Asset {
+  id           String    @id @default(cuid())
+  name         String
+  type         AssetType
+  currentValue Decimal   @db.Decimal(12, 2)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("assets")
 }
 
 // Config table for state-specific mileage deduction rates, kept easy to

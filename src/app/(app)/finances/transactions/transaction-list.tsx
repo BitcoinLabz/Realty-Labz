@@ -33,7 +33,8 @@ export function TransactionList({ transactions }: { transactions: TransactionDTO
               defaultValues={{
                 id: t.id,
                 type: t.type,
-                category: t.category === "MILEAGE" ? "OTHER" : t.category,
+                scope: t.scope,
+                category: t.category ?? "OTHER",
                 amount: String(t.amount),
                 description: t.description ?? "",
                 date: t.date,
@@ -48,7 +49,7 @@ export function TransactionList({ transactions }: { transactions: TransactionDTO
           >
             <div className="flex flex-col">
               <span className="text-sm font-medium text-foreground">
-                {t.description || categoryLabels[t.category]}
+                {t.description || (t.category ? categoryLabels[t.category] : "Personal")}
               </span>
               <span className="text-sm text-muted">
                 {new Date(t.date + "T00:00:00").toLocaleDateString("en-US", {
@@ -56,7 +57,9 @@ export function TransactionList({ transactions }: { transactions: TransactionDTO
                   day: "numeric",
                   year: "numeric",
                 })}
-                {t.type === "EXPENSE" ? ` · ${categoryLabels[t.category]}` : ""}
+                {" · "}
+                {t.scope === "PERSONAL" ? "Personal" : "Business"}
+                {t.category ? ` · ${categoryLabels[t.category]}` : ""}
               </span>
             </div>
             <div className="flex items-center gap-4">

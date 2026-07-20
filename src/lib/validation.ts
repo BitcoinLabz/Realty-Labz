@@ -36,13 +36,14 @@ export const passwordChangeSchema = z
 export const transactionSchema = z
   .object({
     type: z.enum(["INCOME", "EXPENSE"]),
+    scope: z.enum(["BUSINESS", "PERSONAL"]).default("BUSINESS"),
     category: z.enum(["HOME_OFFICE", "PHONE", "OTHER"]).optional(),
     amount: z.coerce.number().positive("Amount must be greater than 0"),
     description: z.string().trim().max(200).optional(),
     date: z.string().min(1, "Date is required"),
   })
-  .refine((data) => data.type !== "EXPENSE" || !!data.category, {
-    message: "Category is required for expenses",
+  .refine((data) => data.scope !== "BUSINESS" || data.type !== "EXPENSE" || !!data.category, {
+    message: "Category is required for business expenses",
     path: ["category"],
   });
 
@@ -88,4 +89,11 @@ export const dealSchema = z.object({
 export const dealDeadlineSchema = z.object({
   label: z.string().trim().min(1, "Label is required").max(200),
   dueDate: z.string().min(1, "Due date is required"),
+});
+
+export const assetSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100),
+  type: z.enum(["STOCKS", "RETIREMENT", "REAL_ESTATE", "CRYPTO", "SAVINGS", "OTHER"]),
+  currentValue: z.coerce.number().nonnegative("Must be 0 or more"),
+  notes: z.string().trim().max(1000).optional(),
 });

@@ -17,7 +17,7 @@ import { logoutAction } from "@/app/actions/auth";
 
 const baseNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/transactions", label: "Finances", icon: Wallet },
+  { href: "/finances", label: "Finances", icon: Wallet },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/documents", label: "Documents", icon: FileText },
 ];

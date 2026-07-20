@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
       include: { team: true },
     }),
     prisma.transaction.findMany({
-      where: { userId: session.user.id, date: { gte: start, lt: end } },
+      // Business-only: this report is the accountant/tax-time export, and
+      // personal income/expenses (see Transaction.scope) have no place in a
+      // real estate business's financial summary.
+      where: { userId: session.user.id, scope: "BUSINESS", date: { gte: start, lt: end } },
       orderBy: { date: "asc" },
     }),
     prisma.mileageLog.findMany({

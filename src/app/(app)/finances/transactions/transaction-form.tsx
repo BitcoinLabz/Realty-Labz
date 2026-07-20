@@ -6,20 +6,21 @@ import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
-import type { TransactionType } from "./types";
+import type { TransactionCategory, TransactionScope, TransactionType } from "./types";
 
 const initialState: FormState = {};
 
 export type TransactionFormValues = {
   id?: string;
   type: TransactionType;
-  category: "HOME_OFFICE" | "PHONE" | "OTHER";
+  scope: TransactionScope;
+  category: TransactionCategory;
   amount: string;
   description: string;
   date: string;
 };
 
-function typePillClass(active: boolean) {
+function pillClass(active: boolean) {
   return `rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
     active ? "border-accent bg-accent/10 text-accent" : "border-border text-foreground hover:bg-surface"
   }`;
@@ -35,6 +36,7 @@ export function TransactionForm({
   const isEdit = !!defaultValues?.id;
   const action = isEdit ? updateTransactionAction : createTransactionAction;
   const [state, formAction, isPending] = useActionState(action, initialState);
+  const [scope, setScope] = useState<TransactionScope>(defaultValues?.scope ?? "BUSINESS");
   const [type, setType] = useState<TransactionType>(defaultValues?.type ?? "EXPENSE");
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -43,6 +45,7 @@ export function TransactionForm({
   useEffect(() => {
     if (succeeded) {
       formRef.current?.reset();
+      setScope("BUSINESS");
       setType("EXPENSE");
       onDone?.();
     }
@@ -54,19 +57,32 @@ export function TransactionForm({
       {isEdit ? <input type="hidden" name="id" defaultValue={defaultValues!.id} /> : null}
 
       <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium text-foreground">Scope</span>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => setScope("BUSINESS")} className={pillClass(scope === "BUSINESS")}>
+            Business
+          </button>
+          <button type="button" onClick={() => setScope("PERSONAL")} className={pillClass(scope === "PERSONAL")}>
+            Personal
+          </button>
+        </div>
+        <input type="hidden" name="scope" value={scope} />
+      </div>
+
+      <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-foreground">Type</span>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => setType("EXPENSE")} className={typePillClass(type === "EXPENSE")}>
+          <button type="button" onClick={() => setType("EXPENSE")} className={pillClass(type === "EXPENSE")}>
             Expense
           </button>
-          <button type="button" onClick={() => setType("INCOME")} className={typePillClass(type === "INCOME")}>
+          <button type="button" onClick={() => setType("INCOME")} className={pillClass(type === "INCOME")}>
             Income
           </button>
         </div>
         <input type="hidden" name="type" value={type} />
       </div>
 
-      {type === "EXPENSE" ? (
+      {scope === "BUSINESS" && type === "EXPENSE" ? (
         <Select
           label="Category"
           name="category"
@@ -104,6 +120,7 @@ export function TransactionForm({
         label="Description (optional)"
         name="description"
         type="text"
+        placeholder={scope === "PERSONAL" ? "e.g. Paycheck, groceries" : undefined}
         defaultValue={defaultValues?.description}
         error={state.fieldErrors?.description}
       />

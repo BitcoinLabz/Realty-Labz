@@ -8,6 +8,7 @@ export default auth((req) => {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/account") ||
     pathname.startsWith("/transactions") ||
+    pathname.startsWith("/finances") ||
     pathname.startsWith("/clients") ||
     pathname.startsWith("/documents") ||
     pathname.startsWith("/deals") ||
@@ -25,6 +26,7 @@ export const config = {
     "/dashboard/:path*",
     "/account/:path*",
     "/transactions/:path*",
+    "/finances/:path*",
     "/clients/:path*",
     "/documents/:path*",
     "/deals/:path*",

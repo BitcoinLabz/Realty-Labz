@@ -9,6 +9,12 @@
   --accent: #0071e3;
   --accent-foreground: #ffffff;
   --danger: #d70015;
+  --chart-1: #0071e3;
+  --chart-2: #34c759;
+  --chart-3: #ff9500;
+  --chart-4: #af52de;
+  --chart-5: #ff2d55;
+  --chart-6: #86868b;
 }
 
 @theme inline {
@@ -34,6 +40,12 @@
     --accent: #2997ff;
     --accent-foreground: #000000;
     --danger: #ff6961;
+    --chart-1: #2997ff;
+    --chart-2: #32d74b;
+    --chart-3: #ff9f0a;
+    --chart-4: #bf5af2;
+    --chart-5: #ff375f;
+    --chart-6: #98989d;
   }
 }
 
