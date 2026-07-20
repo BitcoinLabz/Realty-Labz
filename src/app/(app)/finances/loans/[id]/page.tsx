@@ -16,6 +16,7 @@ import { HomeEquityChart } from "@/components/charts/home-equity-chart";
 import { LoanForm, type LoanFormValues } from "../loan-form";
 import { ExtraPaymentList, type ExtraPaymentDTO } from "./extra-payment-list";
 import { DeleteLoanButton } from "./delete-loan-button";
+import { ScheduleTable } from "./schedule-table";
 
 const PROJECTION_MONTHS = 360; // fixed 30-year horizon regardless of loan term
 
@@ -72,6 +73,23 @@ export default async function LoanDetailPage({
       (originalPayoff.getMonth() - actualPayoff.getMonth())
     : 0;
 
+  const paydownTableColumns = hasExtraPayments
+    ? [
+        { key: "label", label: "Year" },
+        { key: "original", label: "Original balance" },
+        { key: "actual", label: "With extra payments" },
+        { key: "difference", label: "Difference" },
+      ]
+    : [
+        { key: "label", label: "Year" },
+        { key: "original", label: "Balance" },
+      ];
+  const paydownTableRows = paydownData.map((p) => ({
+    label: p.label,
+    original: p.original,
+    ...(hasExtraPayments ? { actual: p.actual, difference: p.original - p.actual } : {}),
+  }));
+
   const isMortgage = loan.type === "MORTGAGE";
   const equityData = isMortgage
     ? buildEquityChartData(
@@ -85,6 +103,12 @@ export default async function LoanDetailPage({
         PROJECTION_MONTHS,
       )
     : [];
+  const equityTableColumns = [
+    { key: "label", label: "Year" },
+    { key: "homeValue", label: "Home value" },
+    { key: "balance", label: "Loan balance" },
+    { key: "equity", label: "Equity" },
+  ];
 
   const defaultValues: LoanFormValues = {
     id: loan.id,
@@ -163,6 +187,7 @@ export default async function LoanDetailPage({
               })}.`}
         </p>
         <LoanPaydownChart data={paydownData} showActual={hasExtraPayments} />
+        <ScheduleTable columns={paydownTableColumns} rows={paydownTableRows} />
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
@@ -178,6 +203,7 @@ export default async function LoanDetailPage({
             it under Loan details above.
           </p>
           <HomeEquityChart data={equityData} />
+          <ScheduleTable columns={equityTableColumns} rows={equityData} />
         </section>
       ) : null}
 
