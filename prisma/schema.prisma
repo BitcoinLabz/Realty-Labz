@@ -346,6 +346,14 @@ model Loan {
   // generic field with a sane default for AUTO/OTHER, which just never
   // surface it in the UI.
   appreciationRate  Decimal  @db.Decimal(5, 3) @default(3.5)
+  // Manual override of "what the home is worth right now" (2026-07-20) --
+  // e.g. a rehab added value beyond what pure appreciation from the
+  // purchase price would predict. When set, the home-value projection
+  // anchors its FUTURE segment (from today forward) on this number instead
+  // of the purchase-price appreciation curve; the historical segment (loan
+  // start date to today) is unaffected. Null means "just use the
+  // appreciation estimate," the original behavior.
+  currentHomeValue  Decimal? @db.Decimal(12, 2)
   notes             String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

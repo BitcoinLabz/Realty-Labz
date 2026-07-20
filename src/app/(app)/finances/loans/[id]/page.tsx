@@ -9,6 +9,7 @@ import {
   buildHomeValueProjection,
   buildPaydownChartData,
   buildEquityChartData,
+  scheduleAtDate,
 } from "@/lib/loan-calculations";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { LoanPaydownChart } from "@/components/charts/loan-paydown-chart";
@@ -91,17 +92,18 @@ export default async function LoanDetailPage({
   }));
 
   const isMortgage = loan.type === "MORTGAGE";
-  const equityData = isMortgage
-    ? buildEquityChartData(
-        actualSchedule,
-        buildHomeValueProjection(
-          Number(loan.purchasePrice),
-          Number(loan.appreciationRate),
-          PROJECTION_MONTHS,
-          loan.startDate,
-        ),
+  const asOfMonth = scheduleAtDate(originalSchedule, new Date()).monthIndex;
+  const homeValueProjection = isMortgage
+    ? buildHomeValueProjection(
+        Number(loan.purchasePrice),
+        Number(loan.appreciationRate),
         PROJECTION_MONTHS,
+        loan.startDate,
+        loan.currentHomeValue ? { value: Number(loan.currentHomeValue), asOfMonth } : undefined,
       )
+    : [];
+  const equityData = isMortgage
+    ? buildEquityChartData(actualSchedule, homeValueProjection, PROJECTION_MONTHS)
     : [];
   const equityTableColumns = [
     { key: "label", label: "Year" },
@@ -109,6 +111,11 @@ export default async function LoanDetailPage({
     { key: "balance", label: "Loan balance" },
     { key: "equity", label: "Equity" },
   ];
+  // Current home value (override if set, else the pure-appreciation estimate)
+  // and the equity that implies today -- both drawn from the same
+  // projection array used to build the chart, so they can never disagree.
+  const currentHomeValue = isMortgage ? homeValueProjection[asOfMonth].value : 0;
+  const currentEquity = currentHomeValue - summary.remainingBalance;
 
   const defaultValues: LoanFormValues = {
     id: loan.id,
@@ -122,6 +129,7 @@ export default async function LoanDetailPage({
     annualPropertyTax: String(loan.annualPropertyTax),
     annualInsurance: String(loan.annualInsurance),
     appreciationRate: String(loan.appreciationRate),
+    currentHomeValue: loan.currentHomeValue ? String(loan.currentHomeValue) : "",
     notes: loan.notes ?? "",
   };
 
@@ -158,6 +166,16 @@ export default async function LoanDetailPage({
           value={actualPayoff.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
         />
       </div>
+
+      {isMortgage ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <SummaryCard
+            label={loan.currentHomeValue ? "Current home value" : "Current home value (estimated)"}
+            value={formatCurrency(currentHomeValue)}
+          />
+          <SummaryCard label="Current equity" value={formatCurrency(currentEquity)} />
+        </div>
+      ) : null}
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Loan details</h2>

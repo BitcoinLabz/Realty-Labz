@@ -19,6 +19,7 @@ function parseLoanForm(formData: FormData) {
     annualPropertyTax: formData.get("annualPropertyTax") || undefined,
     annualInsurance: formData.get("annualInsurance") || undefined,
     appreciationRate: formData.get("appreciationRate") || undefined,
+    currentHomeValue: formData.get("currentHomeValue") || undefined,
     notes: formData.get("notes") || undefined,
   });
 }
@@ -69,11 +70,15 @@ export async function updateLoanAction(
     return { fieldErrors };
   }
 
-  const { startDate, ...rest } = parsed.data;
+  const { startDate, currentHomeValue, ...rest } = parsed.data;
 
   const result = await prisma.loan.updateMany({
     where: { id, userId: session.user.id },
-    data: { ...rest, startDate: new Date(startDate) },
+    // currentHomeValue is explicitly nulled rather than spread with the rest
+    // -- Prisma skips `undefined` fields on update, so clearing the field in
+    // the form (to go back to "just use the appreciation estimate") would
+    // otherwise silently do nothing.
+    data: { ...rest, startDate: new Date(startDate), currentHomeValue: currentHomeValue ?? null },
   });
 
   if (result.count === 0) return { error: "Loan not found" };

@@ -22,6 +22,7 @@ export type LoanFormValues = {
   annualPropertyTax: string;
   annualInsurance: string;
   appreciationRate: string;
+  currentHomeValue: string;
   notes: string;
 };
 
@@ -166,17 +167,34 @@ export function LoanForm({
       </div>
 
       {type === "MORTGAGE" ? (
-        <Field
-          label="Expected annual home appreciation (%)"
-          name="appreciationRate"
-          type="number"
-          step="0.001"
-          min="-100"
-          max="100"
-          placeholder="e.g. 3.5"
-          defaultValue={defaultValues?.appreciationRate ?? "3.5"}
-          error={state.fieldErrors?.appreciationRate}
-        />
+        <>
+          <Field
+            label="Current home value (optional)"
+            name="currentHomeValue"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="Leave blank to just use the appreciation estimate below"
+            defaultValue={defaultValues?.currentHomeValue}
+            error={state.fieldErrors?.currentHomeValue}
+          />
+          <p className="-mt-2 text-sm text-muted">
+            If the home is worth more (or less) than pure appreciation would suggest — say, after a
+            rehab — enter what it&apos;s actually worth today and future projections will build from
+            that instead.
+          </p>
+          <Field
+            label="Expected annual home appreciation (%)"
+            name="appreciationRate"
+            type="number"
+            step="0.001"
+            min="-100"
+            max="100"
+            placeholder="e.g. 3.5"
+            defaultValue={defaultValues?.appreciationRate ?? "3.5"}
+            error={state.fieldErrors?.appreciationRate}
+          />
+        </>
       ) : null}
 
       <Textarea

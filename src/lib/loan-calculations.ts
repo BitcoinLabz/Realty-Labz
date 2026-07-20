@@ -96,16 +96,28 @@ export function payoffDate(schedule: SchedulePoint[]): Date {
   return schedule[schedule.length - 1].date;
 }
 
+// If currentValueOverride is given (e.g. a rehab added value beyond what
+// pure appreciation from the purchase price would predict), the segment
+// from asOfMonth forward re-anchors on that value and appreciates from
+// there -- the historical segment before asOfMonth is left as the
+// purchase-price estimate, since that's already happened and isn't what the
+// override is meant to correct. Without an override this is exactly the
+// original single-curve projection from purchase price.
 export function buildHomeValueProjection(
   purchasePrice: number,
   appreciationRatePct: number,
   months: number,
   startDate: Date,
+  currentValueOverride?: { value: number; asOfMonth: number },
 ): { date: Date; value: number }[] {
   const monthlyFactor = Math.pow(1 + appreciationRatePct / 100, 1 / 12);
   const points: { date: Date; value: number }[] = [];
   for (let i = 0; i <= months; i++) {
-    points.push({ date: addMonths(startDate, i), value: purchasePrice * Math.pow(monthlyFactor, i) });
+    const value =
+      currentValueOverride && i >= currentValueOverride.asOfMonth
+        ? currentValueOverride.value * Math.pow(monthlyFactor, i - currentValueOverride.asOfMonth)
+        : purchasePrice * Math.pow(monthlyFactor, i);
+    points.push({ date: addMonths(startDate, i), value });
   }
   return points;
 }

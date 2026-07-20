@@ -102,6 +102,7 @@ export const loanSchema = z.object({
   annualPropertyTax: z.coerce.number().nonnegative("Must be 0 or more").optional().default(0),
   annualInsurance: z.coerce.number().nonnegative("Must be 0 or more").optional().default(0),
   appreciationRate: z.coerce.number().min(-100).max(100, "Enter a percent, e.g. 3.5").optional().default(3.5),
+  currentHomeValue: z.coerce.number().positive("Must be greater than 0").optional(),
   notes: z.string().trim().max(1000).optional(),
 });
 
