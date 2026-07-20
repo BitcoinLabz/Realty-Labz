@@ -57,14 +57,22 @@ export default async function FinancesOverviewPage({
         <MonthlyBarChart data={businessSeries} />
       </section>
 
-      {expenseBreakdown.length > 0 ? (
-        <section className="rounded-2xl border border-border bg-background p-8">
-          <h2 className="mb-6 text-base font-semibold text-foreground">
-            Business expenses by category
-          </h2>
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-6 text-base font-semibold text-foreground">
+          Business expenses by category
+        </h2>
+        {expenseBreakdown.length > 0 ? (
           <BreakdownDonutChart data={expenseBreakdown} />
-        </section>
-      ) : null}
+        ) : (
+          <p className="text-sm text-muted">
+            No business expenses logged for {year} yet — add one on the{" "}
+            <Link href="/finances/transactions" className="font-medium text-accent hover:opacity-80">
+              Transactions
+            </Link>{" "}
+            tab.
+          </p>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">

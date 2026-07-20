@@ -51,6 +51,7 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
             <div className="flex flex-col">
               <span className="text-sm font-medium text-foreground">{a.name}</span>
               <span className="text-sm text-muted">{typeLabels[a.type]}</span>
+              {a.notes ? <span className="mt-1 text-sm text-muted">{a.notes}</span> : null}
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm font-semibold text-foreground">
