@@ -11,6 +11,7 @@ export type LoanDTO = {
   startDate: string; // yyyy-mm-dd
   annualPropertyTax: number;
   annualInsurance: number;
+  appreciationRate: number;
   notes: string | null;
   updatedAt: string; // ISO
 
@@ -22,4 +23,5 @@ export type LoanDTO = {
   totalMonthlyPayment: number;
   remainingBalance: number;
   isPaidOff: boolean;
+  payoffDate: string; // ISO
 };

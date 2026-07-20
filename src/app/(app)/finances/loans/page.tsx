@@ -13,6 +13,7 @@ export default async function FinancesLoansPage() {
 
   const loans = await prisma.loan.findMany({
     where: { userId: session!.user.id },
+    include: { extraPayments: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -25,6 +26,7 @@ export default async function FinancesLoansPage() {
       startDate: l.startDate,
       annualPropertyTax: Number(l.annualPropertyTax),
       annualInsurance: Number(l.annualInsurance),
+      extraPayments: l.extraPayments.map((p) => ({ date: p.date, amount: Number(p.amount) })),
     }),
   );
 
@@ -41,6 +43,7 @@ export default async function FinancesLoansPage() {
       startDate: l.startDate.toISOString().slice(0, 10),
       annualPropertyTax: Number(l.annualPropertyTax),
       annualInsurance: Number(l.annualInsurance),
+      appreciationRate: Number(l.appreciationRate),
       notes: l.notes,
       updatedAt: l.updatedAt.toISOString(),
       loanAmount: summary.loanAmount,
@@ -50,6 +53,7 @@ export default async function FinancesLoansPage() {
       totalMonthlyPayment: summary.totalMonthlyPayment,
       remainingBalance: summary.remainingBalance,
       isPaidOff: summary.isPaidOff,
+      payoffDate: summary.payoffDate.toISOString(),
     };
   });
 

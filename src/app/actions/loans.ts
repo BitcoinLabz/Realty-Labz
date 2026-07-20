@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { loanSchema } from "@/lib/validation";
@@ -17,6 +18,7 @@ function parseLoanForm(formData: FormData) {
     startDate: formData.get("startDate"),
     annualPropertyTax: formData.get("annualPropertyTax") || undefined,
     annualInsurance: formData.get("annualInsurance") || undefined,
+    appreciationRate: formData.get("appreciationRate") || undefined,
     notes: formData.get("notes") || undefined,
   });
 }
@@ -77,6 +79,7 @@ export async function updateLoanAction(
   if (result.count === 0) return { error: "Loan not found" };
 
   revalidatePath("/finances");
+  revalidatePath(`/finances/loans/${id}`);
   revalidatePath("/dashboard");
   return {};
 }
@@ -92,4 +95,5 @@ export async function deleteLoanAction(formData: FormData) {
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");
+  redirect("/finances/loans");
 }

@@ -21,6 +21,7 @@ export type LoanFormValues = {
   startDate: string;
   annualPropertyTax: string;
   annualInsurance: string;
+  appreciationRate: string;
   notes: string;
 };
 
@@ -163,6 +164,20 @@ export function LoanForm({
           error={state.fieldErrors?.annualInsurance}
         />
       </div>
+
+      {type === "MORTGAGE" ? (
+        <Field
+          label="Expected annual home appreciation (%)"
+          name="appreciationRate"
+          type="number"
+          step="0.001"
+          min="-100"
+          max="100"
+          placeholder="e.g. 3.5"
+          defaultValue={defaultValues?.appreciationRate ?? "3.5"}
+          error={state.fieldErrors?.appreciationRate}
+        />
+      ) : null}
 
       <Textarea
         label="Notes (optional)"

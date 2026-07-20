@@ -101,7 +101,14 @@ export const loanSchema = z.object({
   startDate: z.string().min(1, "Start date is required"),
   annualPropertyTax: z.coerce.number().nonnegative("Must be 0 or more").optional().default(0),
   annualInsurance: z.coerce.number().nonnegative("Must be 0 or more").optional().default(0),
+  appreciationRate: z.coerce.number().min(-100).max(100, "Enter a percent, e.g. 3.5").optional().default(3.5),
   notes: z.string().trim().max(1000).optional(),
+});
+
+export const loanExtraPaymentSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  notes: z.string().trim().max(200).optional(),
 });
 
 export const assetSchema = z
