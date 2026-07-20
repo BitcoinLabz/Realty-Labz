@@ -284,6 +284,11 @@ enum AssetType {
 // see src/lib/authorization.ts. Personal finances are never a manager's
 // business, even for BROKER/ADMIN/TEAM_LEAD roles that see everything else
 // team-wide. Do not wire this into teamOrOwnFilter or teamSharedFilter.
+enum WalletNetwork {
+  BITCOIN
+  STACKS
+}
+
 model Asset {
   id           String    @id @default(cuid())
   name         String
@@ -292,6 +297,17 @@ model Asset {
   notes        String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+
+  // Optional live wallet tracking for CRYPTO-type assets (2026-07-20) — when
+  // set, currentValue is computed from the on-chain balance × a fetched USD
+  // price (see src/lib/wallet-balance.ts) rather than typed in by hand.
+  // Fetched on add and whenever the user hits "Refresh," not on every page
+  // view or on a schedule — no background job/cron, keeps this at zero
+  // infra cost and avoids hammering free public block-explorer APIs.
+  walletNetwork          WalletNetwork?
+  walletAddress          String?
+  walletBalance          Decimal?       @db.Decimal(24, 8) // raw on-chain amount (BTC or STX), not USD
+  walletBalanceCheckedAt DateTime?
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String

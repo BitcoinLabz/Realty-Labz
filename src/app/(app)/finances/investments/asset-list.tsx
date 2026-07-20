@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deleteAssetAction } from "@/app/actions/assets";
+import { deleteAssetAction, refreshWalletBalanceAction } from "@/app/actions/assets";
 import { formatCurrency } from "@/lib/format";
 import { AssetForm } from "./asset-form";
 import type { AssetDTO } from "./types";
@@ -14,6 +14,24 @@ const typeLabels: Record<string, string> = {
   SAVINGS: "Savings",
   OTHER: "Other",
 };
+
+const networkLabels: Record<string, string> = {
+  BITCOIN: "Bitcoin",
+  STACKS: "Stacks",
+};
+
+const networkUnits: Record<string, string> = {
+  BITCOIN: "BTC",
+  STACKS: "STX",
+};
+
+function truncateAddress(address: string) {
+  return address.length > 14 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
+}
+
+function formatBalance(value: number) {
+  return value.toLocaleString("en-US", { maximumFractionDigits: 8 });
+}
 
 export function AssetList({ assets }: { assets: AssetDTO[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -39,6 +57,8 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
                 type: a.type,
                 currentValue: String(a.currentValue),
                 notes: a.notes ?? "",
+                walletNetwork: a.walletNetwork,
+                walletAddress: a.walletAddress,
               }}
               onDone={() => setEditingId(null)}
             />
@@ -50,13 +70,37 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
           >
             <div className="flex flex-col">
               <span className="text-sm font-medium text-foreground">{a.name}</span>
-              <span className="text-sm text-muted">{typeLabels[a.type]}</span>
+              <span className="text-sm text-muted">
+                {typeLabels[a.type]}
+                {a.walletNetwork ? ` · ${networkLabels[a.walletNetwork]} · ${truncateAddress(a.walletAddress!)}` : ""}
+              </span>
+              {a.walletNetwork && a.walletBalance !== null ? (
+                <span className="mt-1 text-sm text-muted">
+                  {formatBalance(a.walletBalance)} {networkUnits[a.walletNetwork]}
+                  {a.walletBalanceCheckedAt
+                    ? ` · as of ${new Date(a.walletBalanceCheckedAt).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}`
+                    : ""}
+                </span>
+              ) : null}
               {a.notes ? <span className="mt-1 text-sm text-muted">{a.notes}</span> : null}
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm font-semibold text-foreground">
                 {formatCurrency(a.currentValue)}
               </span>
+              {a.walletNetwork ? (
+                <form action={refreshWalletBalanceAction}>
+                  <input type="hidden" name="id" value={a.id} />
+                  <button type="submit" className="text-sm font-medium text-muted hover:text-foreground">
+                    Refresh
+                  </button>
+                </form>
+              ) : null}
               <button
                 type="button"
                 onClick={() => setEditingId(a.id)}

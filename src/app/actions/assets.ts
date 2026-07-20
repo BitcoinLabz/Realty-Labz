@@ -4,14 +4,17 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { assetSchema } from "@/lib/validation";
+import { fetchWalletBalanceUsd, WalletBalanceError } from "@/lib/wallet-balance";
 import type { FormState } from "@/app/actions/auth";
 
 function parseAssetForm(formData: FormData) {
   return assetSchema.safeParse({
     name: formData.get("name"),
     type: formData.get("type"),
-    currentValue: formData.get("currentValue"),
+    currentValue: formData.get("currentValue") || undefined,
     notes: formData.get("notes") || undefined,
+    walletNetwork: formData.get("walletNetwork") || undefined,
+    walletAddress: formData.get("walletAddress") || undefined,
   });
 }
 
@@ -31,9 +34,31 @@ export async function createAssetAction(
     return { fieldErrors };
   }
 
-  await prisma.asset.create({
-    data: { userId: session.user.id, ...parsed.data },
-  });
+  const { walletNetwork, walletAddress, currentValue, ...rest } = parsed.data;
+
+  if (walletNetwork && walletAddress) {
+    try {
+      const { balance, usdValue } = await fetchWalletBalanceUsd(walletNetwork, walletAddress);
+      await prisma.asset.create({
+        data: {
+          userId: session.user.id,
+          ...rest,
+          currentValue: usdValue,
+          walletNetwork,
+          walletAddress,
+          walletBalance: balance,
+          walletBalanceCheckedAt: new Date(),
+        },
+      });
+    } catch (err) {
+      const message = err instanceof WalletBalanceError ? err.message : "Couldn't fetch wallet balance";
+      return { fieldErrors: { walletAddress: message } };
+    }
+  } else {
+    await prisma.asset.create({
+      data: { userId: session.user.id, ...rest, currentValue: currentValue! },
+    });
+  }
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");
@@ -59,9 +84,39 @@ export async function updateAssetAction(
     return { fieldErrors };
   }
 
+  const { walletNetwork, walletAddress, currentValue, ...rest } = parsed.data;
+
+  let data: Record<string, unknown> = { ...rest };
+
+  if (walletNetwork && walletAddress) {
+    try {
+      const { balance, usdValue } = await fetchWalletBalanceUsd(walletNetwork, walletAddress);
+      data = {
+        ...data,
+        currentValue: usdValue,
+        walletNetwork,
+        walletAddress,
+        walletBalance: balance,
+        walletBalanceCheckedAt: new Date(),
+      };
+    } catch (err) {
+      const message = err instanceof WalletBalanceError ? err.message : "Couldn't fetch wallet balance";
+      return { fieldErrors: { walletAddress: message } };
+    }
+  } else {
+    data = {
+      ...data,
+      currentValue: currentValue!,
+      walletNetwork: null,
+      walletAddress: null,
+      walletBalance: null,
+      walletBalanceCheckedAt: null,
+    };
+  }
+
   const result = await prisma.asset.updateMany({
     where: { id, userId: session.user.id },
-    data: parsed.data,
+    data,
   });
 
   if (result.count === 0) return { error: "Asset not found" };
@@ -79,6 +134,33 @@ export async function deleteAssetAction(formData: FormData) {
   if (typeof id !== "string" || !id) return;
 
   await prisma.asset.deleteMany({ where: { id, userId: session.user.id } });
+
+  revalidatePath("/finances");
+  revalidatePath("/dashboard");
+}
+
+export async function refreshWalletBalanceAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return;
+
+  const asset = await prisma.asset.findFirst({ where: { id, userId: session.user.id } });
+  if (!asset || !asset.walletNetwork || !asset.walletAddress) return;
+
+  try {
+    const { balance, usdValue } = await fetchWalletBalanceUsd(asset.walletNetwork, asset.walletAddress);
+    await prisma.asset.update({
+      where: { id: asset.id },
+      data: { currentValue: usdValue, walletBalance: balance, walletBalanceCheckedAt: new Date() },
+    });
+  } catch {
+    // Silently ignore -- the asset keeps its last known balance/value, and
+    // this is a background-ish "refresh" action with no form state to show
+    // an error in. A future retry (or the founder asking for one) can add a
+    // visible error if this proves to matter in practice.
+  }
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");

@@ -91,9 +91,23 @@ export const dealDeadlineSchema = z.object({
   dueDate: z.string().min(1, "Due date is required"),
 });
 
-export const assetSchema = z.object({
-  name: z.string().trim().min(1, "Name is required").max(100),
-  type: z.enum(["STOCKS", "RETIREMENT", "REAL_ESTATE", "CRYPTO", "SAVINGS", "OTHER"]),
-  currentValue: z.coerce.number().nonnegative("Must be 0 or more"),
-  notes: z.string().trim().max(1000).optional(),
-});
+export const assetSchema = z
+  .object({
+    name: z.string().trim().min(1, "Name is required").max(100),
+    type: z.enum(["STOCKS", "RETIREMENT", "REAL_ESTATE", "CRYPTO", "SAVINGS", "OTHER"]),
+    currentValue: z.coerce.number().nonnegative("Must be 0 or more").optional(),
+    notes: z.string().trim().max(1000).optional(),
+    walletNetwork: z.enum(["BITCOIN", "STACKS"]).optional(),
+    walletAddress: z.string().trim().min(1, "Wallet address is required").max(120).optional(),
+  })
+  .refine(
+    (data) => (data.type === "CRYPTO" && data.walletNetwork ? true : data.currentValue !== undefined),
+    {
+      message: "Enter a current value, or link a wallet to track it automatically",
+      path: ["currentValue"],
+    },
+  )
+  .refine((data) => !data.walletNetwork || !!data.walletAddress, {
+    message: "Wallet address is required",
+    path: ["walletAddress"],
+  });

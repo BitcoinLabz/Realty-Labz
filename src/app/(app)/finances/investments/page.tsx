@@ -21,6 +21,10 @@ export default async function FinancesInvestmentsPage() {
     type: a.type,
     currentValue: Number(a.currentValue),
     notes: a.notes,
+    walletNetwork: a.walletNetwork,
+    walletAddress: a.walletAddress,
+    walletBalance: a.walletBalance ? Number(a.walletBalance) : null,
+    walletBalanceCheckedAt: a.walletBalanceCheckedAt ? a.walletBalanceCheckedAt.toISOString() : null,
     updatedAt: a.updatedAt.toISOString(),
   }));
 
@@ -41,7 +45,8 @@ export default async function FinancesInvestmentsPage() {
   return (
     <div className="flex flex-col gap-8">
       <p className="text-sm text-muted">
-        Personal investments and assets — updated by hand whenever their value changes.
+        Personal investments and assets — enter a value by hand, or link a Bitcoin/Stacks wallet
+        to track its balance automatically.
       </p>
 
       <SummaryCard label="Total value" value={formatCurrency(total)} />
