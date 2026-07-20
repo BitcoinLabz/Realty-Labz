@@ -50,12 +50,13 @@ model User {
   team   Team?   @relation(fields: [teamId], references: [id])
   teamId String?
 
-  clients      Client[]
-  transactions Transaction[]
-  mileageLogs  MileageLog[]
-  documents    Document[]
-  sentInvites  TeamInvite[]
-  deals        Deal[]
+  clients           Client[]
+  transactions      Transaction[]
+  mileageLogs       MileageLog[]
+  documents         Document[]
+  sentInvites       TeamInvite[]
+  deals             Deal[]
+  documentTemplates DocumentTemplate[]
 
   @@map("users")
 }
@@ -223,6 +224,30 @@ model DealDeadline {
   dealId String
 
   @@map("deal_deadlines")
+}
+
+// Brokerage-level shared document template (e.g. a standard purchase
+// agreement or listing agreement) — deliberately separate from Document,
+// which is a specific client/deal's paperwork. Visibility is *every* team
+// member (not just managers, see teamSharedFilter in authorization.ts),
+// since the whole point is a shared resource the team can pull from; upload
+// and delete are gated to managers (or solo agents, who have no team to
+// share with/from) in the server actions. No auto-fill of office/agent info
+// yet — see CLAUDE.md Phase 2 step 8 for why that's deliberately deferred.
+model DocumentTemplate {
+  id         String   @id @default(cuid())
+  name       String
+  fileName   String
+  storageKey String
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("document_templates")
 }
 
 // Config table for state-specific mileage deduction rates, kept easy to

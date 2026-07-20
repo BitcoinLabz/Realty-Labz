@@ -23,6 +23,25 @@ export function teamOrOwnFilter(sessionUser: SessionUser) {
   return { userId: sessionUser.id };
 }
 
+// Prisma where-fragment for models that are shared with the *whole* team,
+// not just visible to managers (DocumentTemplate today) — every teammate,
+// agents included, sees everything anyone on the team created. Contrast with
+// teamOrOwnFilter, where only managers get team-wide visibility. Solo users
+// (no teamId) fall back to seeing only their own records either way.
+export function teamSharedFilter(sessionUser: SessionUser) {
+  if (sessionUser.teamId) {
+    return { user: { teamId: sessionUser.teamId } };
+  }
+  return { userId: sessionUser.id };
+}
+
+// Who may upload/delete a shared team resource like DocumentTemplate:
+// managers, or a solo agent (no team, so no one else to share with/from).
+// A non-manager on a team can see team templates but not add or remove them.
+export function canManageSharedResources(sessionUser: SessionUser): boolean {
+  return isManager(sessionUser.role) || !sessionUser.teamId;
+}
+
 export function roleLabel(role: Role): string {
   switch (role) {
     case "TEAM_LEAD":

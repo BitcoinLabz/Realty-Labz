@@ -1,14 +1,15 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter } from "@/lib/authorization";
+import { canManageSharedResources, teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
 import { DocumentUploadForm } from "./document-upload-form";
 import { DocumentList } from "./document-list";
-import type { DocumentDTO } from "./types";
+import { DocumentTemplates } from "./document-templates";
+import type { DocumentDTO, DocumentTemplateDTO } from "./types";
 
 export default async function DocumentsPage() {
   const session = await auth();
 
-  const [documents, clients, deals] = await Promise.all([
+  const [documents, clients, deals, templates] = await Promise.all([
     prisma.document.findMany({
       where: { userId: session!.user.id },
       orderBy: { createdAt: "desc" },
@@ -23,6 +24,11 @@ export default async function DocumentsPage() {
       orderBy: { propertyAddress: "asc" },
       select: { id: true, propertyAddress: true },
     }),
+    prisma.documentTemplate.findMany({
+      where: teamSharedFilter(session!.user),
+      include: { user: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const dtos: DocumentDTO[] = documents.map((d) => ({
@@ -33,6 +39,15 @@ export default async function DocumentsPage() {
     clientId: d.clientId,
     dealId: d.dealId,
     createdAt: d.createdAt.toISOString(),
+  }));
+
+  const templateDtos: DocumentTemplateDTO[] = templates.map((t) => ({
+    id: t.id,
+    name: t.name,
+    fileName: t.fileName,
+    size: t.size,
+    createdAt: t.createdAt.toISOString(),
+    creatorName: t.user.name ?? t.user.email,
   }));
 
   return (
@@ -50,6 +65,12 @@ export default async function DocumentsPage() {
       </section>
 
       <DocumentList documents={dtos} clients={clients} deals={deals} />
+
+      <DocumentTemplates
+        templates={templateDtos}
+        canManage={canManageSharedResources(session!.user)}
+        isTeamShared={!!session!.user.teamId}
+      />
     </div>
   );
 }

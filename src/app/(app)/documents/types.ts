@@ -17,3 +17,12 @@ export type DealOption = {
   id: string;
   propertyAddress: string;
 };
+
+export type DocumentTemplateDTO = {
+  id: string;
+  name: string;
+  fileName: string;
+  size: number;
+  createdAt: string; // ISO
+  creatorName: string;
+};
