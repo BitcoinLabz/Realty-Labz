@@ -94,7 +94,7 @@ export function DealForm({
         error={state.fieldErrors?.propertyAddress}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
           label="MLS number (optional)"
           name="mlsNumber"
@@ -116,7 +116,7 @@ export function DealForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
           label="List price (optional)"
           name="listPrice"
@@ -137,7 +137,7 @@ export function DealForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
           label="Commission rate % (optional)"
           name="commissionRate"

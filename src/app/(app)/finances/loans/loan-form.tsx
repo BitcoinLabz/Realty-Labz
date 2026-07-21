@@ -88,7 +88,7 @@ export function LoanForm({
         <input type="hidden" name="type" value={type} />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
           label="Purchase price"
           name="purchasePrice"
@@ -110,7 +110,7 @@ export function LoanForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
           label="Interest rate (%)"
           name="interestRate"
@@ -145,7 +145,7 @@ export function LoanForm({
         error={state.fieldErrors?.startDate}
       />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field
           label="Annual property tax (optional)"
           name="annualPropertyTax"
