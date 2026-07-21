@@ -44,3 +44,7 @@ next-env.d.ts
 
 # local document storage (dev only — see src/lib/document-storage.ts)
 /storage
+
+# personal/machine-scoped editor & agent settings (not shared config)
+.claude/
+.vscode/
