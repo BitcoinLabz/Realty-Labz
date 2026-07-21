@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint",
     "db:start": "powershell -ExecutionPolicy Bypass -File scripts/db-start.ps1",
