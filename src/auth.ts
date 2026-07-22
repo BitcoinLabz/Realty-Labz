@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
@@ -24,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await prisma.user.findUnique({
           where: { email: email.toLowerCase() },
         });
-        if (!user) return null;
+        if (!user || !user.passwordHash) return null;
 
         const isValid = await bcrypt.compare(password, user.passwordHash);
         if (!isValid) return null;
@@ -38,8 +39,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID,
+      clientSecret: process.env.AUTH_GOOGLE_SECRET,
+    }),
   ],
   callbacks: {
+    signIn: async ({ user, account, profile }) => {
+      if (account?.provider !== "google") return true;
+
+      // Google verifies the email address itself, so it's safe to use it to
+      // find-or-create/link the account — an unverified email can't reach here.
+      if (!user.email || !profile?.email_verified) return false;
+
+      const email = user.email.toLowerCase();
+      const dbUser =
+        (await prisma.user.findUnique({ where: { email } })) ??
+        (await prisma.user.create({
+          data: { email, name: user.name ?? "New user", role: "AGENT" },
+        }));
+
+      user.id = dbUser.id;
+      user.role = dbUser.role;
+      user.teamId = dbUser.teamId;
+      return true;
+    },
     jwt: async ({ token, user }) => {
       if (user) {
         token.id = user.id;

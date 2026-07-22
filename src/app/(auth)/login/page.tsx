@@ -5,6 +5,7 @@ import { useActionState } from "react";
 import { loginAction, type FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { GoogleButton } from "@/components/ui/google-button";
 
 const initialState: FormState = {};
 
@@ -32,6 +33,8 @@ export default function LoginPage() {
       <Button type="submit" disabled={isPending} className="w-full">
         {isPending ? "Logging in…" : "Log in"}
       </Button>
+
+      <GoogleButton label="Continue with Google" />
 
       <p className="text-center text-sm text-muted">
         Don&apos;t have an account?{" "}

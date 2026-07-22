@@ -88,6 +88,10 @@ export async function logoutAction() {
   await signOut({ redirectTo: "/" });
 }
 
+export async function googleSignInAction() {
+  await signIn("google", { redirectTo: "/dashboard" });
+}
+
 export async function requireSession() {
   const session = await auth();
   if (!session?.user) {

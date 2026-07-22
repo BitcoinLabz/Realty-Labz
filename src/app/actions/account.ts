@@ -51,6 +51,9 @@ export async function changePasswordAction(
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user) return { error: "User not found" };
+  if (!user.passwordHash) {
+    return { error: "This account signed in with Google and doesn't have a password to change." };
+  }
 
   const isValid = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
   if (!isValid) {

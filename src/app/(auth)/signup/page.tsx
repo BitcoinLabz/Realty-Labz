@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { signupAction, type FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { GoogleButton } from "@/components/ui/google-button";
 
 const initialState: FormState = {};
 
@@ -88,6 +89,13 @@ export default function SignupPage() {
       <Button type="submit" disabled={isPending} className="w-full">
         {isPending ? "Creating account…" : "Create account"}
       </Button>
+
+      <div className="flex flex-col gap-2">
+        <GoogleButton label="Sign up with Google" />
+        <p className="text-center text-xs text-muted">
+          Creates a solo account — use the form above to start a team instead.
+        </p>
+      </div>
 
       <p className="text-center text-sm text-muted">
         Already have an account?{" "}

@@ -54,9 +54,15 @@ export default async function AccountPage() {
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="text-base font-semibold text-foreground">Password</h2>
-        <div className="mt-6 max-w-sm">
-          <PasswordForm />
-        </div>
+        {user.passwordHash ? (
+          <div className="mt-6 max-w-sm">
+            <PasswordForm />
+          </div>
+        ) : (
+          <p className="mt-2 text-sm text-muted">
+            You signed in with Google, so there&apos;s no password to manage here.
+          </p>
+        )}
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
