@@ -13,26 +13,28 @@ export default function LoginPage() {
   const [state, formAction, isPending] = useActionState(loginAction, initialState);
 
   return (
-    <form action={formAction} className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-semibold text-foreground">Welcome back</h1>
         <p className="mt-1 text-sm text-muted">Log in to your Realty Labz account.</p>
       </div>
 
-      <Field label="Email" name="email" type="email" autoComplete="email" required />
-      <Field
-        label="Password"
-        name="password"
-        type="password"
-        autoComplete="current-password"
-        required
-      />
+      <form action={formAction} className="flex flex-col gap-4">
+        <Field label="Email" name="email" type="email" autoComplete="email" required />
+        <Field
+          label="Password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          required
+        />
 
-      {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
+        {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 
-      <Button type="submit" disabled={isPending} className="w-full">
-        {isPending ? "Logging in…" : "Log in"}
-      </Button>
+        <Button type="submit" disabled={isPending} className="w-full">
+          {isPending ? "Logging in…" : "Log in"}
+        </Button>
+      </form>
 
       <GoogleButton label="Continue with Google" />
 
@@ -42,6 +44,6 @@ export default function LoginPage() {
           Sign up
         </Link>
       </p>
-    </form>
+    </div>
   );
 }
