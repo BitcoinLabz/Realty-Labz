@@ -59,6 +59,8 @@ model User {
   documentTemplates DocumentTemplate[]
   assets            Asset[]
   loans             Loan[]
+  formTemplates     FormTemplate[]
+  formSubmissions   FormSubmission[]
 
   @@map("users")
 }
@@ -75,8 +77,9 @@ model Client {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
-  documents Document[]
-  deals     Deal[]
+  documents       Document[]
+  deals           Deal[]
+  formSubmissions FormSubmission[]
 
   @@map("clients")
 }
@@ -121,14 +124,14 @@ model Transaction {
 }
 
 model MileageLog {
-  id         String   @id @default(cuid())
-  date       DateTime
-  miles      Decimal  @db.Decimal(7, 2)
-  isBusiness Boolean  @default(true)
-  note       String?
-  ratePerMile Decimal @db.Decimal(5, 3)
-  deduction  Decimal  @db.Decimal(10, 2)
-  createdAt  DateTime @default(now())
+  id          String   @id @default(cuid())
+  date        DateTime
+  miles       Decimal  @db.Decimal(7, 2)
+  isBusiness  Boolean  @default(true)
+  note        String?
+  ratePerMile Decimal  @db.Decimal(5, 3)
+  deduction   Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -155,6 +158,11 @@ model Document {
 
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
   dealId String?
+
+  // Set when this Document is the flattened, signed output of a
+  // FormSubmission (see src/lib/pdf-finalize.ts) — reverse side of
+  // FormSubmission.completedDocumentId, no FK column on this side.
+  formSubmission FormSubmission?
 
   @@map("documents")
 }
@@ -218,8 +226,9 @@ model Deal {
   client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientId String?
 
-  deadlines DealDeadline[]
-  documents Document[]
+  deadlines       DealDeadline[]
+  documents       Document[]
+  formSubmissions FormSubmission[]
 
   @@map("deals")
 }
@@ -262,6 +271,189 @@ model DocumentTemplate {
   userId String
 
   @@map("document_templates")
+}
+
+enum FormFieldType {
+  TEXT
+  DATE
+  CHECKBOX
+  SIGNATURE
+  INITIALS
+}
+
+enum FormSubmissionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  DECLINED
+}
+
+enum FormSignerStatus {
+  PENDING
+  VIEWED
+  COMPLETED
+  DECLINED
+}
+
+// A reusable contract/form PDF with fields placed on it for a client to fill
+// in and sign (2026-07-22, direct founder request — "like SkySlope"). Same
+// team-shared-library visibility pattern as DocumentTemplate
+// (teamSharedFilter / canManageSharedResources in authorization.ts).
+// FormTemplate is the definition (the PDF + where its fields go);
+// FormSubmission below is one sent instance of it to specific signers.
+model FormTemplate {
+  id         String   @id @default(cuid())
+  name       String
+  fileName   String
+  storageKey String
+  mimeType   String
+  size       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  signers     FormTemplateSigner[]
+  fields      FormField[]
+  submissions FormSubmission[]
+
+  @@map("form_templates")
+}
+
+// A signer role defined on a template (e.g. "Buyer", "Seller"). order is
+// the sequential signing order used when a submission is sent — signer 2
+// isn't emailed until signer 1 completes (see FormSubmissionSigner /
+// src/app/actions/form-submissions.ts). Every FormField belongs to exactly
+// one of these roles.
+model FormTemplateSigner {
+  id    String @id @default(cuid())
+  order Int
+  label String
+
+  formTemplate   FormTemplate @relation(fields: [formTemplateId], references: [id], onDelete: Cascade)
+  formTemplateId String
+
+  fields            FormField[]
+  submissionSigners FormSubmissionSigner[]
+
+  @@map("form_template_signers")
+}
+
+// One fillable/signable field placed on a template page. x/y/width/height
+// are fractions of the page's rendered size (0-1, top-left origin, like
+// screen/canvas coordinates) — NOT PDF points — so the same field renders
+// correctly at any render width in both the designer and the client fill
+// view. See src/lib/pdf-fields.ts for the conversion into PDF point space
+// (bottom-left origin) used when finalizing a signed document.
+model FormField {
+  id       String        @id @default(cuid())
+  page     Int
+  x        Float
+  y        Float
+  width    Float
+  height   Float
+  type     FormFieldType
+  label    String
+  required Boolean       @default(true)
+  order    Int
+
+  formTemplate   FormTemplate @relation(fields: [formTemplateId], references: [id], onDelete: Cascade)
+  formTemplateId String
+
+  signer   FormTemplateSigner @relation(fields: [signerId], references: [id], onDelete: Cascade)
+  signerId String
+
+  values FormFieldValue[]
+
+  @@map("form_fields")
+}
+
+// One sent instance of a FormTemplate — the "envelope." Optionally linked to
+// a Client and/or Deal like Document, so it surfaces in the same
+// client-centric places this app already organizes everything around.
+// completedDocumentId points at the finished, flattened, signed PDF once
+// every signer is done (src/lib/pdf-finalize.ts) — that PDF is a normal
+// Document row, reusing the existing storage/list/download infrastructure
+// rather than building a second one for completed forms.
+model FormSubmission {
+  id          String               @id @default(cuid())
+  status      FormSubmissionStatus @default(PENDING)
+  createdAt   DateTime             @default(now())
+  completedAt DateTime?
+
+  // Restrict, not Cascade: a submission (especially a completed, signed one)
+  // is a historical record that must outlive its template — deleting a
+  // FormTemplate that has ever been sent should fail, not silently destroy
+  // signed documents' provenance. See deleteFormTemplateAction.
+  formTemplate   FormTemplate @relation(fields: [formTemplateId], references: [id], onDelete: Restrict)
+  formTemplateId String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
+  deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  dealId String?
+
+  completedDocument   Document? @relation(fields: [completedDocumentId], references: [id], onDelete: SetNull)
+  completedDocumentId String?   @unique
+
+  signers FormSubmissionSigner[]
+
+  @@map("form_submissions")
+}
+
+// One actual recipient of a sent FormSubmission, mapped to a signer role
+// from the template. id (cuid) doubles as this signer's unguessable link
+// token for the public /sign/[id] page — same pattern as TeamInvite.id
+// being the join-link token, no separate token field. ipAddress/userAgent/
+// consentGivenAt are the audit trail backing a legally-binding e-signature
+// (ESIGN Act / UETA) — captured at the moment consent is given, not
+// reconstructed after the fact.
+model FormSubmissionSigner {
+  id             String           @id @default(cuid())
+  order          Int
+  name           String
+  email          String
+  status         FormSignerStatus @default(PENDING)
+  viewedAt       DateTime?
+  consentGivenAt DateTime?
+  completedAt    DateTime?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime         @default(now())
+
+  formSubmission   FormSubmission @relation(fields: [formSubmissionId], references: [id], onDelete: Cascade)
+  formSubmissionId String
+
+  templateSigner   FormTemplateSigner @relation(fields: [templateSignerId], references: [id], onDelete: Cascade)
+  templateSignerId String
+
+  values FormFieldValue[]
+
+  @@map("form_submission_signers")
+}
+
+// One filled-in value for one field, by one signer. value holds plain text
+// for TEXT/DATE, "true"/"false" for CHECKBOX, or a signature PNG as a
+// base64 data URL for SIGNATURE/INITIALS — small enough to store as text;
+// only the final flattened PDF goes into Supabase Storage.
+model FormFieldValue {
+  id       String   @id @default(cuid())
+  value    String
+  filledAt DateTime @default(now())
+
+  field   FormField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  fieldId String
+
+  signer   FormSubmissionSigner @relation(fields: [signerId], references: [id], onDelete: Cascade)
+  signerId String
+
+  @@unique([fieldId, signerId])
+  @@map("form_field_values")
 }
 
 enum AssetType {
@@ -335,17 +527,17 @@ model Loan {
   name              String
   type              LoanType
   purchasePrice     Decimal  @db.Decimal(12, 2)
-  downPayment       Decimal  @db.Decimal(12, 2) @default(0)
+  downPayment       Decimal  @default(0) @db.Decimal(12, 2)
   interestRate      Decimal  @db.Decimal(5, 3) // annual percent, e.g. 6.500
   termMonths        Int
   startDate         DateTime
-  annualPropertyTax Decimal  @db.Decimal(12, 2) @default(0)
-  annualInsurance   Decimal  @db.Decimal(12, 2) @default(0)
+  annualPropertyTax Decimal  @default(0) @db.Decimal(12, 2)
+  annualInsurance   Decimal  @default(0) @db.Decimal(12, 2)
   // Expected annual home-value appreciation, MORTGAGE-only (see the "Home
   // value & equity projection" chart) — 2026-07-20 addition. Harmless as a
   // generic field with a sane default for AUTO/OTHER, which just never
   // surface it in the UI.
-  appreciationRate  Decimal  @db.Decimal(5, 3) @default(3.5)
+  appreciationRate  Decimal  @default(3.5) @db.Decimal(5, 3)
   // Manual override of "what the home is worth right now" (2026-07-20) --
   // e.g. a rehab added value beyond what pure appreciation from the
   // purchase price would predict. When set, the home-value projection
@@ -358,8 +550,8 @@ model Loan {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
   extraPayments LoanExtraPayment[]
 
   @@map("loans")

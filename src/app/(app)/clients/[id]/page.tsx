@@ -3,9 +3,13 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatFileSize } from "@/lib/format";
+import { teamSharedFilter } from "@/lib/authorization";
 import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { DealForm } from "../../deals/deal-form";
+import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
+import { ClientFormSubmissions } from "./client-form-submissions";
+import type { FormSubmissionSummaryDTO } from "../../forms/types";
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Active",
@@ -35,7 +39,7 @@ export default async function ClientDetailPage({
 
   if (!client) notFound();
 
-  const [deals, documents] = await Promise.all([
+  const [deals, documents, formTemplates, formSubmissions] = await Promise.all([
     prisma.deal.findMany({
       where: { clientId: client.id, userId: session!.user.id },
       orderBy: { createdAt: "desc" },
@@ -44,7 +48,37 @@ export default async function ClientDetailPage({
       where: { clientId: client.id, userId: session!.user.id },
       orderBy: { createdAt: "desc" },
     }),
+    prisma.formTemplate.findMany({
+      where: teamSharedFilter(session!.user),
+      include: { signers: { orderBy: { order: "asc" } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.formSubmission.findMany({
+      where: { clientId: client.id, userId: session!.user.id },
+      include: { formTemplate: true, signers: true },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+
+  const sendableTemplates: SendableTemplate[] = formTemplates
+    .filter((t) => t.signers.length > 0)
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      signers: t.signers.map((s) => ({ id: s.id, order: s.order, label: s.label })),
+    }));
+
+  const formSubmissionDtos: FormSubmissionSummaryDTO[] = formSubmissions.map((s) => ({
+    id: s.id,
+    templateName: s.formTemplate.name,
+    status: s.status,
+    createdAt: s.createdAt.toISOString(),
+    clientId: s.clientId,
+    clientName: client.name,
+    signers: s.signers
+      .map((signer) => ({ id: signer.id, name: signer.name, status: signer.status, order: signer.order }))
+      .sort((a, b) => a.order - b.order),
+  }));
 
   const defaultValues: ClientFormValues = {
     id: client.id,
@@ -134,6 +168,27 @@ export default async function ClientDetailPage({
             ))}
           </div>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-6 text-base font-semibold text-foreground">Forms</h2>
+
+        {formSubmissionDtos.length > 0 ? (
+          <div className="mb-6">
+            <ClientFormSubmissions submissions={formSubmissionDtos} />
+          </div>
+        ) : null}
+
+        <div className="max-w-md border-t border-border pt-6">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
+          <SendFormWidget
+            clientId={client.id}
+            clientName={client.name}
+            clientEmail={client.email}
+            templates={sendableTemplates}
+            deals={deals.map((d) => ({ id: d.id, propertyAddress: d.propertyAddress }))}
+          />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
