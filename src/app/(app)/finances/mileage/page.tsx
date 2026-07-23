@@ -50,7 +50,7 @@ export default async function FinancesMileagePage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted">
           {businessMiles.toLocaleString()} business miles · ${rate.toFixed(3)}/mi ({year})
         </p>

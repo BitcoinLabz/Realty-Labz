@@ -23,23 +23,25 @@ export default function FinancesLayout({ children }: { children: React.ReactNode
         </p>
       </div>
 
-      <div className="flex w-fit gap-1 rounded-full border border-border bg-surface p-1">
-        {tabs.map((tab) => {
-          const active = pathname === tab.href;
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                active
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-            </Link>
-          );
-        })}
+      <div className="overflow-x-auto">
+        <div className="flex w-fit gap-1 rounded-full border border-border bg-surface p-1">
+          {tabs.map((tab) => {
+            const active = pathname === tab.href;
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {tab.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       {children}

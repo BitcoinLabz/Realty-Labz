@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
+import { Logo } from "@/components/ui/logo";
 
 const baseNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -46,7 +47,7 @@ export function Sidebar({
   return (
     <>
       <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden">
-        <span className="text-sm font-semibold tracking-tight text-foreground">Realty Labz</span>
+        <Logo size="sm" />
         <button
           type="button"
           onClick={() => setIsOpen(true)}
@@ -71,9 +72,7 @@ export function Sidebar({
         }`}
       >
         <div className="flex items-center justify-between px-6 py-5">
-          <span className="text-sm font-semibold tracking-tight text-foreground">
-            Realty Labz
-          </span>
+          <Logo size="sm" />
           <button
             type="button"
             onClick={() => setIsOpen(false)}

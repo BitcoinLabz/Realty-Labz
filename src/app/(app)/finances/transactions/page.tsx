@@ -63,14 +63,14 @@ export default async function FinancesTransactionsPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted">
           Income and expenses — business and personal, in one ledger.
         </p>
         <div className="flex items-center gap-3">
           <a
             href={`/api/reports/pdf?year=${year}`}
-            className="inline-flex items-center justify-center rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-border/40"
+            className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-border/40"
           >
             Download PDF report
           </a>
