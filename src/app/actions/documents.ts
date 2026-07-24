@@ -82,7 +82,8 @@ export async function uploadDocumentAction(
     },
   });
 
-  revalidatePath("/documents");
+  revalidatePath("/clients");
+  if (resolvedClient.clientId) revalidatePath(`/clients/${resolvedClient.clientId}`);
   revalidatePath("/dashboard");
   if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
   return {};
@@ -95,6 +96,9 @@ export async function updateDocumentLinksAction(formData: FormData) {
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return;
 
+  const existing = await prisma.document.findFirst({ where: { id, userId: session.user.id } });
+  if (!existing) return;
+
   const resolvedClient = await resolveClientId(formData.get("clientId"), session.user.id);
   if (!resolvedClient.ok) return;
 
@@ -106,8 +110,18 @@ export async function updateDocumentLinksAction(formData: FormData) {
     data: { clientId: resolvedClient.clientId, dealId: resolvedDeal.dealId },
   });
 
-  revalidatePath("/documents");
-  if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
+  // Revalidate both where the document used to show up and where it shows
+  // up now — a plain updateMany() blind write doesn't know either side, so
+  // we look the row up first specifically to get this right.
+  revalidatePath("/clients");
+  if (existing.clientId) revalidatePath(`/clients/${existing.clientId}`);
+  if (resolvedClient.clientId && resolvedClient.clientId !== existing.clientId) {
+    revalidatePath(`/clients/${resolvedClient.clientId}`);
+  }
+  if (existing.dealId) revalidatePath(`/deals/${existing.dealId}`);
+  if (resolvedDeal.dealId && resolvedDeal.dealId !== existing.dealId) {
+    revalidatePath(`/deals/${resolvedDeal.dealId}`);
+  }
 }
 
 export async function deleteDocumentAction(formData: FormData) {
@@ -123,7 +137,8 @@ export async function deleteDocumentAction(formData: FormData) {
   await prisma.document.delete({ where: { id: doc.id } });
   await deleteDocumentFile(doc.storageKey);
 
-  revalidatePath("/documents");
+  revalidatePath("/clients");
+  if (doc.clientId) revalidatePath(`/clients/${doc.clientId}`);
   revalidatePath("/dashboard");
   if (doc.dealId) revalidatePath(`/deals/${doc.dealId}`);
 }

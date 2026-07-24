@@ -90,7 +90,7 @@ export default async function DashboardPage() {
         <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label="Clients" value={clientCount.toString()} />
         </Link>
-        <Link href="/documents" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label="Documents" value={documentCount.toString()} />
         </Link>
       </div>

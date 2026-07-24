@@ -2,13 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { formatFileSize } from "@/lib/format";
 import { teamSharedFilter } from "@/lib/authorization";
 import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { DealForm } from "../../deals/deal-form";
+import { ClientDocuments } from "./client-documents";
 import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
 import { ClientFormSubmissions } from "./client-form-submissions";
+import type { DocumentDTO } from "../types";
 import type { FormSubmissionSummaryDTO } from "../../forms/types";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -67,6 +68,18 @@ export default async function ClientDetailPage({
       name: t.name,
       signers: t.signers.map((s) => ({ id: s.id, order: s.order, label: s.label })),
     }));
+
+  const documentDtos: DocumentDTO[] = documents.map((d) => ({
+    id: d.id,
+    fileName: d.fileName,
+    mimeType: d.mimeType,
+    size: d.size,
+    clientId: d.clientId,
+    dealId: d.dealId,
+    createdAt: d.createdAt.toISOString(),
+  }));
+
+  const dealOptions = deals.map((d) => ({ id: d.id, propertyAddress: d.propertyAddress }));
 
   const formSubmissionDtos: FormSubmissionSummaryDTO[] = formSubmissions.map((s) => ({
     id: s.id,
@@ -146,28 +159,8 @@ export default async function ClientDetailPage({
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-foreground">Documents</h2>
-          <Link href="/documents" className="text-sm font-medium text-accent hover:opacity-80">
-            Manage on Documents page
-          </Link>
-        </div>
-        {documents.length === 0 ? (
-          <p className="text-sm text-muted">No documents linked yet for {client.name}.</p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {documents.map((doc) => (
-              <a
-                key={doc.id}
-                href={`/api/documents/${doc.id}`}
-                className="flex items-center justify-between rounded-xl border border-border px-4 py-3 hover:border-accent"
-              >
-                <span className="text-sm font-medium text-foreground">{doc.fileName}</span>
-                <span className="text-sm text-muted">{formatFileSize(doc.size)}</span>
-              </a>
-            ))}
-          </div>
-        )}
+        <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
+        <ClientDocuments clientId={client.id} documents={documentDtos} deals={dealOptions} />
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
@@ -186,7 +179,7 @@ export default async function ClientDetailPage({
             clientName={client.name}
             clientEmail={client.email}
             templates={sendableTemplates}
-            deals={deals.map((d) => ({ id: d.id, propertyAddress: d.propertyAddress }))}
+            deals={dealOptions}
           />
         </div>
       </section>

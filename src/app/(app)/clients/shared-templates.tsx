@@ -55,7 +55,7 @@ function UploadTemplateForm() {
   );
 }
 
-export function DocumentTemplates({
+export function SharedTemplates({
   templates,
   canManage,
   isTeamShared,
@@ -94,10 +94,7 @@ export function DocumentTemplates({
               key={t.id}
               className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3"
             >
-              <a
-                href={`/api/document-templates/${t.id}`}
-                className="flex flex-col hover:text-accent"
-              >
+              <a href={`/api/document-templates/${t.id}`} className="flex flex-col hover:text-accent">
                 <span className="text-sm font-medium text-foreground">{t.name}</span>
                 <span className="text-sm text-muted">
                   {formatFileSize(t.size)}

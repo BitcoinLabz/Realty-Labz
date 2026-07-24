@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { ClientOption } from "@/app/(app)/documents/types";
+import type { ClientOption } from "@/app/(app)/clients/types";
 import type { DealDTO, DealSide } from "./types";
 
 const initialState: FormState = {};
