@@ -35,7 +35,15 @@ export function SignForm({
   // them to go hunting for "Next" before anything looks interactive.
   const [pageIndex, setPageIndex] = useState(() => (fields.length > 0 ? Math.min(...fields.map((f) => f.page)) : 0));
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    // Seed with anything already auto-filled at send time (client/deal info
+    // the agent already had on file) — pre-filled but still editable below.
+    const initial: Record<string, string> = {};
+    for (const f of fields) {
+      if (f.initialValue) initial[f.id] = f.initialValue;
+    }
+    return initial;
+  });
   const [consent, setConsent] = useState(false);
   const [signingFieldId, setSigningFieldId] = useState<string | null>(null);
   const [state, formAction, isPending] = useActionState(submitSignerResponseAction, initialState);

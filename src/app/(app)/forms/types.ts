@@ -1,4 +1,9 @@
-import type { FormFieldType, FormSignerStatus, FormSubmissionStatus } from "@/generated/prisma/enums";
+import type {
+  FormFieldAutoFillSource,
+  FormFieldType,
+  FormSignerStatus,
+  FormSubmissionStatus,
+} from "@/generated/prisma/enums";
 
 export type FormTemplateDTO = {
   id: string;
@@ -30,6 +35,7 @@ export type TemplateFieldDTO = {
   required: boolean;
   order: number;
   signerId: string;
+  autoFillSource: FormFieldAutoFillSource | null;
 };
 
 export type FormSubmissionSummaryDTO = {

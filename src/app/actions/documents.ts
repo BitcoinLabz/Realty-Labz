@@ -83,6 +83,7 @@ export async function uploadDocumentAction(
   });
 
   revalidatePath("/clients");
+  revalidatePath("/finances");
   if (resolvedClient.clientId) revalidatePath(`/clients/${resolvedClient.clientId}`);
   revalidatePath("/dashboard");
   if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
@@ -114,6 +115,7 @@ export async function updateDocumentLinksAction(formData: FormData) {
   // up now — a plain updateMany() blind write doesn't know either side, so
   // we look the row up first specifically to get this right.
   revalidatePath("/clients");
+  revalidatePath("/finances");
   if (existing.clientId) revalidatePath(`/clients/${existing.clientId}`);
   if (resolvedClient.clientId && resolvedClient.clientId !== existing.clientId) {
     revalidatePath(`/clients/${resolvedClient.clientId}`);
@@ -138,6 +140,7 @@ export async function deleteDocumentAction(formData: FormData) {
   await deleteDocumentFile(doc.storageKey);
 
   revalidatePath("/clients");
+  revalidatePath("/finances");
   if (doc.clientId) revalidatePath(`/clients/${doc.clientId}`);
   revalidatePath("/dashboard");
   if (doc.dealId) revalidatePath(`/deals/${doc.dealId}`);

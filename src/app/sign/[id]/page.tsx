@@ -59,6 +59,12 @@ export default async function SignPage({ params }: { params: Promise<{ id: strin
     );
   }
 
+  // Fields may already have a value from send-time auto-fill (client/deal
+  // info the agent already had on file) — shown pre-filled but still
+  // editable, not locked, so a stale CRM value can be corrected.
+  const existingValues = await prisma.formFieldValue.findMany({ where: { signerId: signer.id } });
+  const valueByFieldId = new Map(existingValues.map((v) => [v.fieldId, v.value]));
+
   const fields: SignFieldDTO[] = signer.templateSigner.fields.map((f) => ({
     id: f.id,
     page: f.page,
@@ -69,6 +75,7 @@ export default async function SignPage({ params }: { params: Promise<{ id: strin
     type: f.type,
     label: f.label,
     required: f.required,
+    initialValue: valueByFieldId.get(f.id) ?? null,
   }));
 
   return (

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import {
   getAssetBreakdown,
@@ -11,6 +12,8 @@ import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
+import { UnfiledDocuments } from "@/app/(app)/clients/unfiled-documents";
+import type { ClientOption, DocumentDTO } from "@/app/(app)/clients/types";
 
 export default async function FinancesOverviewPage({
   searchParams,
@@ -23,19 +26,39 @@ export default async function FinancesOverviewPage({
   const { year: yearParam } = await searchParams;
   const year = Number(yearParam) || currentYear;
 
-  const [businessSeries, personalSeries, expenseBreakdown, assetBreakdown, pipeline] =
+  const [businessSeries, personalSeries, expenseBreakdown, assetBreakdown, pipeline, taxDocuments, clients] =
     await Promise.all([
       getMonthlyIncomeExpense(userId, year, "BUSINESS"),
       getMonthlyIncomeExpense(userId, year, "PERSONAL"),
       getBusinessExpenseBreakdown(userId, year),
       getAssetBreakdown(userId),
       getPipelineValue(userId),
+      prisma.document.findMany({
+        where: { userId, clientId: null },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.client.findMany({
+        where: { userId },
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+      }),
     ]);
 
   const businessNet = businessSeries.reduce((sum, m) => sum + m.income - m.expenses, 0);
   const personalNet = personalSeries.reduce((sum, m) => sum + m.income - m.expenses, 0);
   const hasPersonalData = personalSeries.some((m) => m.income > 0 || m.expenses > 0);
   const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
+
+  const taxDocumentDtos: DocumentDTO[] = taxDocuments.map((d) => ({
+    id: d.id,
+    fileName: d.fileName,
+    mimeType: d.mimeType,
+    size: d.size,
+    clientId: d.clientId,
+    dealId: d.dealId,
+    createdAt: d.createdAt.toISOString(),
+  }));
+  const clientOptions: ClientOption[] = clients.map((c) => ({ id: c.id, name: c.name }));
 
   return (
     <div className="flex flex-col gap-8">
@@ -109,6 +132,19 @@ export default async function FinancesOverviewPage({
             Investments tab.
           </p>
         )}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-1 text-base font-semibold text-foreground">Tax documents</h2>
+        <p className="mb-6 text-sm text-muted">
+          Receipts, statements, or anything else you want on hand for taxes — not tied to a
+          specific client. The same list also shows as &quot;Unfiled documents&quot; on the{" "}
+          <Link href="/clients" className="font-medium text-accent hover:opacity-80">
+            Clients
+          </Link>{" "}
+          page.
+        </p>
+        <UnfiledDocuments documents={taxDocumentDtos} clients={clientOptions} />
       </section>
     </div>
   );

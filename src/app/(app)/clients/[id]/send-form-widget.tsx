@@ -30,6 +30,7 @@ export function SendFormWidget({
 }) {
   const [state, formAction, isPending] = useActionState(sendFormSubmissionAction, initialState);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
+  const [keepForRecords, setKeepForRecords] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
 
@@ -38,6 +39,7 @@ export function SendFormWidget({
   }, [succeeded]);
 
   const selectedTemplate = useMemo(() => templates.find((t) => t.id === templateId), [templates, templateId]);
+  const canKeepForRecords = selectedTemplate?.signers.length === 1;
 
   if (templates.length === 0) {
     return (
@@ -54,12 +56,16 @@ export function SendFormWidget({
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="clientId" value={clientId} />
+      <input type="hidden" name="keepForRecords" value={keepForRecords ? "true" : "false"} />
 
       <Select
         label="Template"
         name="formTemplateId"
         value={templateId}
-        onChange={(e) => setTemplateId(e.target.value)}
+        onChange={(e) => {
+          setTemplateId(e.target.value);
+          setKeepForRecords(false);
+        }}
       >
         {templates.map((t) => (
           <option key={t.id} value={t.id}>
@@ -79,32 +85,47 @@ export function SendFormWidget({
         </Select>
       ) : null}
 
-      {selectedTemplate?.signers.map((signer, i) => (
-        <div key={signer.id} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field
-            label={`${signer.label} name`}
-            name={`name_${signer.id}`}
-            type="text"
-            defaultValue={i === 0 ? clientName : undefined}
-            required
-            error={state.fieldErrors?.[`name_${signer.id}`]}
+      {canKeepForRecords ? (
+        <label className="flex items-start gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={keepForRecords}
+            onChange={(e) => setKeepForRecords(e.target.checked)}
+            className="mt-1"
           />
-          <Field
-            label={`${signer.label} email`}
-            name={`email_${signer.id}`}
-            type="email"
-            defaultValue={i === 0 ? (clientEmail ?? undefined) : undefined}
-            required
-            error={state.fieldErrors?.[`email_${signer.id}`]}
-          />
-        </div>
-      ))}
+          I&apos;ll fill this out myself and keep it for my own records — don&apos;t send it to{" "}
+          {clientName} for signature.
+        </label>
+      ) : null}
+
+      {!keepForRecords
+        ? selectedTemplate?.signers.map((signer, i) => (
+            <div key={signer.id} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field
+                label={`${signer.label} name`}
+                name={`name_${signer.id}`}
+                type="text"
+                defaultValue={i === 0 ? clientName : undefined}
+                required
+                error={state.fieldErrors?.[`name_${signer.id}`]}
+              />
+              <Field
+                label={`${signer.label} email`}
+                name={`email_${signer.id}`}
+                type="email"
+                defaultValue={i === 0 ? (clientEmail ?? undefined) : undefined}
+                required
+                error={state.fieldErrors?.[`email_${signer.id}`]}
+              />
+            </div>
+          ))
+        : null}
 
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 
       <div>
-        <Button type="submit" disabled={isPending || !selectedTemplate}>
-          {isPending ? "Sending…" : "Send for signature"}
+        <Button type="submit" disabled={isPending}>
+          {isPending ? "Sending…" : keepForRecords ? "Fill it out now" : "Send for signature"}
         </Button>
       </div>
     </form>

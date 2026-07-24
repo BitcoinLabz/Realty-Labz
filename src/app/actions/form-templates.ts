@@ -152,6 +152,16 @@ export async function deleteTemplateSignerAction(formData: FormData) {
 }
 
 const FIELD_TYPES = ["TEXT", "DATE", "CHECKBOX", "SIGNATURE", "INITIALS"] as const;
+const AUTO_FILL_SOURCES = [
+  "CLIENT_NAME",
+  "CLIENT_EMAIL",
+  "CLIENT_PHONE",
+  "DEAL_PROPERTY_ADDRESS",
+  "DEAL_MLS_NUMBER",
+  "DEAL_LIST_PRICE",
+  "DEAL_SALE_PRICE",
+  "DEAL_CLOSING_DATE",
+] as const;
 
 type FieldInput = {
   page: number;
@@ -164,23 +174,35 @@ type FieldInput = {
   required: boolean;
   order: number;
   signerId: string;
+  autoFillSource: (typeof AUTO_FILL_SOURCES)[number] | null;
 };
 
 function isValidFieldInput(f: unknown): f is FieldInput {
   if (!f || typeof f !== "object") return false;
   const field = f as Record<string, unknown>;
-  return (
-    typeof field.page === "number" &&
-    typeof field.x === "number" &&
-    typeof field.y === "number" &&
-    typeof field.width === "number" &&
-    typeof field.height === "number" &&
-    typeof field.label === "string" &&
-    typeof field.required === "boolean" &&
-    typeof field.order === "number" &&
-    typeof field.signerId === "string" &&
-    FIELD_TYPES.includes(field.type as (typeof FIELD_TYPES)[number])
-  );
+  if (
+    !(
+      typeof field.page === "number" &&
+      typeof field.x === "number" &&
+      typeof field.y === "number" &&
+      typeof field.width === "number" &&
+      typeof field.height === "number" &&
+      typeof field.label === "string" &&
+      typeof field.required === "boolean" &&
+      typeof field.order === "number" &&
+      typeof field.signerId === "string" &&
+      FIELD_TYPES.includes(field.type as (typeof FIELD_TYPES)[number])
+    )
+  ) {
+    return false;
+  }
+  if (field.autoFillSource !== null && field.autoFillSource !== undefined) {
+    if (!AUTO_FILL_SOURCES.includes(field.autoFillSource as (typeof AUTO_FILL_SOURCES)[number])) return false;
+    // Only TEXT/DATE fields can be bound to an auto-fill source — a
+    // signature/checkbox can't be populated from a string value.
+    if (field.type !== "TEXT" && field.type !== "DATE") return false;
+  }
+  return true;
 }
 
 // Replaces every field on the template in one pass — simpler than diffing

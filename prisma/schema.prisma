@@ -295,6 +295,22 @@ enum FormSignerStatus {
   DECLINED
 }
 
+// What a TEXT/DATE field pulls its value from instead of the signer typing
+// it in by hand (2026-07-24, direct founder request — an agent shouldn't
+// have to make a client retype info already on file). Null means manual
+// entry, today's original behavior. Only meaningful for TEXT/DATE fields —
+// a signature/checkbox can't be "auto-filled" from a string.
+enum FormFieldAutoFillSource {
+  CLIENT_NAME
+  CLIENT_EMAIL
+  CLIENT_PHONE
+  DEAL_PROPERTY_ADDRESS
+  DEAL_MLS_NUMBER
+  DEAL_LIST_PRICE
+  DEAL_SALE_PRICE
+  DEAL_CLOSING_DATE
+}
+
 // A reusable contract/form PDF with fields placed on it for a client to fill
 // in and sign (2026-07-22, direct founder request — "like SkySlope"). Same
 // team-shared-library visibility pattern as DocumentTemplate
@@ -357,6 +373,8 @@ model FormField {
   label    String
   required Boolean       @default(true)
   order    Int
+
+  autoFillSource FormFieldAutoFillSource?
 
   formTemplate   FormTemplate @relation(fields: [formTemplateId], references: [id], onDelete: Cascade)
   formTemplateId String

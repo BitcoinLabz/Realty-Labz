@@ -18,6 +18,29 @@ const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   INITIALS: "Initials",
 };
 
+const AUTO_FILL_SOURCES = [
+  "CLIENT_NAME",
+  "CLIENT_EMAIL",
+  "CLIENT_PHONE",
+  "DEAL_PROPERTY_ADDRESS",
+  "DEAL_MLS_NUMBER",
+  "DEAL_LIST_PRICE",
+  "DEAL_SALE_PRICE",
+  "DEAL_CLOSING_DATE",
+] as const;
+type AutoFillSource = (typeof AUTO_FILL_SOURCES)[number];
+
+const AUTO_FILL_LABELS: Record<AutoFillSource, string> = {
+  CLIENT_NAME: "Client name",
+  CLIENT_EMAIL: "Client email",
+  CLIENT_PHONE: "Client phone",
+  DEAL_PROPERTY_ADDRESS: "Property address",
+  DEAL_MLS_NUMBER: "MLS #",
+  DEAL_LIST_PRICE: "List price",
+  DEAL_SALE_PRICE: "Sale price",
+  DEAL_CLOSING_DATE: "Closing date",
+};
+
 type DesignerField = {
   key: string;
   page: number; // 0-indexed, matches DB/pdf-lib convention
@@ -30,6 +53,7 @@ type DesignerField = {
   required: boolean;
   order: number;
   signerId: string;
+  autoFillSource: AutoFillSource | null;
 };
 
 const SIGNER_COLORS = ["#0071e3", "#34c759", "#ff9500", "#af52de", "#ff2d55"];
@@ -117,6 +141,7 @@ export function FieldDesigner({
           required: true,
           order: prev.length,
           signerId: selectedSignerId,
+          autoFillSource: null,
         },
       ]);
     }
@@ -294,7 +319,7 @@ export function FieldDesigner({
                     onChange={(e) => updateField(f.key, { label: e.target.value })}
                     className="mb-2 w-full rounded-lg border border-border bg-background px-2 py-1 text-sm text-foreground outline-none focus-visible:border-accent"
                   />
-                  <div className="flex items-center justify-between text-xs text-muted">
+                  <div className="mb-2 flex items-center justify-between text-xs text-muted">
                     <label className="flex items-center gap-1.5">
                       <input
                         type="checkbox"
@@ -305,6 +330,24 @@ export function FieldDesigner({
                     </label>
                     <span>{signers.find((s) => s.id === f.signerId)?.label}</span>
                   </div>
+                  {f.type === "TEXT" || f.type === "DATE" ? (
+                    <select
+                      value={f.autoFillSource ?? ""}
+                      onChange={(e) =>
+                        updateField(f.key, {
+                          autoFillSource: e.target.value ? (e.target.value as AutoFillSource) : null,
+                        })
+                      }
+                      className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs text-foreground outline-none focus-visible:border-accent"
+                    >
+                      <option value="">Auto-fill: none (fill in manually)</option>
+                      {AUTO_FILL_SOURCES.map((source) => (
+                        <option key={source} value={source}>
+                          Auto-fill: {AUTO_FILL_LABELS[source]}
+                        </option>
+                      ))}
+                    </select>
+                  ) : null}
                 </div>
               ))}
             </div>

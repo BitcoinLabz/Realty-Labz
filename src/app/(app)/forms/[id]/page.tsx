@@ -46,6 +46,7 @@ export default async function FormTemplateDetailPage({
     required: f.required,
     order: f.order,
     signerId: f.signerId,
+    autoFillSource: f.autoFillSource,
   }));
 
   return (

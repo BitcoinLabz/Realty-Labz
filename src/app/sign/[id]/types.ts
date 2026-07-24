@@ -10,4 +10,5 @@ export type SignFieldDTO = {
   type: FormFieldType;
   label: string;
   required: boolean;
+  initialValue: string | null;
 };

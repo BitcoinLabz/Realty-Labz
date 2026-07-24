@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
@@ -13,6 +14,40 @@ import {
 import { readDocumentFile } from "@/lib/document-storage";
 import { finalizeFormSubmission } from "@/lib/pdf-finalize";
 import type { FormState } from "@/app/actions/auth";
+import type { Client, Deal } from "@/generated/prisma/client";
+import type { FormFieldAutoFillSource } from "@/generated/prisma/enums";
+
+// Resolves a field's bound value from the submission's linked client/deal —
+// direct founder request (2026-07-24): an agent shouldn't make a client
+// retype info the CRM already has. Missing source data (e.g. a deal field
+// with no deal linked) just leaves the field blank, no error — it's still
+// editable by hand either way.
+function resolveAutoFillValue(
+  source: FormFieldAutoFillSource,
+  client: Client | null,
+  deal: Deal | null,
+): string | null {
+  switch (source) {
+    case "CLIENT_NAME":
+      return client?.name ?? null;
+    case "CLIENT_EMAIL":
+      return client?.email ?? null;
+    case "CLIENT_PHONE":
+      return client?.phone ?? null;
+    case "DEAL_PROPERTY_ADDRESS":
+      return deal?.propertyAddress ?? null;
+    case "DEAL_MLS_NUMBER":
+      return deal?.mlsNumber ?? null;
+    case "DEAL_LIST_PRICE":
+      return deal?.listPrice ? deal.listPrice.toString() : null;
+    case "DEAL_SALE_PRICE":
+      return deal?.salePrice ? deal.salePrice.toString() : null;
+    case "DEAL_CLOSING_DATE":
+      return deal?.closingDate ? deal.closingDate.toISOString().slice(0, 10) : null;
+    default:
+      return null;
+  }
+}
 
 async function getBaseUrl() {
   const h = await headers();
@@ -43,7 +78,7 @@ export async function sendFormSubmissionAction(
 
   const template = await prisma.formTemplate.findFirst({
     where: { id: formTemplateId, ...teamSharedFilter(session.user) },
-    include: { signers: { orderBy: { order: "asc" } }, fields: { select: { id: true } } },
+    include: { signers: { orderBy: { order: "asc" } }, fields: true },
   });
   if (!template) return { error: "Template not found" };
   if (template.fields.length === 0) {
@@ -54,33 +89,55 @@ export async function sendFormSubmissionAction(
   const dealIdRaw = formData.get("dealId");
   const clientId = typeof clientIdRaw === "string" && clientIdRaw ? clientIdRaw : null;
   const dealId = typeof dealIdRaw === "string" && dealIdRaw ? dealIdRaw : null;
+  const keepForRecords = formData.get("keepForRecords") === "true";
 
+  let client: Client | null = null;
   if (clientId) {
     // Clients aren't team-shared yet (see CLAUDE.md) — plain userId check.
-    const client = await prisma.client.findFirst({ where: { id: clientId, userId: session.user.id } });
+    client = await prisma.client.findFirst({ where: { id: clientId, userId: session.user.id } });
     if (!client) return { error: "Client not found" };
   }
+  let deal: Deal | null = null;
   if (dealId) {
-    const deal = await prisma.deal.findFirst({ where: { id: dealId, ...teamOrOwnFilter(session.user) } });
+    deal = await prisma.deal.findFirst({ where: { id: dealId, ...teamOrOwnFilter(session.user) } });
     if (!deal) return { error: "Deal not found" };
   }
 
+  // "Keep for my own records" (2026-07-24, direct founder request): the
+  // agent fills it out and signs it themselves right away — no client
+  // signature needed. Only makes sense for a single-signer template; a
+  // lease needing tenant+landlord genuinely needs two real people.
+  if (keepForRecords && template.signers.length !== 1) {
+    return { error: "Keeping a form for your own records only works for single-signer templates" };
+  }
+
   const signerInputs: { templateSignerId: string; order: number; name: string; email: string }[] = [];
-  for (const signer of template.signers) {
-    const name = formData.get(`name_${signer.id}`);
-    const email = formData.get(`email_${signer.id}`);
-    if (typeof name !== "string" || !name.trim()) {
-      return { fieldErrors: { [`name_${signer.id}`]: `Enter a name for ${signer.label}` } };
-    }
-    if (typeof email !== "string" || !EMAIL_RE.test(email)) {
-      return { fieldErrors: { [`email_${signer.id}`]: `Enter a valid email for ${signer.label}` } };
-    }
+  if (keepForRecords) {
+    if (!session.user.email) return { error: "Your account is missing an email address" };
+    const onlySigner = template.signers[0];
     signerInputs.push({
-      templateSignerId: signer.id,
-      order: signer.order,
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
+      templateSignerId: onlySigner.id,
+      order: onlySigner.order,
+      name: session.user.name ?? "Me",
+      email: session.user.email,
     });
+  } else {
+    for (const signer of template.signers) {
+      const name = formData.get(`name_${signer.id}`);
+      const email = formData.get(`email_${signer.id}`);
+      if (typeof name !== "string" || !name.trim()) {
+        return { fieldErrors: { [`name_${signer.id}`]: `Enter a name for ${signer.label}` } };
+      }
+      if (typeof email !== "string" || !EMAIL_RE.test(email)) {
+        return { fieldErrors: { [`email_${signer.id}`]: `Enter a valid email for ${signer.label}` } };
+      }
+      signerInputs.push({
+        templateSignerId: signer.id,
+        order: signer.order,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+      });
+    }
   }
 
   const submission = await prisma.formSubmission.create({
@@ -94,7 +151,31 @@ export async function sendFormSubmissionAction(
     include: { signers: { orderBy: { order: "asc" } } },
   });
 
+  // Pre-fill every field bound to a client/deal property — before the
+  // signer (or the agent, in keep-for-records mode) ever opens the link.
+  const autoFillFields = template.fields.filter((f) => f.autoFillSource);
+  if (autoFillFields.length > 0) {
+    const signerByTemplateSignerId = new Map(submission.signers.map((s) => [s.templateSignerId, s]));
+    const autoFillValues: { fieldId: string; value: string; signerId: string }[] = [];
+    for (const field of autoFillFields) {
+      const submissionSigner = signerByTemplateSignerId.get(field.signerId);
+      if (!submissionSigner || !field.autoFillSource) continue;
+      const value = resolveAutoFillValue(field.autoFillSource, client, deal);
+      if (value) autoFillValues.push({ fieldId: field.id, value, signerId: submissionSigner.id });
+    }
+    if (autoFillValues.length > 0) {
+      await prisma.formFieldValue.createMany({ data: autoFillValues });
+    }
+  }
+
   const firstSigner = submission.signers[0];
+
+  if (keepForRecords) {
+    if (clientId) revalidatePath(`/clients/${clientId}`);
+    revalidatePath("/forms");
+    redirect(`/sign/${firstSigner.id}`);
+  }
+
   if (firstSigner) {
     const baseUrl = await getBaseUrl();
     try {
