@@ -38,7 +38,7 @@ export function SubmissionList({ submissions }: { submissions: FormSubmissionSum
           </div>
         );
         return s.clientId ? (
-          <Link key={s.id} href={`/clients/${s.clientId}`} className="hover:opacity-80">
+          <Link key={s.id} href={`/forms/${s.clientId}`} className="hover:opacity-80">
             {row}
           </Link>
         ) : (

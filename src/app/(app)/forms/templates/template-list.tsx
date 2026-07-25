@@ -29,7 +29,7 @@ export function TemplateList({
           key={t.id}
           className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
         >
-          <Link href={`/forms/${t.id}`} className="flex flex-col">
+          <Link href={`/forms/templates/${t.id}`} className="flex flex-col">
             <span className="text-sm font-medium text-foreground">{t.name}</span>
             <span className="text-sm text-muted">
               {formatFileSize(t.size)} · {t.fieldCount} field{t.fieldCount === 1 ? "" : "s"} ·{" "}

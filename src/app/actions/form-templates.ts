@@ -55,8 +55,8 @@ export async function uploadFormTemplateAction(
     },
   });
 
-  revalidatePath("/forms");
-  redirect(`/forms/${template.id}`);
+  revalidatePath("/forms/templates");
+  redirect(`/forms/templates/${template.id}`);
 }
 
 export async function deleteFormTemplateAction(formData: FormData) {
@@ -75,8 +75,8 @@ export async function deleteFormTemplateAction(formData: FormData) {
   await prisma.formTemplate.delete({ where: { id: template.id } });
   await deleteDocumentFile(template.storageKey);
 
-  revalidatePath("/forms");
-  redirect("/forms");
+  revalidatePath("/forms/templates");
+  redirect("/forms/templates");
 }
 
 async function assertTemplateManageAccess(
@@ -127,7 +127,7 @@ export async function addTemplateSignerAction(
     },
   });
 
-  revalidatePath(`/forms/${templateId}`);
+  revalidatePath(`/forms/templates/${templateId}`);
   return {};
 }
 
@@ -148,7 +148,7 @@ export async function deleteTemplateSignerAction(formData: FormData) {
 
   await prisma.formTemplateSigner.delete({ where: { id: signerId } });
 
-  revalidatePath(`/forms/${templateId}`);
+  revalidatePath(`/forms/templates/${templateId}`);
 }
 
 const FIELD_TYPES = ["TEXT", "DATE", "CHECKBOX", "SIGNATURE", "INITIALS"] as const;
@@ -257,6 +257,6 @@ export async function saveFormFieldsAction(
     }),
   ]);
 
-  revalidatePath(`/forms/${templateId}`);
+  revalidatePath(`/forms/templates/${templateId}`);
   return {};
 }

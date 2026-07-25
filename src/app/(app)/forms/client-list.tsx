@@ -15,7 +15,7 @@ export function ClientList({ clients }: { clients: ClientDTO[] }) {
       {clients.map((c) => (
         <Link
           key={c.id}
-          href={`/clients/${c.id}`}
+          href={`/forms/${c.id}`}
           className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-background px-6 py-4 transition-colors hover:border-accent"
         >
           <div className="flex flex-col">

@@ -82,9 +82,9 @@ export async function uploadDocumentAction(
     },
   });
 
-  revalidatePath("/clients");
+  revalidatePath("/forms");
   revalidatePath("/finances");
-  if (resolvedClient.clientId) revalidatePath(`/clients/${resolvedClient.clientId}`);
+  if (resolvedClient.clientId) revalidatePath(`/forms/${resolvedClient.clientId}`);
   revalidatePath("/dashboard");
   if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
   return {};
@@ -114,11 +114,11 @@ export async function updateDocumentLinksAction(formData: FormData) {
   // Revalidate both where the document used to show up and where it shows
   // up now — a plain updateMany() blind write doesn't know either side, so
   // we look the row up first specifically to get this right.
-  revalidatePath("/clients");
+  revalidatePath("/forms");
   revalidatePath("/finances");
-  if (existing.clientId) revalidatePath(`/clients/${existing.clientId}`);
+  if (existing.clientId) revalidatePath(`/forms/${existing.clientId}`);
   if (resolvedClient.clientId && resolvedClient.clientId !== existing.clientId) {
-    revalidatePath(`/clients/${resolvedClient.clientId}`);
+    revalidatePath(`/forms/${resolvedClient.clientId}`);
   }
   if (existing.dealId) revalidatePath(`/deals/${existing.dealId}`);
   if (resolvedDeal.dealId && resolvedDeal.dealId !== existing.dealId) {
@@ -139,9 +139,9 @@ export async function deleteDocumentAction(formData: FormData) {
   await prisma.document.delete({ where: { id: doc.id } });
   await deleteDocumentFile(doc.storageKey);
 
-  revalidatePath("/clients");
+  revalidatePath("/forms");
   revalidatePath("/finances");
-  if (doc.clientId) revalidatePath(`/clients/${doc.clientId}`);
+  if (doc.clientId) revalidatePath(`/forms/${doc.clientId}`);
   revalidatePath("/dashboard");
   if (doc.dealId) revalidatePath(`/deals/${doc.dealId}`);
 }

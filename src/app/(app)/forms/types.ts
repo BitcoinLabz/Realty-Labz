@@ -1,49 +1,28 @@
-import type {
-  FormFieldAutoFillSource,
-  FormFieldType,
-  FormSignerStatus,
-  FormSubmissionStatus,
-} from "@/generated/prisma/enums";
-
-export type FormTemplateDTO = {
+export type ClientDTO = {
   id: string;
   name: string;
+  email: string | null;
+  phone: string | null;
+  notes: string | null;
+};
+
+export type ClientOption = {
+  id: string;
+  name: string;
+};
+
+export type DealOption = {
+  id: string;
+  propertyAddress: string;
+};
+
+export type DocumentDTO = {
+  id: string;
   fileName: string;
+  mimeType: string;
   size: number;
-  createdAt: string;
-  creatorName: string;
-  signerCount: number;
-  fieldCount: number;
-  hasSubmissions: boolean;
-};
-
-export type TemplateSignerDTO = {
-  id: string;
-  order: number;
-  label: string;
-};
-
-export type TemplateFieldDTO = {
-  id: string;
-  page: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  type: FormFieldType;
-  label: string;
-  required: boolean;
-  order: number;
-  signerId: string;
-  autoFillSource: FormFieldAutoFillSource | null;
-};
-
-export type FormSubmissionSummaryDTO = {
-  id: string;
-  templateName: string;
-  status: FormSubmissionStatus;
-  createdAt: string;
   clientId: string | null;
-  clientName: string | null;
-  signers: { id: string; name: string; status: FormSignerStatus; order: number }[];
+  dealId: string | null;
+  createdAt: string; // ISO
 };
+

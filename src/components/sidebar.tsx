@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Menu,
   Settings,
-  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -19,7 +18,6 @@ import { Logo } from "@/components/ui/logo";
 const baseNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/finances", label: "Finances", icon: Wallet },
-  { href: "/clients", label: "Clients", icon: Users },
   { href: "/forms", label: "Forms", icon: ClipboardSignature },
 ];
 

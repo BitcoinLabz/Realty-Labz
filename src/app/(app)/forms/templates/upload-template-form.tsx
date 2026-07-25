@@ -5,6 +5,7 @@ import { uploadFormTemplateAction } from "@/app/actions/form-templates";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { FileDropInput } from "@/components/ui/file-drop-input";
 
 const initialState: FormState = {};
 
@@ -21,20 +22,13 @@ export function UploadTemplateForm() {
         required
         error={state.fieldErrors?.name}
       />
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="form-template-file" className="text-sm font-medium text-foreground">
-          PDF
-        </label>
-        <input
-          id="form-template-file"
-          name="file"
-          type="file"
-          accept="application/pdf"
-          required
-          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/20 file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-foreground"
-        />
-        {state.fieldErrors?.file ? <p className="text-sm text-danger">{state.fieldErrors.file}</p> : null}
-      </div>
+      <FileDropInput
+        id="form-template-file"
+        label="PDF"
+        accept="application/pdf"
+        required
+        error={state.fieldErrors?.file}
+      />
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
       <div>
         <Button type="submit" disabled={isPending}>

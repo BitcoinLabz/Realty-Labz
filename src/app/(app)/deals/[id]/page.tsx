@@ -61,7 +61,7 @@ export default async function DealDetailPage({
     <div className="flex flex-col gap-8">
       <div>
         <Link
-          href={deal.client ? `/clients/${deal.client.id}` : "/clients"}
+          href={deal.client ? `/forms/${deal.client.id}` : "/forms"}
           className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
         >
           ← Back to {deal.client ? deal.client.name : "Clients"}
@@ -94,10 +94,10 @@ export default async function DealDetailPage({
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-base font-semibold text-foreground">Documents</h2>
           <Link
-            href={deal.client ? `/clients/${deal.client.id}` : "/clients"}
+            href={deal.client ? `/forms/${deal.client.id}` : "/forms"}
             className="text-sm font-medium text-accent hover:opacity-80"
           >
-            {deal.client ? `Manage on ${deal.client.name}'s page` : "Manage on Clients page"}
+            {deal.client ? `Manage on ${deal.client.name}'s page` : "Manage on the Clients tab"}
           </Link>
         </div>
         {deal.documents.length === 0 ? (

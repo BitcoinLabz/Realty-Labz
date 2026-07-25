@@ -45,10 +45,10 @@ export function SendFormWidget({
     return (
       <p className="text-sm text-muted">
         No form templates yet — add one on the{" "}
-        <a href="/forms" className="font-medium text-accent hover:opacity-80">
-          Forms
+        <a href="/forms/templates" className="font-medium text-accent hover:opacity-80">
+          Templates
         </a>{" "}
-        page first.
+        tab first.
       </p>
     );
   }

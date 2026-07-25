@@ -5,6 +5,7 @@ import { deleteTemplateAction, uploadTemplateAction } from "@/app/actions/docume
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { FileDropInput } from "@/components/ui/file-drop-input";
 import { formatFileSize } from "@/lib/format";
 import type { DocumentTemplateDTO } from "./types";
 
@@ -29,22 +30,12 @@ function UploadTemplateForm() {
         required
         error={state.fieldErrors?.name}
       />
-      <div className="flex flex-col gap-1.5">
-        <label htmlFor="template-file" className="text-sm font-medium text-foreground">
-          File
-        </label>
-        <input
-          id="template-file"
-          name="file"
-          type="file"
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          required
-          className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/20 file:mr-4 file:rounded-full file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent-foreground"
-        />
-        {state.fieldErrors?.file ? (
-          <p className="text-sm text-danger">{state.fieldErrors.file}</p>
-        ) : null}
-      </div>
+      <FileDropInput
+        id="template-file"
+        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+        required
+        error={state.fieldErrors?.file}
+      />
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
       <div>
         <Button type="submit" disabled={isPending}>

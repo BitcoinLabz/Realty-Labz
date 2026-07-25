@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FormSubmissionSummaryDTO } from "../../forms/types";
+import type { FormSubmissionSummaryDTO } from "../templates/types";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Waiting to be viewed",

@@ -12,8 +12,8 @@ import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
-import { UnfiledDocuments } from "@/app/(app)/clients/unfiled-documents";
-import type { ClientOption, DocumentDTO } from "@/app/(app)/clients/types";
+import { UnfiledDocuments } from "@/app/(app)/forms/unfiled-documents";
+import type { ClientOption, DocumentDTO } from "@/app/(app)/forms/types";
 
 export default async function FinancesOverviewPage({
   searchParams,
@@ -139,10 +139,10 @@ export default async function FinancesOverviewPage({
         <p className="mb-6 text-sm text-muted">
           Receipts, statements, or anything else you want on hand for taxes — not tied to a
           specific client. The same list also shows as &quot;Unfiled documents&quot; on the{" "}
-          <Link href="/clients" className="font-medium text-accent hover:opacity-80">
+          <Link href="/forms" className="font-medium text-accent hover:opacity-80">
             Clients
           </Link>{" "}
-          page.
+          tab, under Forms.
         </p>
         <UnfiledDocuments documents={taxDocumentDtos} clients={clientOptions} />
       </section>
