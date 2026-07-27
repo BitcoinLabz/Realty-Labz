@@ -562,6 +562,19 @@ model Asset {
   walletBalance          Decimal?       @db.Decimal(24, 8) // raw on-chain amount (BTC or STX), not USD
   walletBalanceCheckedAt DateTime?
 
+  // Optional live stock tracking for STOCKS-type assets (2026-07-26) — same
+  // pattern as the wallet fields above: when stockTicker is set, currentValue
+  // is computed from shareCount × a fetched per-share price (see
+  // src/lib/stock-price.ts) instead of typed in by hand. shareCount is the
+  // one thing we can't look up (unlike a wallet address, a ticker alone
+  // doesn't reveal how many shares someone owns) — the user enters that,
+  // only the price is fetched. Same on-demand-only fetch discipline: on add
+  // and on "Refresh," never polled.
+  stockTicker         String?
+  shareCount          Decimal?  @db.Decimal(14, 4) // supports fractional shares
+  stockPricePerShare  Decimal?  @db.Decimal(12, 4)
+  stockPriceCheckedAt DateTime?
+
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 

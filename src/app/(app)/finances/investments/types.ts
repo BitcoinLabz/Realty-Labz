@@ -11,5 +11,9 @@ export type AssetDTO = {
   walletAddress: string | null;
   walletBalance: number | null;
   walletBalanceCheckedAt: string | null; // ISO
+  stockTicker: string | null;
+  shareCount: number | null;
+  stockPricePerShare: number | null;
+  stockPriceCheckedAt: string | null; // ISO
   updatedAt: string; // ISO
 };

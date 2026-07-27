@@ -144,17 +144,32 @@ export const assetSchema = z
     notes: z.string().trim().max(1000).optional(),
     walletNetwork: z.enum(["BITCOIN", "STACKS"]).optional(),
     walletAddress: z.string().trim().min(1, "Wallet address is required").max(120).optional(),
+    stockTicker: z
+      .string()
+      .trim()
+      .min(1, "Ticker is required")
+      .max(10, "Ticker symbols are 10 characters or fewer")
+      .optional(),
+    shareCount: z.coerce.number().positive("Must be greater than 0").optional(),
   })
   .refine(
-    (data) => (data.type === "CRYPTO" && data.walletNetwork ? true : data.currentValue !== undefined),
+    (data) => {
+      if (data.type === "CRYPTO" && data.walletNetwork) return true;
+      if (data.type === "STOCKS" && data.stockTicker) return true;
+      return data.currentValue !== undefined;
+    },
     {
-      message: "Enter a current value, or link a wallet to track it automatically",
+      message: "Enter a current value, or link a wallet/ticker to track it automatically",
       path: ["currentValue"],
     },
   )
   .refine((data) => !data.walletNetwork || !!data.walletAddress, {
     message: "Wallet address is required",
     path: ["walletAddress"],
+  })
+  .refine((data) => !data.stockTicker || !!data.shareCount, {
+    message: "Number of shares is required",
+    path: ["shareCount"],
   });
 
 export const budgetSchema = z.object({

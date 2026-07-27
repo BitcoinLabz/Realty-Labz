@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { deleteAssetAction, refreshWalletBalanceAction } from "@/app/actions/assets";
+import { deleteAssetAction, refreshStockPriceAction, refreshWalletBalanceAction } from "@/app/actions/assets";
 import { formatCurrency } from "@/lib/format";
 import { AssetForm } from "./asset-form";
 import type { AssetDTO } from "./types";
@@ -59,6 +59,8 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
                 notes: a.notes ?? "",
                 walletNetwork: a.walletNetwork,
                 walletAddress: a.walletAddress,
+                stockTicker: a.stockTicker,
+                shareCount: a.shareCount !== null ? String(a.shareCount) : null,
               }}
               onDone={() => setEditingId(null)}
             />
@@ -87,6 +89,21 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
                     : ""}
                 </span>
               ) : null}
+              {a.stockTicker && a.shareCount !== null ? (
+                <span className="mt-1 text-sm text-muted">
+                  {a.shareCount.toLocaleString("en-US", { maximumFractionDigits: 4 })} shares of{" "}
+                  {a.stockTicker}
+                  {a.stockPricePerShare !== null ? ` @ ${formatCurrency(a.stockPricePerShare)}` : ""}
+                  {a.stockPriceCheckedAt
+                    ? ` · as of ${new Date(a.stockPriceCheckedAt).toLocaleString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}`
+                    : ""}
+                </span>
+              ) : null}
               {a.notes ? <span className="mt-1 text-sm text-muted">{a.notes}</span> : null}
             </div>
             <div className="flex items-center gap-4">
@@ -95,6 +112,14 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
               </span>
               {a.walletNetwork ? (
                 <form action={refreshWalletBalanceAction}>
+                  <input type="hidden" name="id" value={a.id} />
+                  <button type="submit" className="text-sm font-medium text-muted hover:text-foreground">
+                    Refresh
+                  </button>
+                </form>
+              ) : null}
+              {a.stockTicker ? (
+                <form action={refreshStockPriceAction}>
                   <input type="hidden" name="id" value={a.id} />
                   <button type="submit" className="text-sm font-medium text-muted hover:text-foreground">
                     Refresh

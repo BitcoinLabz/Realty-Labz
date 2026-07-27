@@ -18,6 +18,8 @@ export type AssetFormValues = {
   notes: string;
   walletNetwork?: WalletNetwork | null;
   walletAddress?: string | null;
+  stockTicker?: string | null;
+  shareCount?: string | null;
 };
 
 function pillClass(active: boolean) {
@@ -39,6 +41,7 @@ export function AssetForm({
   const [type, setType] = useState<AssetType>(defaultValues?.type ?? "STOCKS");
   const [trackWallet, setTrackWallet] = useState(!!defaultValues?.walletNetwork);
   const [network, setNetwork] = useState<WalletNetwork>(defaultValues?.walletNetwork ?? "BITCOIN");
+  const [trackStock, setTrackStock] = useState(!!defaultValues?.stockTicker);
   const formRef = useRef<HTMLFormElement>(null);
 
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
@@ -49,6 +52,7 @@ export function AssetForm({
         formRef.current?.reset();
         setType("STOCKS");
         setTrackWallet(false);
+        setTrackStock(false);
       }
       onDone?.();
     }
@@ -56,6 +60,7 @@ export function AssetForm({
   }, [succeeded]);
 
   const isCrypto = type === "CRYPTO";
+  const isStock = type === "STOCKS";
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
@@ -104,6 +109,24 @@ export function AssetForm({
         </div>
       ) : null}
 
+      {isStock ? (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-foreground">Value source</span>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setTrackStock(false)}
+              className={pillClass(!trackStock)}
+            >
+              Enter manually
+            </button>
+            <button type="button" onClick={() => setTrackStock(true)} className={pillClass(trackStock)}>
+              Track shares
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {isCrypto && trackWallet ? (
         <>
           <div className="flex flex-col gap-2">
@@ -138,6 +161,35 @@ export function AssetForm({
           <p className="-mt-2 text-sm text-muted">
             The balance is fetched from the public blockchain and converted to USD when you add or
             refresh it — not updated live.
+          </p>
+        </>
+      ) : isStock && trackStock ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field
+              label="Ticker symbol"
+              name="stockTicker"
+              type="text"
+              placeholder="e.g. AAPL"
+              defaultValue={defaultValues?.stockTicker ?? ""}
+              required
+              error={state.fieldErrors?.stockTicker}
+            />
+            <Field
+              label="Number of shares"
+              name="shareCount"
+              type="number"
+              step="0.0001"
+              min="0"
+              placeholder="e.g. 12.5"
+              defaultValue={defaultValues?.shareCount ?? ""}
+              required
+              error={state.fieldErrors?.shareCount}
+            />
+          </div>
+          <p className="-mt-2 text-sm text-muted">
+            The share price is looked up and multiplied by your share count when you add or refresh
+            it — not updated live.
           </p>
         </>
       ) : (

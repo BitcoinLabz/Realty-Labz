@@ -37,6 +37,10 @@ export default async function FinancesInvestmentsPage() {
     walletAddress: a.walletAddress,
     walletBalance: a.walletBalance ? Number(a.walletBalance) : null,
     walletBalanceCheckedAt: a.walletBalanceCheckedAt ? a.walletBalanceCheckedAt.toISOString() : null,
+    stockTicker: a.stockTicker,
+    shareCount: a.shareCount ? Number(a.shareCount) : null,
+    stockPricePerShare: a.stockPricePerShare ? Number(a.stockPricePerShare) : null,
+    stockPriceCheckedAt: a.stockPriceCheckedAt ? a.stockPriceCheckedAt.toISOString() : null,
     updatedAt: a.updatedAt.toISOString(),
   }));
 
