@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { mileageLogSchema } from "@/lib/validation";
-import { getMileageRate } from "@/lib/mileage-rate";
+import { calculateMileageDeduction, getMileageRate } from "@/lib/mileage-rate";
 import type { FormState } from "@/app/actions/auth";
 
 function parseMileageForm(formData: FormData) {
@@ -35,7 +35,7 @@ export async function createMileageLogAction(
   const { date, miles, isBusiness, note } = parsed.data;
   const tripDate = new Date(date);
   const ratePerMile = await getMileageRate(tripDate);
-  const deduction = isBusiness ? miles * ratePerMile : 0;
+  const deduction = calculateMileageDeduction(miles, ratePerMile, isBusiness);
 
   await prisma.mileageLog.create({
     data: {
@@ -77,7 +77,7 @@ export async function updateMileageLogAction(
   const { date, miles, isBusiness, note } = parsed.data;
   const tripDate = new Date(date);
   const ratePerMile = await getMileageRate(tripDate);
-  const deduction = isBusiness ? miles * ratePerMile : 0;
+  const deduction = calculateMileageDeduction(miles, ratePerMile, isBusiness);
 
   const result = await prisma.mileageLog.updateMany({
     where: { id, userId: session.user.id },

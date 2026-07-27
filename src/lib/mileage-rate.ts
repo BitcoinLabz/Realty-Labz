@@ -2,6 +2,13 @@ import { prisma } from "@/lib/db";
 
 const STATE = "MI";
 
+// Pure math, deliberately separated from the DB-backed rate lookup above so
+// it's directly unit-testable: personal trips are never deductible, business
+// trips are miles x the rate that applied at the time of the trip.
+export function calculateMileageDeduction(miles: number, ratePerMile: number, isBusiness: boolean): number {
+  return isBusiness ? miles * ratePerMile : 0;
+}
+
 /**
  * Looks up the applicable mileage rate for a trip date, falling back to the
  * most recent configured rate at or before that year (rates are set annually

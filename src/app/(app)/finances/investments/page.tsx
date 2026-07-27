@@ -1,19 +1,31 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import { getNetWorthSeries } from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
+import { NetWorthChart } from "@/components/charts/net-worth-chart";
 import { AssetForm } from "./asset-form";
 import { AssetList } from "./asset-list";
+import { GoalsSection, type AssetOption, type FinancialGoalDTO } from "./goals-section";
 import type { AssetDTO } from "./types";
 
 export default async function FinancesInvestmentsPage() {
   const session = await auth();
+  const userId = session!.user.id;
 
-  const assets = await prisma.asset.findMany({
-    where: { userId: session!.user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const [assets, goals, netWorthSeries] = await Promise.all([
+    prisma.asset.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.financialGoal.findMany({
+      where: { userId },
+      include: { linkedAsset: { select: { name: true, currentValue: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    getNetWorthSeries(userId),
+  ]);
 
   const dtos: AssetDTO[] = assets.map((a) => ({
     id: a.id,
@@ -42,6 +54,21 @@ export default async function FinancesInvestmentsPage() {
     value,
   }));
 
+  const assetOptions: AssetOption[] = dtos.map((a) => ({ id: a.id, name: a.name }));
+
+  const goalDtos: FinancialGoalDTO[] = goals.map((g) => ({
+    id: g.id,
+    name: g.name,
+    targetAmount: Number(g.targetAmount),
+    // A linked asset's live currentValue always wins over the stored
+    // currentAmount -- see the goals-section.tsx comment on why this can't
+    // go stale the way a plain copied number would.
+    currentAmount: g.linkedAsset ? Number(g.linkedAsset.currentValue) : Number(g.currentAmount),
+    targetDate: g.targetDate ? g.targetDate.toISOString().slice(0, 10) : null,
+    linkedAssetId: g.linkedAssetId,
+    linkedAssetName: g.linkedAsset?.name ?? null,
+  }));
+
   return (
     <div className="flex flex-col gap-8">
       <p className="text-sm text-muted">
@@ -58,6 +85,17 @@ export default async function FinancesInvestmentsPage() {
         </section>
       ) : null}
 
+      {netWorthSeries.length > 1 ? (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-1 text-base font-semibold text-foreground">Net worth over time</h2>
+          <p className="mb-6 text-sm text-muted">
+            Assets minus loan balances. History starts accruing from your first recorded asset
+            value forward — it can&apos;t reconstruct values from before that.
+          </p>
+          <NetWorthChart data={netWorthSeries} />
+        </section>
+      ) : null}
+
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Add an asset</h2>
         <div className="max-w-md">
@@ -66,6 +104,8 @@ export default async function FinancesInvestmentsPage() {
       </section>
 
       <AssetList assets={dtos} />
+
+      <GoalsSection goals={goalDtos} assets={assetOptions} />
     </div>
   );
 }

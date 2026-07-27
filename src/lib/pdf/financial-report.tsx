@@ -149,6 +149,15 @@ export type FinancialReportMileageTrip = {
   deduction: number;
 };
 
+export type FinancialReportDeal = {
+  propertyAddress: string;
+  closingDate: string;
+  grossCommission: number;
+  netCommission: number;
+  expenses: number;
+  profit: number;
+};
+
 export type FinancialReportData = {
   userName: string;
   teamName?: string | null;
@@ -160,6 +169,7 @@ export type FinancialReportData = {
   incomeItems: FinancialReportItem[];
   expenseCategories: FinancialReportExpenseCategory[];
   mileageTrips: FinancialReportMileageTrip[];
+  closedDeals: FinancialReportDeal[];
   generatedAt: string;
 };
 
@@ -299,6 +309,38 @@ export function FinancialReport({ data }: { data: FinancialReportData }) {
                 Total — {businessMiles.toLocaleString()} business miles
               </Text>
               <Text style={styles.subtotalValue}>{formatCurrency(data.mileageDeduction)}</Text>
+            </View>
+          </>
+        )}
+
+        <Text style={styles.sectionTitle}>Commission Summary</Text>
+        {data.closedDeals.length === 0 ? (
+          <Text style={styles.emptyNote}>No deals closed in {data.year}.</Text>
+        ) : (
+          <>
+            <View style={styles.tableHeaderRow}>
+              <Text style={[styles.tableHeaderCell, styles.colDate]}>CLOSED</Text>
+              <Text style={[styles.tableHeaderCell, styles.colDescription]}>PROPERTY</Text>
+              <Text style={[styles.tableHeaderCell, styles.colAmount]}>GROSS</Text>
+              <Text style={[styles.tableHeaderCell, styles.colAmount]}>NET</Text>
+              <Text style={[styles.tableHeaderCell, styles.colAmount]}>EXPENSES</Text>
+              <Text style={[styles.tableHeaderCell, styles.colAmount]}>PROFIT</Text>
+            </View>
+            {data.closedDeals.map((deal, i) => (
+              <View key={i} style={styles.tableRow}>
+                <Text style={[styles.tableCell, styles.colDate]}>{formatDate(deal.closingDate)}</Text>
+                <Text style={[styles.tableCell, styles.colDescription]}>{deal.propertyAddress}</Text>
+                <Text style={[styles.tableCell, styles.colAmount]}>{formatCurrency(deal.grossCommission)}</Text>
+                <Text style={[styles.tableCell, styles.colAmount]}>{formatCurrency(deal.netCommission)}</Text>
+                <Text style={[styles.tableCell, styles.colAmount]}>{formatCurrency(deal.expenses)}</Text>
+                <Text style={[styles.tableCell, styles.colAmount]}>{formatCurrency(deal.profit)}</Text>
+              </View>
+            ))}
+            <View style={styles.subtotalRow}>
+              <Text style={styles.subtotalLabel}>Total deal profit</Text>
+              <Text style={styles.subtotalValue}>
+                {formatCurrency(data.closedDeals.reduce((sum, d) => sum + d.profit, 0))}
+              </Text>
             </View>
           </>
         )}

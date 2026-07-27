@@ -4,15 +4,22 @@ import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import {
   getAssetBreakdown,
+  getBudgetUsage,
   getBusinessExpenseBreakdown,
+  getDueRecurringTemplates,
   getMonthlyIncomeExpense,
   getPipelineValue,
 } from "@/lib/finance-data";
+import { estimateQuarterlyTax } from "@/lib/estimated-tax";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
 import { UnfiledDocuments } from "@/app/(app)/forms/unfiled-documents";
+import { HomeOfficeCard } from "./home-office-card";
+import { TaxEstimateCard } from "./tax-estimate-card";
+import { BudgetsSection } from "./budgets-section";
+import { RecurringReminders } from "./recurring-reminders";
 import type { ClientOption, DocumentDTO } from "@/app/(app)/forms/types";
 
 export default async function FinancesOverviewPage({
@@ -26,28 +33,54 @@ export default async function FinancesOverviewPage({
   const { year: yearParam } = await searchParams;
   const year = Number(yearParam) || currentYear;
 
-  const [businessSeries, personalSeries, expenseBreakdown, assetBreakdown, pipeline, taxDocuments, clients] =
-    await Promise.all([
-      getMonthlyIncomeExpense(userId, year, "BUSINESS"),
-      getMonthlyIncomeExpense(userId, year, "PERSONAL"),
-      getBusinessExpenseBreakdown(userId, year),
-      getAssetBreakdown(userId),
-      getPipelineValue(userId),
-      prisma.document.findMany({
-        where: { userId, clientId: null },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.client.findMany({
-        where: { userId },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-      }),
-    ]);
+  const currentMonth = new Date().getMonth();
+
+  const [
+    businessSeries,
+    personalSeries,
+    expenseBreakdown,
+    assetBreakdown,
+    pipeline,
+    taxDocuments,
+    clients,
+    user,
+    budgets,
+    dueRecurring,
+  ] = await Promise.all([
+    getMonthlyIncomeExpense(userId, year, "BUSINESS"),
+    getMonthlyIncomeExpense(userId, year, "PERSONAL"),
+    getBusinessExpenseBreakdown(userId, year),
+    getAssetBreakdown(userId),
+    getPipelineValue(userId),
+    prisma.document.findMany({
+      where: { userId, clientId: null },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.client.findMany({
+      where: { userId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { homeOfficeSqFt: true, estimatedIncomeTaxRatePercent: true },
+    }),
+    getBudgetUsage(userId, year, currentMonth),
+    getDueRecurringTemplates(userId),
+  ]);
 
   const businessNet = businessSeries.reduce((sum, m) => sum + m.income - m.expenses, 0);
   const personalNet = personalSeries.reduce((sum, m) => sum + m.income - m.expenses, 0);
   const hasPersonalData = personalSeries.some((m) => m.income > 0 || m.expenses > 0);
   const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
+
+  const homeOfficeDeduction = expenseBreakdown.find((p) => p.label === "Home office")?.value ?? 0;
+  const mileageDeduction = expenseBreakdown.find((p) => p.label === "Mileage")?.value ?? 0;
+  const netBusinessIncome = businessNet - homeOfficeDeduction - mileageDeduction;
+  const taxSummary =
+    user?.estimatedIncomeTaxRatePercent != null
+      ? estimateQuarterlyTax(netBusinessIncome, Number(user.estimatedIncomeTaxRatePercent), year)
+      : null;
 
   const taxDocumentDtos: DocumentDTO[] = taxDocuments.map((d) => ({
     id: d.id,
@@ -65,6 +98,8 @@ export default async function FinancesOverviewPage({
       <div className="flex items-center justify-end">
         <YearSelect year={year} options={yearOptions} basePath="/finances" />
       </div>
+
+      <RecurringReminders items={dueRecurring} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label={`Business net (${year})`} value={formatCurrency(businessNet)} />
@@ -96,6 +131,17 @@ export default async function FinancesOverviewPage({
           </p>
         )}
       </section>
+
+      <HomeOfficeCard homeOfficeSqFt={user?.homeOfficeSqFt ?? null} deduction={homeOfficeDeduction} />
+
+      <TaxEstimateCard
+        estimatedIncomeTaxRatePercent={
+          user?.estimatedIncomeTaxRatePercent != null ? Number(user.estimatedIncomeTaxRatePercent) : null
+        }
+        summary={taxSummary}
+      />
+
+      <BudgetsSection budgets={budgets} />
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">

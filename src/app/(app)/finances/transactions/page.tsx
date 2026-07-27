@@ -5,7 +5,8 @@ import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
 import { TransactionForm } from "./transaction-form";
 import { TransactionList } from "./transaction-list";
-import type { TransactionDTO } from "./types";
+import { RecurringTemplates, type RecurringTemplateDTO } from "./recurring-templates";
+import type { DealOption, TransactionDTO } from "./types";
 
 export default async function FinancesTransactionsPage({
   searchParams,
@@ -20,7 +21,7 @@ export default async function FinancesTransactionsPage({
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
 
-  const [transactions, mileageAgg] = await Promise.all([
+  const [transactions, mileageAgg, deals, recurringTemplates] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId: session!.user.id, date: { gte: start, lt: end } },
       orderBy: { date: "desc" },
@@ -29,7 +30,29 @@ export default async function FinancesTransactionsPage({
       _sum: { deduction: true },
       where: { userId: session!.user.id, isBusiness: true, date: { gte: start, lt: end } },
     }),
+    prisma.deal.findMany({
+      where: { userId: session!.user.id },
+      select: { id: true, propertyAddress: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.recurringTransactionTemplate.findMany({
+      where: { userId: session!.user.id },
+      orderBy: { nextDueDate: "asc" },
+    }),
   ]);
+
+  const dealOptions: DealOption[] = deals;
+
+  const recurringDtos: RecurringTemplateDTO[] = recurringTemplates.map((t) => ({
+    id: t.id,
+    description: t.description,
+    category: t.category,
+    amount: Number(t.amount),
+    scope: t.scope,
+    type: t.type,
+    frequency: t.frequency,
+    nextDueDate: t.nextDueDate.toISOString().slice(0, 10),
+  }));
 
   const dtos: TransactionDTO[] = transactions.map((t) => ({
     id: t.id,
@@ -39,6 +62,7 @@ export default async function FinancesTransactionsPage({
     amount: Number(t.amount),
     description: t.description,
     date: t.date.toISOString().slice(0, 10),
+    dealId: t.dealId,
   }));
 
   const businessIncome = dtos
@@ -88,11 +112,13 @@ export default async function FinancesTransactionsPage({
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Add a transaction</h2>
         <div className="max-w-md">
-          <TransactionForm />
+          <TransactionForm deals={dealOptions} />
         </div>
       </section>
 
-      <TransactionList transactions={dtos} />
+      <TransactionList transactions={dtos} deals={dealOptions} />
+
+      <RecurringTemplates templates={recurringDtos} />
     </div>
   );
 }

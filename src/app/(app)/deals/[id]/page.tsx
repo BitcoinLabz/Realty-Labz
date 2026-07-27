@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamOrOwnFilter } from "@/lib/authorization";
-import { formatFileSize } from "@/lib/format";
+import { formatCurrency, formatFileSize } from "@/lib/format";
+import { calculateNetCommission } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../deal-form";
 import { DeadlineList } from "./deadline-list";
 import { DeleteDealButton } from "./delete-deal-button";
@@ -24,6 +25,7 @@ export default async function DealDetailPage({
         deadlines: { orderBy: { dueDate: "asc" } },
         documents: { orderBy: { createdAt: "desc" } },
         client: { select: { id: true, name: true } },
+        expenses: { where: { type: "EXPENSE" }, orderBy: { date: "desc" } },
       },
     }),
     prisma.client.findMany({
@@ -45,10 +47,26 @@ export default async function DealDetailPage({
     salePrice: deal.salePrice ? String(deal.salePrice) : "",
     commissionRate: deal.commissionRate ? String(deal.commissionRate) : "",
     commissionAmount: deal.commissionAmount ? String(deal.commissionAmount) : "",
+    brokerageSplitPercent: deal.brokerageSplitPercent ? String(deal.brokerageSplitPercent) : "",
+    referralFeeAmount: deal.referralFeeAmount ? String(deal.referralFeeAmount) : "",
+    teamSplitAmount: deal.teamSplitAmount ? String(deal.teamSplitAmount) : "",
+    otherDeductions: deal.otherDeductions ? String(deal.otherDeductions) : "",
     closingDate: deal.closingDate ? deal.closingDate.toISOString().slice(0, 10) : "",
     notes: deal.notes ?? "",
     clientId: deal.clientId ?? "",
   };
+
+  const grossCommission = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
+  const netCommission = calculateNetCommission(grossCommission, {
+    brokerageSplitPercent: deal.brokerageSplitPercent ? Number(deal.brokerageSplitPercent) : null,
+    referralFeeAmount: deal.referralFeeAmount ? Number(deal.referralFeeAmount) : null,
+    teamSplitAmount: deal.teamSplitAmount ? Number(deal.teamSplitAmount) : null,
+    otherDeductions: deal.otherDeductions ? Number(deal.otherDeductions) : null,
+  });
+  const dealExpenseTotal = deal.expenses.reduce((sum, t) => sum + Number(t.amount), 0);
+  const dealProfit = netCommission - dealExpenseTotal;
+  const hasCommissionSplits =
+    deal.brokerageSplitPercent || deal.referralFeeAmount || deal.teamSplitAmount || deal.otherDeductions;
 
   const deadlineDtos: DealDeadlineDTO[] = deal.deadlines.map((d) => ({
     id: d.id,
@@ -82,6 +100,57 @@ export default async function DealDetailPage({
           />
         </div>
       </section>
+
+      {grossCommission > 0 ? (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-6 text-base font-semibold text-foreground">Deal financials</h2>
+          <div className="flex flex-col gap-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted">Gross commission</span>
+              <span className="font-medium text-foreground">{formatCurrency(grossCommission)}</span>
+            </div>
+            {hasCommissionSplits ? (
+              <div className="flex items-center justify-between border-t border-border pt-2">
+                <span className="text-muted">Net commission (after splits)</span>
+                <span className="font-medium text-foreground">{formatCurrency(netCommission)}</span>
+              </div>
+            ) : null}
+            <div className="flex items-center justify-between">
+              <span className="text-muted">
+                Deal expenses{deal.expenses.length > 0 ? ` (${deal.expenses.length})` : ""}
+              </span>
+              <span className="font-medium text-foreground">
+                {dealExpenseTotal > 0 ? `-${formatCurrency(dealExpenseTotal)}` : formatCurrency(0)}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-t border-border pt-2">
+              <span className="font-semibold text-foreground">Deal profit</span>
+              <span className={`font-semibold ${dealProfit >= 0 ? "text-accent" : "text-danger"}`}>
+                {formatCurrency(dealProfit)}
+              </span>
+            </div>
+          </div>
+
+          {deal.expenses.length > 0 ? (
+            <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6">
+              {deal.expenses.map((t) => (
+                <div key={t.id} className="flex items-center justify-between text-sm">
+                  <span className="text-foreground">{t.description || "Expense"}</span>
+                  <span className="text-muted">{formatCurrency(Number(t.amount))}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-6 text-sm text-muted">
+              No expenses linked to this deal yet — link one from{" "}
+              <a href="/finances/transactions" className="font-medium text-accent hover:opacity-80">
+                Transactions
+              </a>
+              .
+            </p>
+          )}
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">

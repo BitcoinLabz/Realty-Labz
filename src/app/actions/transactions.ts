@@ -17,7 +17,25 @@ function parseTransactionForm(formData: FormData) {
     amount: formData.get("amount"),
     description: formData.get("description") || undefined,
     date: formData.get("date"),
+    dealId: scope === "BUSINESS" && type === "EXPENSE" ? formData.get("dealId") || undefined : undefined,
   });
+}
+
+// Unlike Document.dealId (which uses teamOrOwnFilter, since a manager
+// organizes team paperwork), a Transaction is a strictly personal ledger
+// entry (see the "never team-shared" comment atop finance-data.ts) -- you
+// only ever link YOUR OWN expense to YOUR OWN deal, so this checks plain
+// ownership, not team-wide visibility.
+async function resolveDealId(
+  dealId: string | undefined,
+  userId: string,
+): Promise<{ ok: true; dealId: string | null } | { ok: false; error: string }> {
+  if (!dealId) return { ok: true, dealId: null };
+
+  const deal = await prisma.deal.findFirst({ where: { id: dealId, userId } });
+  if (!deal) return { ok: false, error: "Deal not found" };
+
+  return { ok: true, dealId };
 }
 
 export async function createTransactionAction(
@@ -36,7 +54,10 @@ export async function createTransactionAction(
     return { fieldErrors };
   }
 
-  const { type, scope, category, amount, description, date } = parsed.data;
+  const { type, scope, category, amount, description, date, dealId } = parsed.data;
+
+  const resolvedDeal = await resolveDealId(dealId, session.user.id);
+  if (!resolvedDeal.ok) return { error: resolvedDeal.error };
 
   await prisma.transaction.create({
     data: {
@@ -47,11 +68,13 @@ export async function createTransactionAction(
       amount,
       description,
       date: new Date(date),
+      dealId: resolvedDeal.dealId,
     },
   });
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");
+  if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
   return {};
 }
 
@@ -74,7 +97,12 @@ export async function updateTransactionAction(
     return { fieldErrors };
   }
 
-  const { type, scope, category, amount, description, date } = parsed.data;
+  const { type, scope, category, amount, description, date, dealId } = parsed.data;
+
+  const resolvedDeal = await resolveDealId(dealId, session.user.id);
+  if (!resolvedDeal.ok) return { error: resolvedDeal.error };
+
+  const existing = await prisma.transaction.findFirst({ where: { id, userId: session.user.id } });
 
   const result = await prisma.transaction.updateMany({
     where: { id, userId: session.user.id },
@@ -85,6 +113,7 @@ export async function updateTransactionAction(
       amount,
       description,
       date: new Date(date),
+      dealId: resolvedDeal.dealId,
     },
   });
 
@@ -92,6 +121,10 @@ export async function updateTransactionAction(
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");
+  if (existing?.dealId) revalidatePath(`/deals/${existing.dealId}`);
+  if (resolvedDeal.dealId && resolvedDeal.dealId !== existing?.dealId) {
+    revalidatePath(`/deals/${resolvedDeal.dealId}`);
+  }
   return {};
 }
 
@@ -102,8 +135,11 @@ export async function deleteTransactionAction(formData: FormData) {
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return;
 
+  const existing = await prisma.transaction.findFirst({ where: { id, userId: session.user.id } });
+
   await prisma.transaction.deleteMany({ where: { id, userId: session.user.id } });
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");
+  if (existing?.dealId) revalidatePath(`/deals/${existing.dealId}`);
 }

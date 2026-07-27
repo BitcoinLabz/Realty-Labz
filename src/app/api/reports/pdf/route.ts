@@ -3,15 +3,32 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { calculateNetCommission, getHomeOfficeDeduction } from "@/lib/finance-data";
 import {
   FinancialReport,
   type FinancialReportData,
+  type FinancialReportDeal,
   type FinancialReportExpenseCategory,
 } from "@/lib/pdf/financial-report";
 
+// HOME_OFFICE is kept here (unlike transaction-form.tsx, where it's no
+// longer offered) purely so any pre-2026-07-24 manually-entered rows still
+// appear in the export instead of silently vanishing from the expense
+// total — the new computed deduction is added separately below as its own
+// distinctly-labeled line, not merged with old manual entries.
 const CATEGORY_LABELS: Record<string, string> = {
-  HOME_OFFICE: "Home Office",
+  HOME_OFFICE: "Home Office (manual entries)",
   PHONE: "Phone",
+  MARKETING_ADVERTISING: "Marketing & Advertising",
+  MLS_DUES: "MLS / Association Dues",
+  CONTINUING_EDUCATION: "Continuing Education",
+  CLIENT_GIFTS: "Client Gifts",
+  OFFICE_SUPPLIES: "Office Supplies",
+  SOFTWARE_SUBSCRIPTIONS: "Software & Subscriptions",
+  INSURANCE: "Insurance",
+  LICENSING_FEES: "Licensing Fees",
+  MEALS_ENTERTAINMENT: "Meals & Entertainment",
+  PROFESSIONAL_SERVICES: "Professional Services",
   OTHER: "Other Business Expense",
 };
 
@@ -27,7 +44,7 @@ export async function GET(request: NextRequest) {
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
 
-  const [user, transactions, mileageLogs] = await Promise.all([
+  const [user, transactions, mileageLogs, closedDealRows] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       include: { team: true },
@@ -46,6 +63,11 @@ export async function GET(request: NextRequest) {
         date: { gte: start, lt: end },
       },
       orderBy: { date: "asc" },
+    }),
+    prisma.deal.findMany({
+      where: { userId: session.user.id, status: "CLOSED", closingDate: { gte: start, lt: end } },
+      include: { expenses: { where: { type: "EXPENSE" } } },
+      orderBy: { closingDate: "asc" },
     }),
   ]);
 
@@ -72,6 +94,25 @@ export async function GET(request: NextRequest) {
     })
     .filter((cat) => cat.items.length > 0);
 
+  // The computed Simplified-method deduction (see getHomeOfficeDeduction) is
+  // a single number, not individual transactions — added as its own
+  // one-line synthetic category, distinct from any real HOME_OFFICE-tagged
+  // rows above, so nothing gets double-counted or merged incorrectly.
+  const homeOfficeDeduction = getHomeOfficeDeduction(user?.homeOfficeSqFt);
+  if (homeOfficeDeduction > 0) {
+    expenseCategories.push({
+      label: "Home Office (Simplified method)",
+      total: homeOfficeDeduction,
+      items: [
+        {
+          date: `${year}-12-31`,
+          description: `${Math.min(user?.homeOfficeSqFt ?? 0, 300)} sq ft × $5/sq ft`,
+          amount: homeOfficeDeduction,
+        },
+      ],
+    });
+  }
+
   const income = incomeItems.reduce((sum, i) => sum + i.amount, 0);
   const expenses = expenseCategories.reduce((sum, c) => sum + c.total, 0);
 
@@ -86,6 +127,25 @@ export async function GET(request: NextRequest) {
 
   const netIncome = income - expenses - mileageDeduction;
 
+  const closedDeals: FinancialReportDeal[] = closedDealRows.map((deal) => {
+    const grossCommission = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
+    const netCommission = calculateNetCommission(grossCommission, {
+      brokerageSplitPercent: deal.brokerageSplitPercent ? Number(deal.brokerageSplitPercent) : null,
+      referralFeeAmount: deal.referralFeeAmount ? Number(deal.referralFeeAmount) : null,
+      teamSplitAmount: deal.teamSplitAmount ? Number(deal.teamSplitAmount) : null,
+      otherDeductions: deal.otherDeductions ? Number(deal.otherDeductions) : null,
+    });
+    const dealExpenses = deal.expenses.reduce((sum, t) => sum + Number(t.amount), 0);
+    return {
+      propertyAddress: deal.propertyAddress,
+      closingDate: deal.closingDate ? deal.closingDate.toISOString().slice(0, 10) : `${year}-01-01`,
+      grossCommission,
+      netCommission,
+      expenses: dealExpenses,
+      profit: netCommission - dealExpenses,
+    };
+  });
+
   const reportData: FinancialReportData = {
     userName: user?.name ?? "Realty Labz Agent",
     teamName: user?.team?.name ?? null,
@@ -97,6 +157,7 @@ export async function GET(request: NextRequest) {
     incomeItems,
     expenseCategories,
     mileageTrips,
+    closedDeals,
     generatedAt: new Date().toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",

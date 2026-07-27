@@ -4,16 +4,32 @@ import { useState } from "react";
 import { deleteTransactionAction } from "@/app/actions/transactions";
 import { formatCurrency } from "@/lib/format";
 import { TransactionForm } from "./transaction-form";
-import type { TransactionDTO } from "./types";
+import type { DealOption, TransactionDTO } from "./types";
 
 const categoryLabels: Record<string, string> = {
   MILEAGE: "Mileage",
   HOME_OFFICE: "Home office",
   PHONE: "Phone",
+  MARKETING_ADVERTISING: "Marketing & advertising",
+  MLS_DUES: "MLS / association dues",
+  CONTINUING_EDUCATION: "Continuing education",
+  CLIENT_GIFTS: "Client gifts",
+  OFFICE_SUPPLIES: "Office supplies",
+  SOFTWARE_SUBSCRIPTIONS: "Software & subscriptions",
+  INSURANCE: "Insurance",
+  LICENSING_FEES: "Licensing fees",
+  MEALS_ENTERTAINMENT: "Meals & entertainment",
+  PROFESSIONAL_SERVICES: "Professional services",
   OTHER: "Other",
 };
 
-export function TransactionList({ transactions }: { transactions: TransactionDTO[] }) {
+export function TransactionList({
+  transactions,
+  deals = [],
+}: {
+  transactions: TransactionDTO[];
+  deals?: DealOption[];
+}) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   if (transactions.length === 0) {
@@ -38,7 +54,9 @@ export function TransactionList({ transactions }: { transactions: TransactionDTO
                 amount: String(t.amount),
                 description: t.description ?? "",
                 date: t.date,
+                dealId: t.dealId ?? "",
               }}
+              deals={deals}
               onDone={() => setEditingId(null)}
             />
           </div>

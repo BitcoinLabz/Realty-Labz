@@ -36,10 +36,11 @@ export async function createAssetAction(
 
   const { walletNetwork, walletAddress, currentValue, ...rest } = parsed.data;
 
+  let created;
   if (walletNetwork && walletAddress) {
     try {
       const { balance, usdValue } = await fetchWalletBalanceUsd(walletNetwork, walletAddress);
-      await prisma.asset.create({
+      created = await prisma.asset.create({
         data: {
           userId: session.user.id,
           ...rest,
@@ -55,10 +56,17 @@ export async function createAssetAction(
       return { fieldErrors: { walletAddress: message } };
     }
   } else {
-    await prisma.asset.create({
+    created = await prisma.asset.create({
       data: { userId: session.user.id, ...rest, currentValue: currentValue! },
     });
   }
+
+  // Every value-setting write gets a timestamped snapshot -- this is what
+  // powers the net worth trend chart (src/lib/finance-data.ts's
+  // getNetWorthSeries) with zero extra "log a value" UI.
+  await prisma.assetValueSnapshot.create({
+    data: { assetId: created.id, value: created.currentValue },
+  });
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");
@@ -87,6 +95,7 @@ export async function updateAssetAction(
   const { walletNetwork, walletAddress, currentValue, ...rest } = parsed.data;
 
   let data: Record<string, unknown> = { ...rest };
+  let newValue: number;
 
   if (walletNetwork && walletAddress) {
     try {
@@ -99,6 +108,7 @@ export async function updateAssetAction(
         walletBalance: balance,
         walletBalanceCheckedAt: new Date(),
       };
+      newValue = usdValue;
     } catch (err) {
       const message = err instanceof WalletBalanceError ? err.message : "Couldn't fetch wallet balance";
       return { fieldErrors: { walletAddress: message } };
@@ -112,6 +122,7 @@ export async function updateAssetAction(
       walletBalance: null,
       walletBalanceCheckedAt: null,
     };
+    newValue = currentValue!;
   }
 
   const result = await prisma.asset.updateMany({
@@ -120,6 +131,9 @@ export async function updateAssetAction(
   });
 
   if (result.count === 0) return { error: "Asset not found" };
+
+  // Same snapshot-on-write as create -- see the comment there.
+  await prisma.assetValueSnapshot.create({ data: { assetId: id, value: newValue } });
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");
@@ -155,6 +169,7 @@ export async function refreshWalletBalanceAction(formData: FormData) {
       where: { id: asset.id },
       data: { currentValue: usdValue, walletBalance: balance, walletBalanceCheckedAt: new Date() },
     });
+    await prisma.assetValueSnapshot.create({ data: { assetId: asset.id, value: usdValue } });
   } catch {
     // Silently ignore -- the asset keeps its last known balance/value, and
     // this is a background-ish "refresh" action with no form state to show

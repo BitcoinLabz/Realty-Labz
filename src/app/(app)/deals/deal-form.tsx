@@ -22,6 +22,10 @@ export type DealFormValues = {
   salePrice: string;
   commissionRate: string;
   commissionAmount: string;
+  brokerageSplitPercent: string;
+  referralFeeAmount: string;
+  teamSplitAmount: string;
+  otherDeductions: string;
   closingDate: string;
   notes: string;
   clientId: string;
@@ -157,6 +161,56 @@ export function DealForm({
           defaultValue={defaultValues?.commissionAmount}
           error={state.fieldErrors?.commissionAmount}
         />
+      </div>
+
+      <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
+        <p className="text-sm font-medium text-foreground">Commission split (optional)</p>
+        <p className="-mt-2 text-sm text-muted">
+          Net commission = commission amount, minus the brokerage&apos;s cut, minus any referral fee,
+          team split, or other deduction.
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="Brokerage split % (optional)"
+            name="brokerageSplitPercent"
+            type="number"
+            step="0.01"
+            min="0"
+            max="100"
+            placeholder="e.g. 30"
+            defaultValue={defaultValues?.brokerageSplitPercent}
+            error={state.fieldErrors?.brokerageSplitPercent}
+          />
+          <Field
+            label="Referral fee (optional)"
+            name="referralFeeAmount"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={defaultValues?.referralFeeAmount}
+            error={state.fieldErrors?.referralFeeAmount}
+          />
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="Team split (optional)"
+            name="teamSplitAmount"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={defaultValues?.teamSplitAmount}
+            error={state.fieldErrors?.teamSplitAmount}
+          />
+          <Field
+            label="Other deductions (optional)"
+            name="otherDeductions"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={defaultValues?.otherDeductions}
+            error={state.fieldErrors?.otherDeductions}
+          />
+        </div>
       </div>
 
       <Field

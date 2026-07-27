@@ -33,14 +33,34 @@ export const passwordChangeSchema = z
     path: ["confirmPassword"],
   });
 
+// HOME_OFFICE is deliberately excluded here — like MILEAGE, it's no longer
+// manually selectable since it became a computed deduction (2026-07-24, see
+// getHomeOfficeDeduction in src/lib/finance-data.ts). Historical rows that
+// already used HOME_OFFICE keep the Prisma enum value; nothing is migrated.
+export const SELECTABLE_TRANSACTION_CATEGORIES = [
+  "PHONE",
+  "MARKETING_ADVERTISING",
+  "MLS_DUES",
+  "CONTINUING_EDUCATION",
+  "CLIENT_GIFTS",
+  "OFFICE_SUPPLIES",
+  "SOFTWARE_SUBSCRIPTIONS",
+  "INSURANCE",
+  "LICENSING_FEES",
+  "MEALS_ENTERTAINMENT",
+  "PROFESSIONAL_SERVICES",
+  "OTHER",
+] as const;
+
 export const transactionSchema = z
   .object({
     type: z.enum(["INCOME", "EXPENSE"]),
     scope: z.enum(["BUSINESS", "PERSONAL"]).default("BUSINESS"),
-    category: z.enum(["HOME_OFFICE", "PHONE", "OTHER"]).optional(),
+    category: z.enum(SELECTABLE_TRANSACTION_CATEGORIES).optional(),
     amount: z.coerce.number().positive("Amount must be greater than 0"),
     description: z.string().trim().max(200).optional(),
     date: z.string().min(1, "Date is required"),
+    dealId: z.string().optional(),
   })
   .refine((data) => data.scope !== "BUSINESS" || data.type !== "EXPENSE" || !!data.category, {
     message: "Category is required for business expenses",
@@ -81,6 +101,10 @@ export const dealSchema = z.object({
   salePrice: z.coerce.number().nonnegative("Must be 0 or more").optional(),
   commissionRate: z.coerce.number().min(0).max(100, "Enter a percent, e.g. 3").optional(),
   commissionAmount: z.coerce.number().nonnegative("Must be 0 or more").optional(),
+  brokerageSplitPercent: z.coerce.number().min(0).max(100, "Enter a percent, e.g. 30").optional(),
+  referralFeeAmount: z.coerce.number().nonnegative("Must be 0 or more").optional(),
+  teamSplitAmount: z.coerce.number().nonnegative("Must be 0 or more").optional(),
+  otherDeductions: z.coerce.number().nonnegative("Must be 0 or more").optional(),
   closingDate: z.string().optional(),
   notes: z.string().trim().max(2000).optional(),
   clientId: z.string().optional(),
@@ -132,3 +156,49 @@ export const assetSchema = z
     message: "Wallet address is required",
     path: ["walletAddress"],
   });
+
+export const budgetSchema = z.object({
+  scope: z.enum(["BUSINESS", "PERSONAL"]),
+  // Empty string means "overall" for that scope -- no single category.
+  category: z.enum(SELECTABLE_TRANSACTION_CATEGORIES).optional(),
+  monthlyLimit: z.coerce.number().positive("Must be greater than 0"),
+});
+
+export const financialGoalSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100),
+  targetAmount: z.coerce.number().positive("Must be greater than 0"),
+  currentAmount: z.coerce.number().nonnegative("Must be 0 or more").optional().default(0),
+  targetDate: z.string().optional(),
+  linkedAssetId: z.string().optional(),
+});
+
+export const recurringTransactionSchema = z.object({
+  scope: z.enum(["BUSINESS", "PERSONAL"]),
+  type: z.enum(["INCOME", "EXPENSE"]),
+  category: z.enum(SELECTABLE_TRANSACTION_CATEGORIES).optional(),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  description: z.string().trim().max(200).optional(),
+  frequency: z.enum(["MONTHLY", "QUARTERLY", "ANNUAL"]),
+  nextDueDate: z.string().min(1, "Next due date is required"),
+});
+
+export const homeOfficeSettingsSchema = z.object({
+  homeOfficeSqFt: z.coerce.number().int().nonnegative("Must be 0 or more").max(10000).optional(),
+});
+
+export const taxSettingsSchema = z.object({
+  estimatedIncomeTaxRatePercent: z.coerce
+    .number()
+    .min(0)
+    .max(100, "Enter a percent, e.g. 15")
+    .optional(),
+});
+
+export const csvImportRowSchema = z.object({
+  date: z.string().min(1),
+  description: z.string().optional(),
+  amount: z.coerce.number().positive(),
+  type: z.enum(["INCOME", "EXPENSE"]),
+  scope: z.enum(["BUSINESS", "PERSONAL"]),
+  category: z.enum(SELECTABLE_TRANSACTION_CATEGORIES).optional(),
+});

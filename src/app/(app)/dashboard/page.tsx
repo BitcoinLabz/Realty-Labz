@@ -2,9 +2,16 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
-import { getAssetBreakdown, getPipelineValue } from "@/lib/finance-data";
+import {
+  getAssetBreakdown,
+  getClosedDealsSummary,
+  getDueRecurringTemplates,
+  getNetWorthSeries,
+  getPipelineValue,
+} from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
+import { RecurringReminders } from "@/app/(app)/finances/recurring-reminders";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -27,6 +34,9 @@ export default async function DashboardPage() {
     upcomingDeadlines,
     assetBreakdown,
     pipeline,
+    closedDeals,
+    netWorthSeries,
+    dueRecurring,
   ] = await Promise.all([
     prisma.transaction.aggregate({
       _sum: { amount: true },
@@ -57,12 +67,16 @@ export default async function DashboardPage() {
     }),
     getAssetBreakdown(session!.user.id),
     getPipelineValue(session!.user.id),
+    getClosedDealsSummary(session!.user.id, currentYear),
+    getNetWorthSeries(session!.user.id),
+    getDueRecurringTemplates(session!.user.id),
   ]);
 
   const income = Number(incomeAgg._sum.amount ?? 0);
   const expenses = Number(expenseAgg._sum.amount ?? 0);
   const mileageSaved = Number(mileageAgg._sum.deduction ?? 0);
   const netIncome = income - expenses - mileageSaved;
+  const currentNetWorth = netWorthSeries.length > 0 ? netWorthSeries[netWorthSeries.length - 1].netWorth : null;
 
   const financialPicture = [
     { label: "Personal investments", value: assetBreakdown.total },
@@ -94,6 +108,20 @@ export default async function DashboardPage() {
           <SummaryCard label="Documents" value={documentCount.toString()} />
         </Link>
       </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Link href="/deals" className="block transition-transform hover:-translate-y-0.5">
+          <SummaryCard label={`Deals closed (${currentYear})`} value={closedDeals.count.toString()} />
+        </Link>
+        <Link href="/deals" className="block transition-transform hover:-translate-y-0.5">
+          <SummaryCard
+            label={`Net commission (${currentYear})`}
+            value={formatCurrency(closedDeals.netCommission)}
+          />
+        </Link>
+      </div>
+
+      <RecurringReminders items={dueRecurring} />
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">
@@ -130,10 +158,18 @@ export default async function DashboardPage() {
       <section className="rounded-2xl border border-border bg-background p-8">
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-base font-semibold text-foreground">Your financial picture</h2>
-          <Link href="/finances" className="text-sm font-medium text-accent hover:opacity-80">
+          <Link href="/finances/investments" className="text-sm font-medium text-accent hover:opacity-80">
             View Finances
           </Link>
         </div>
+        {currentNetWorth !== null ? (
+          <div className="mb-6">
+            <p className="text-sm text-muted">Net worth</p>
+            <p className="text-2xl font-semibold tracking-tight text-foreground">
+              {formatCurrency(currentNetWorth)}
+            </p>
+          </div>
+        ) : null}
         {financialPicture.length > 0 ? (
           <BreakdownDonutChart data={financialPicture} />
         ) : (

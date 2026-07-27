@@ -50,17 +50,32 @@ model User {
   team   Team?   @relation(fields: [teamId], references: [id])
   teamId String?
 
-  clients           Client[]
-  transactions      Transaction[]
-  mileageLogs       MileageLog[]
-  documents         Document[]
-  sentInvites       TeamInvite[]
-  deals             Deal[]
-  documentTemplates DocumentTemplate[]
-  assets            Asset[]
-  loans             Loan[]
-  formTemplates     FormTemplate[]
-  formSubmissions   FormSubmission[]
+  // IRS Simplified home-office-deduction input (2026-07-24) -- annual
+  // deduction = min(homeOfficeSqFt, 300) * $5, computed in
+  // src/lib/finance-data.ts, not stored. Null means no deduction shown.
+  homeOfficeSqFt Int?
+
+  // The user's own single "federal + state combined" income tax rate guess
+  // (2026-07-24) -- persisted so the estimated-quarterly-tax card
+  // (src/lib/estimated-tax.ts) doesn't need it retyped on every visit. Not a
+  // real bracket calculation; see the "estimate, not tax advice" disclaimer
+  // in the UI.
+  estimatedIncomeTaxRatePercent Decimal? @db.Decimal(5, 2)
+
+  clients            Client[]
+  transactions       Transaction[]
+  mileageLogs        MileageLog[]
+  documents          Document[]
+  sentInvites        TeamInvite[]
+  deals              Deal[]
+  documentTemplates  DocumentTemplate[]
+  assets             Asset[]
+  loans              Loan[]
+  formTemplates      FormTemplate[]
+  formSubmissions    FormSubmission[]
+  budgets            Budget[]
+  financialGoals     FinancialGoal[]
+  recurringTemplates RecurringTransactionTemplate[]
 
   @@map("users")
 }
@@ -93,6 +108,16 @@ enum TransactionCategory {
   MILEAGE
   HOME_OFFICE
   PHONE
+  MARKETING_ADVERTISING
+  MLS_DUES
+  CONTINUING_EDUCATION
+  CLIENT_GIFTS
+  OFFICE_SUPPLIES
+  SOFTWARE_SUBSCRIPTIONS
+  INSURANCE
+  LICENSING_FEES
+  MEALS_ENTERTAINMENT
+  PROFESSIONAL_SERVICES
   OTHER
 }
 
@@ -119,6 +144,12 @@ model Transaction {
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
+
+  // Optional link to the deal this expense belongs to (staging, photography,
+  // a closing gift) -- same nullable/SetNull pattern as Document.dealId,
+  // enabling real per-deal profit/loss (see Deal's commission-split fields).
+  deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  dealId String?
 
   @@map("transactions")
 }
@@ -206,19 +237,29 @@ enum DealStatus {
 // separate teamId — team-wide visibility for managers is a query-time join
 // through user.teamId (see src/lib/authorization.ts).
 model Deal {
-  id               String     @id @default(cuid())
-  side             DealSide
-  status           DealStatus @default(ACTIVE)
-  propertyAddress  String
-  mlsNumber        String?
-  listPrice        Decimal?   @db.Decimal(12, 2)
-  salePrice        Decimal?   @db.Decimal(12, 2)
-  commissionRate   Decimal?   @db.Decimal(5, 2)
-  commissionAmount Decimal?   @db.Decimal(12, 2)
-  closingDate      DateTime?
-  notes            String?
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  id                    String     @id @default(cuid())
+  side                  DealSide
+  status                DealStatus @default(ACTIVE)
+  propertyAddress       String
+  mlsNumber             String?
+  listPrice             Decimal?   @db.Decimal(12, 2)
+  salePrice             Decimal?   @db.Decimal(12, 2)
+  commissionRate        Decimal?   @db.Decimal(5, 2)
+  commissionAmount      Decimal?   @db.Decimal(12, 2)
+  // Commission-split breakdown (2026-07-24) -- net commission = commissionAmount
+  // minus the brokerage's cut, minus any referral fee/team split/other
+  // deduction, all flat dollar amounts except brokerageSplitPercent (a %,
+  // since brokerage splits are conventionally quoted that way while referral
+  // fees/team splits are more often a flat negotiated dollar figure). See
+  // src/lib/finance-data.ts's getDealFinancials for the actual computation.
+  brokerageSplitPercent Decimal?   @db.Decimal(5, 2)
+  referralFeeAmount     Decimal?   @db.Decimal(12, 2)
+  teamSplitAmount       Decimal?   @db.Decimal(12, 2)
+  otherDeductions       Decimal?   @db.Decimal(12, 2)
+  closingDate           DateTime?
+  notes                 String?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -229,6 +270,7 @@ model Deal {
   deadlines       DealDeadline[]
   documents       Document[]
   formSubmissions FormSubmission[]
+  expenses        Transaction[]
 
   @@map("deals")
 }
@@ -523,7 +565,26 @@ model Asset {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
+  valueSnapshots AssetValueSnapshot[]
+  financialGoals FinancialGoal[]
+
   @@map("assets")
+}
+
+// A timestamped value log entry, written automatically whenever an Asset's
+// currentValue is set (create or update) -- 2026-07-24, enables a real net
+// worth trend line (src/lib/finance-data.ts's getNetWorthSeries) without any
+// extra "log a snapshot" UI. Existing assets got one backfilled at migration
+// time so the chart isn't empty on day one.
+model AssetValueSnapshot {
+  id         String   @id @default(cuid())
+  value      Decimal  @db.Decimal(12, 2)
+  recordedAt DateTime @default(now())
+
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  assetId String
+
+  @@map("asset_value_snapshots")
 }
 
 enum LoanType {
@@ -593,6 +654,77 @@ model LoanExtraPayment {
   loanId String
 
   @@map("loan_extra_payments")
+}
+
+// A monthly spending limit for one category (or an overall scope-wide limit
+// when category is null) -- 2026-07-24. Actual spend for the current month
+// is computed on read from Transaction, never stored, same "derive don't
+// persist" philosophy as the loan amortization schedule.
+model Budget {
+  id           String               @id @default(cuid())
+  scope        TransactionScope
+  category     TransactionCategory?
+  monthlyLimit Decimal              @db.Decimal(12, 2)
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@unique([userId, scope, category])
+  @@map("budgets")
+}
+
+// A savings/debt-payoff goal (2026-07-24) -- currentAmount is either updated
+// by hand, or (when linkedAsset is set) tracks that Asset's live currentValue
+// instead, e.g. "House down payment fund" pointed at a Savings-type asset.
+model FinancialGoal {
+  id            String    @id @default(cuid())
+  name          String
+  targetAmount  Decimal   @db.Decimal(12, 2)
+  currentAmount Decimal   @default(0) @db.Decimal(12, 2)
+  targetDate    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  linkedAsset   Asset?  @relation(fields: [linkedAssetId], references: [id], onDelete: SetNull)
+  linkedAssetId String?
+
+  @@map("financial_goals")
+}
+
+enum RecurringFrequency {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
+// A recurring cost template (MLS dues, E&O insurance, a software
+// subscription) -- 2026-07-24, deliberately reminder-only, not silent
+// auto-creation (no cron infra, and no surprise numbers): nextDueDate is
+// checked on page load in src/lib/finance-data.ts, surfaced as a "due now"
+// card, and only becomes a real Transaction when the user clicks "Log it"
+// (src/app/actions/recurring-transactions.ts), which also advances
+// nextDueDate by one frequency interval.
+model RecurringTransactionTemplate {
+  id           String               @id @default(cuid())
+  scope        TransactionScope
+  type         TransactionType
+  category     TransactionCategory?
+  amount       Decimal              @db.Decimal(10, 2)
+  description  String?
+  frequency    RecurringFrequency
+  nextDueDate  DateTime
+  lastLoggedAt DateTime?
+  createdAt    DateTime             @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@map("recurring_transaction_templates")
 }
 
 // Config table for state-specific mileage deduction rates, kept easy to
