@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { recurringTransactionSchema } from "@/lib/validation";
-import { advanceDueDate } from "@/lib/recurring";
+import { computeCatchUp, parseDateOnlyLocal } from "@/lib/recurring";
 import type { FormState } from "@/app/actions/auth";
 
 function parseRecurringForm(formData: FormData) {
@@ -20,6 +20,44 @@ function parseRecurringForm(formData: FormData) {
     frequency: formData.get("frequency"),
     nextDueDate: formData.get("nextDueDate"),
   });
+}
+
+// Runs on every authenticated page load (see src/app/(app)/layout.tsx) --
+// auto-logs any recurring cost whose due date has arrived, with no manual
+// "Log it" click (2026-07-27 direct founder request, reversing the earlier
+// reminder-only design). Each logged Transaction is dated the ACTUAL due
+// date it was for (not "today"), and a template that's several periods
+// behind -- e.g. just created with a start date months in the past --
+// catches up on every missed period in one pass. See computeCatchUp in
+// src/lib/recurring.ts for the (separately unit-tested) date math this
+// builds on.
+export async function autoLogDueRecurringTransactions(userId: string): Promise<void> {
+  const templates = await prisma.recurringTransactionTemplate.findMany({
+    where: { userId, nextDueDate: { lte: new Date() } },
+  });
+
+  for (const template of templates) {
+    const { datesToLog, newNextDueDate } = computeCatchUp(template.nextDueDate, template.frequency);
+    if (datesToLog.length === 0) continue;
+
+    await prisma.$transaction([
+      prisma.transaction.createMany({
+        data: datesToLog.map((date) => ({
+          userId,
+          type: template.type,
+          scope: template.scope,
+          category: template.category,
+          amount: template.amount,
+          description: template.description,
+          date,
+        })),
+      }),
+      prisma.recurringTransactionTemplate.update({
+        where: { id: template.id },
+        data: { nextDueDate: newNextDueDate, lastLoggedAt: new Date() },
+      }),
+    ]);
+  }
 }
 
 export async function createRecurringTransactionAction(
@@ -49,9 +87,61 @@ export async function createRecurringTransactionAction(
       amount,
       description,
       frequency,
-      nextDueDate: new Date(nextDueDate),
+      nextDueDate: parseDateOnlyLocal(nextDueDate),
     },
   });
+
+  // A backdated start date (e.g. "this phone bill started 6 months ago")
+  // catches up immediately, not on the next unrelated page visit.
+  await autoLogDueRecurringTransactions(session.user.id);
+
+  revalidatePath("/finances");
+  revalidatePath("/dashboard");
+  return {};
+}
+
+export async function updateRecurringTransactionAction(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You must be signed in" };
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return { error: "Missing recurring cost id" };
+
+  const parsed = parseRecurringForm(formData);
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      fieldErrors[String(issue.path[0])] = issue.message;
+    }
+    return { fieldErrors };
+  }
+
+  const { scope, type, category, amount, description, frequency, nextDueDate } = parsed.data;
+
+  // Only affects future auto-logged Transactions from this point forward --
+  // every Transaction already logged is its own independent row (see
+  // autoLogDueRecurringTransactions above) and is never retroactively
+  // changed by editing the template, e.g. a monthly amount going up $5
+  // doesn't rewrite any of the prior months already in the ledger.
+  const result = await prisma.recurringTransactionTemplate.updateMany({
+    where: { id, userId: session.user.id },
+    data: {
+      scope,
+      type,
+      category: scope === "BUSINESS" && type === "EXPENSE" ? (category ?? null) : null,
+      amount,
+      description,
+      frequency,
+      nextDueDate: parseDateOnlyLocal(nextDueDate),
+    },
+  });
+
+  if (result.count === 0) return { error: "Recurring cost not found" };
+
+  await autoLogDueRecurringTransactions(session.user.id);
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");
@@ -66,48 +156,6 @@ export async function deleteRecurringTransactionAction(formData: FormData) {
   if (typeof id !== "string" || !id) return;
 
   await prisma.recurringTransactionTemplate.deleteMany({ where: { id, userId: session.user.id } });
-
-  revalidatePath("/finances");
-  revalidatePath("/dashboard");
-}
-
-// The "Log it" button on a due-now reminder card -- creates a real
-// Transaction from the template and advances nextDueDate by one frequency
-// interval (see src/lib/recurring.ts's advanceDueDate). Deliberately not
-// automatic/silent: this is the one moment a recurring template actually
-// becomes a real ledger entry, and it only happens on an explicit click.
-export async function logRecurringTransactionAction(formData: FormData) {
-  const session = await auth();
-  if (!session?.user) return;
-
-  const id = formData.get("id");
-  if (typeof id !== "string" || !id) return;
-
-  const template = await prisma.recurringTransactionTemplate.findFirst({
-    where: { id, userId: session.user.id },
-  });
-  if (!template) return;
-
-  await prisma.$transaction([
-    prisma.transaction.create({
-      data: {
-        userId: session.user.id,
-        type: template.type,
-        scope: template.scope,
-        category: template.category,
-        amount: template.amount,
-        description: template.description,
-        date: new Date(),
-      },
-    }),
-    prisma.recurringTransactionTemplate.update({
-      where: { id: template.id },
-      data: {
-        nextDueDate: advanceDueDate(template.nextDueDate, template.frequency),
-        lastLoggedAt: new Date(),
-      },
-    }),
-  ]);
 
   revalidatePath("/finances");
   revalidatePath("/dashboard");

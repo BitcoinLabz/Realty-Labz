@@ -359,10 +359,13 @@ export type DueRecurringItem = {
   isOverdue: boolean;
 };
 
-// "Due now" = already due, or due within the next 7 days -- same window the
-// existing DealDeadline alerts already use, for a consistent reminder feel
-// across the app. Reminder-only: nothing here is auto-created (see
-// src/app/actions/recurring-transactions.ts's logRecurringTransactionAction).
+// Purely informational as of 2026-07-27 -- anything actually due gets
+// auto-logged on every page view (see autoLogDueRecurringTransactions in
+// src/app/actions/recurring-transactions.ts, run from the shared (app)
+// layout before this ever runs), so in normal operation nothing returned
+// here should ever be overdue; isOverdue is kept only as a defensive
+// fallback indicator. The 7-day window matches the existing DealDeadline
+// alerts, for a consistent "what's coming up" feel across the app.
 export async function getDueRecurringTemplates(userId: string): Promise<DueRecurringItem[]> {
   const now = new Date();
   const soon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);

@@ -52,6 +52,7 @@ export default async function FinancesTransactionsPage({
     type: t.type,
     frequency: t.frequency,
     nextDueDate: t.nextDueDate.toISOString().slice(0, 10),
+    updatedAt: t.updatedAt.toISOString(),
   }));
 
   const dtos: TransactionDTO[] = transactions.map((t) => ({
