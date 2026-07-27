@@ -4,19 +4,20 @@ import { useState } from "react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatCurrency } from "@/lib/format";
 
+// Principal, Interest, Escrow -- matching what a real mortgage statement
+// shows (tax + insurance combined into one escrow line, not broken out
+// separately). See LoanSummary.monthlyEscrow in loan-calculations.ts.
 const SERIES = [
   { key: "principal", label: "Principal", color: "var(--chart-1)" },
   { key: "interest", label: "Interest", color: "var(--chart-5)" },
-  { key: "taxes", label: "Taxes", color: "var(--chart-3)" },
-  { key: "insurance", label: "Insurance", color: "var(--chart-6)" },
+  { key: "escrow", label: "Escrow", color: "var(--chart-3)" },
 ] as const;
 
 export type LoanBreakdownPoint = {
   name: string;
   principal: number;
   interest: number;
-  taxes: number;
-  insurance: number;
+  escrow: number;
 };
 
 export function LoanBreakdownChart({ data }: { data: LoanBreakdownPoint[] }) {

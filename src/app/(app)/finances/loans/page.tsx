@@ -69,8 +69,7 @@ export default async function FinancesLoansPage() {
         name: dto.name,
         principal: summary.currentPrincipalPortion,
         interest: summary.currentInterestPortion,
-        taxes: summary.monthlyTax,
-        insurance: summary.monthlyInsurance,
+        escrow: summary.monthlyEscrow,
       };
     })
     .filter((p): p is LoanBreakdownPoint => p !== null);

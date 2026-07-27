@@ -158,6 +158,13 @@ export type LoanSummary = {
   monthlyPrincipalAndInterest: number;
   monthlyTax: number;
   monthlyInsurance: number;
+  // Tax + insurance combined -- a real mortgage statement doesn't break these
+  // out separately, it shows Principal, Interest, and one Escrow line (2026-07-26
+  // direct founder request). Kept alongside the two granular fields above
+  // rather than replacing them, since some displays may still want them
+  // separately later -- this is just the one number that matches what
+  // shows up on an actual statement.
+  monthlyEscrow: number;
   totalMonthlyPayment: number;
   remainingBalance: number;
   isPaidOff: boolean;
@@ -205,6 +212,7 @@ export function summarizeLoan(loan: {
     monthlyPrincipalAndInterest,
     monthlyTax,
     monthlyInsurance,
+    monthlyEscrow: monthlyTax + monthlyInsurance,
     totalMonthlyPayment: monthlyPrincipalAndInterest + monthlyTax + monthlyInsurance,
     remainingBalance: current.balance,
     isPaidOff,
