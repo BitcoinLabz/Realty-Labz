@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceDueDate, computeCatchUp, parseDateOnlyLocal } from "./recurring";
+import { advanceDueDate, computeCatchUp, parseDateOnlyLocal, splitByBusinessUse } from "./recurring";
 
 function ymd(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -91,5 +91,42 @@ describe("computeCatchUp", () => {
     const first = computeCatchUp(new Date(2026, 0, 1), "MONTHLY", new Date(2026, 6, 27));
     const second = computeCatchUp(first.newNextDueDate, "MONTHLY", new Date(2026, 6, 27));
     expect(second.datesToLog).toHaveLength(0);
+  });
+});
+
+describe("splitByBusinessUse", () => {
+  it("splits an even percentage cleanly", () => {
+    expect(splitByBusinessUse(100, 60)).toEqual({ businessAmount: 60, personalAmount: 40 });
+  });
+
+  it("always sums back to exactly the original amount, even with a repeating-decimal percentage", () => {
+    // 33.33% of $10 doesn't divide evenly -- the two portions must still add
+    // back to $10.00 exactly, not drift by a fraction of a cent.
+    const { businessAmount, personalAmount } = splitByBusinessUse(10, 33.33);
+    expect(businessAmount + personalAmount).toBe(10);
+    expect(businessAmount).toBeCloseTo(3.33, 2);
+    expect(personalAmount).toBeCloseTo(6.67, 2);
+  });
+
+  it("100% business leaves nothing for personal", () => {
+    expect(splitByBusinessUse(45.5, 100)).toEqual({ businessAmount: 45.5, personalAmount: 0 });
+  });
+
+  it("0% business puts everything in personal", () => {
+    expect(splitByBusinessUse(45.5, 0)).toEqual({ businessAmount: 0, personalAmount: 45.5 });
+  });
+
+  it("computes each portion in exact cents, even for a case that would trip up raw JS float math", () => {
+    // The two portions (0.1 and 0.2) are each computed exactly via integer
+    // cents. Their raw JS sum still shows the classic 0.1 + 0.2 !==
+    // 0.30000000000000004 float-representation artifact -- that's a property
+    // of JS number addition itself, not something this function can or needs
+    // to fix, since the two portions are written to separate rows and never
+    // re-added in JS; Prisma's Decimal columns store each one as an exact
+    // base-10 value regardless. toBeCloseTo (not toBe) reflects that.
+    const { businessAmount, personalAmount } = splitByBusinessUse(0.3, 33.33);
+    expect(businessAmount).toBe(0.1);
+    expect(personalAmount).toBe(0.2);
+    expect(businessAmount + personalAmount).toBeCloseTo(0.3, 10);
   });
 });

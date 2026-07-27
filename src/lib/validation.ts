@@ -195,6 +195,10 @@ export const recurringTransactionSchema = z.object({
   description: z.string().trim().max(200).optional(),
   frequency: z.enum(["MONTHLY", "QUARTERLY", "ANNUAL"]),
   nextDueDate: z.string().min(1, "Next due date is required"),
+  // Business-use split, EXPENSE templates only -- see the schema comment on
+  // RecurringTransactionTemplate.businessUsePercent. Ignored server-side for
+  // INCOME regardless of what's submitted.
+  businessUsePercent: z.coerce.number().min(0).max(100, "Enter a percent, e.g. 60").optional(),
 });
 
 export const homeOfficeSettingsSchema = z.object({

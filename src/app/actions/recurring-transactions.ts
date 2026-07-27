@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { recurringTransactionSchema } from "@/lib/validation";
-import { computeCatchUp, parseDateOnlyLocal } from "@/lib/recurring";
+import { computeCatchUp, parseDateOnlyLocal, splitByBusinessUse } from "@/lib/recurring";
 import type { FormState } from "@/app/actions/auth";
 
 function parseRecurringForm(formData: FormData) {
@@ -19,6 +19,9 @@ function parseRecurringForm(formData: FormData) {
     description: formData.get("description") || undefined,
     frequency: formData.get("frequency"),
     nextDueDate: formData.get("nextDueDate"),
+    // Only meaningful for EXPENSE -- see the schema comment on
+    // RecurringTransactionTemplate.businessUsePercent.
+    businessUsePercent: type === "EXPENSE" ? formData.get("businessUsePercent") || undefined : undefined,
   });
 }
 
@@ -40,18 +43,73 @@ export async function autoLogDueRecurringTransactions(userId: string): Promise<v
     const { datesToLog, newNextDueDate } = computeCatchUp(template.nextDueDate, template.frequency);
     if (datesToLog.length === 0) continue;
 
-    await prisma.$transaction([
-      prisma.transaction.createMany({
-        data: datesToLog.map((date) => ({
+    // A business-use split (2026-07-28, EXPENSE only) turns each due period
+    // into TWO Transaction rows instead of one -- e.g. a phone bill that's
+    // 60% business use logs a $60 business expense and a $40 personal
+    // expense for that same period, via the separately unit-tested
+    // splitByBusinessUse. 100%/0% collapse back to a single row rather than
+    // creating a pointless $0 entry on the other side.
+    const businessUsePercent =
+      template.type === "EXPENSE" && template.businessUsePercent != null
+        ? Number(template.businessUsePercent)
+        : null;
+
+    const templateAmount = Number(template.amount);
+
+    const rows = datesToLog.flatMap((date) => {
+      if (businessUsePercent == null || businessUsePercent === 100) {
+        return [
+          {
+            userId,
+            type: template.type,
+            scope: businessUsePercent === 100 ? ("BUSINESS" as const) : template.scope,
+            category: template.category,
+            amount: templateAmount,
+            description: template.description,
+            date,
+          },
+        ];
+      }
+      if (businessUsePercent === 0) {
+        return [
+          {
+            userId,
+            type: template.type,
+            scope: "PERSONAL" as const,
+            category: null,
+            amount: templateAmount,
+            description: template.description,
+            date,
+          },
+        ];
+      }
+
+      const { businessAmount, personalAmount } = splitByBusinessUse(templateAmount, businessUsePercent);
+      const note = template.description ?? "Recurring cost";
+      return [
+        {
           userId,
           type: template.type,
-          scope: template.scope,
+          scope: "BUSINESS" as const,
           category: template.category,
-          amount: template.amount,
-          description: template.description,
+          amount: businessAmount,
+          description: `${note} (${businessUsePercent}% business)`,
           date,
-        })),
-      }),
+        },
+        {
+          userId,
+          type: template.type,
+          scope: "PERSONAL" as const,
+          category: null,
+          amount: personalAmount,
+          description: `${note} (${100 - businessUsePercent}% personal)`,
+          date,
+        },
+      ];
+    });
+
+    await prisma.$transaction([
+      prisma.transaction.createMany({ data: rows }),
       prisma.recurringTransactionTemplate.update({
         where: { id: template.id },
         data: { nextDueDate: newNextDueDate, lastLoggedAt: new Date() },
@@ -76,7 +134,7 @@ export async function createRecurringTransactionAction(
     return { fieldErrors };
   }
 
-  const { scope, type, category, amount, description, frequency, nextDueDate } = parsed.data;
+  const { scope, type, category, amount, description, frequency, nextDueDate, businessUsePercent } = parsed.data;
 
   await prisma.recurringTransactionTemplate.create({
     data: {
@@ -88,6 +146,7 @@ export async function createRecurringTransactionAction(
       description,
       frequency,
       nextDueDate: parseDateOnlyLocal(nextDueDate),
+      businessUsePercent: type === "EXPENSE" ? (businessUsePercent ?? null) : null,
     },
   });
 
@@ -119,13 +178,14 @@ export async function updateRecurringTransactionAction(
     return { fieldErrors };
   }
 
-  const { scope, type, category, amount, description, frequency, nextDueDate } = parsed.data;
+  const { scope, type, category, amount, description, frequency, nextDueDate, businessUsePercent } = parsed.data;
 
   // Only affects future auto-logged Transactions from this point forward --
   // every Transaction already logged is its own independent row (see
   // autoLogDueRecurringTransactions above) and is never retroactively
-  // changed by editing the template, e.g. a monthly amount going up $5
-  // doesn't rewrite any of the prior months already in the ledger.
+  // changed by editing the template, e.g. a monthly amount going up $5, or
+  // the business-use split changing, doesn't rewrite any prior months
+  // already in the ledger.
   const result = await prisma.recurringTransactionTemplate.updateMany({
     where: { id, userId: session.user.id },
     data: {
@@ -136,6 +196,7 @@ export async function updateRecurringTransactionAction(
       description,
       frequency,
       nextDueDate: parseDateOnlyLocal(nextDueDate),
+      businessUsePercent: type === "EXPENSE" ? (businessUsePercent ?? null) : null,
     },
   });
 

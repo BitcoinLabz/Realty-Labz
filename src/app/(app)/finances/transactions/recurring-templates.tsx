@@ -38,6 +38,7 @@ export type RecurringTemplateDTO = {
   type: "INCOME" | "EXPENSE";
   frequency: "MONTHLY" | "QUARTERLY" | "ANNUAL";
   nextDueDate: string;
+  businessUsePercent: number | null;
   updatedAt: string;
 };
 
@@ -46,6 +47,12 @@ const FREQUENCY_LABELS: Record<string, string> = {
   QUARTERLY: "Quarterly",
   ANNUAL: "Annual",
 };
+
+function pillClass(active: boolean) {
+  return `rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+    active ? "border-accent bg-accent/10 text-accent" : "border-border text-foreground hover:bg-surface"
+  }`;
+}
 
 function RecurringForm({
   defaultValues,
@@ -59,6 +66,7 @@ function RecurringForm({
   const [state, formAction, isPending] = useActionState(action, initialState);
   const [scope, setScope] = useState<"BUSINESS" | "PERSONAL">(defaultValues?.scope ?? "BUSINESS");
   const [type, setType] = useState<"INCOME" | "EXPENSE">(defaultValues?.type ?? "EXPENSE");
+  const [isSplit, setIsSplit] = useState(defaultValues?.businessUsePercent != null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
@@ -69,11 +77,14 @@ function RecurringForm({
         formRef.current?.reset();
         setScope("BUSINESS");
         setType("EXPENSE");
+        setIsSplit(false);
       }
       onDone?.();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [succeeded]);
+
+  const isExpense = type === "EXPENSE";
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
@@ -84,13 +95,50 @@ function RecurringForm({
           <option value="BUSINESS">Business</option>
           <option value="PERSONAL">Personal</option>
         </Select>
-        <Select label="Type" name="type" value={type} onChange={(e) => setType(e.target.value as "INCOME" | "EXPENSE")}>
+        <Select
+          label="Type"
+          name="type"
+          value={type}
+          onChange={(e) => {
+            setType(e.target.value as "INCOME" | "EXPENSE");
+            setIsSplit(false);
+          }}
+        >
           <option value="EXPENSE">Expense</option>
           <option value="INCOME">Income</option>
         </Select>
       </div>
 
-      {scope === "BUSINESS" && type === "EXPENSE" ? (
+      {isExpense ? (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium text-foreground">Split between business &amp; personal?</span>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => setIsSplit(false)} className={pillClass(!isSplit)}>
+              No, all one scope
+            </button>
+            <button type="button" onClick={() => setIsSplit(true)} className={pillClass(isSplit)}>
+              Yes, split by %
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {isExpense && isSplit ? (
+        <Field
+          label="% business use (the rest counts as personal)"
+          name="businessUsePercent"
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+          placeholder="e.g. 60"
+          defaultValue={defaultValues?.businessUsePercent ?? undefined}
+          required
+          error={state.fieldErrors?.businessUsePercent}
+        />
+      ) : null}
+
+      {scope === "BUSINESS" && isExpense ? (
         <Select
           label="Category"
           name="category"
@@ -143,8 +191,8 @@ function RecurringForm({
       </div>
       {isEdit ? (
         <p className="-mt-2 text-sm text-muted">
-          Changing the amount only affects what gets logged going forward — anything already logged
-          in Transactions stays exactly as it was.
+          Changes only affect what gets logged going forward — anything already logged in
+          Transactions stays exactly as it was.
         </p>
       ) : null}
 
@@ -173,7 +221,8 @@ export function RecurringTemplates({ templates }: { templates: RecurringTemplate
       <p className="mb-6 text-sm text-muted">
         MLS dues, insurance, subscriptions — anything that repeats. Logged automatically on the due
         date you set, and backdated to catch up on any missed periods if the start date is in the
-        past.
+        past. An expense can also be split by a business-use percentage, e.g. a phone bill that&apos;s
+        60% business.
       </p>
 
       <div className="mb-6 max-w-md border-b border-border pb-6">
@@ -199,7 +248,13 @@ export function RecurringTemplates({ templates }: { templates: RecurringTemplate
                     {t.description || "Recurring cost"}
                   </span>
                   <span className="text-sm text-muted">
-                    {formatCurrency(t.amount)} · {FREQUENCY_LABELS[t.frequency]} · Next:{" "}
+                    {formatCurrency(t.amount)} ·{" "}
+                    {t.businessUsePercent != null
+                      ? `${t.businessUsePercent}% business / ${100 - t.businessUsePercent}% personal`
+                      : t.scope === "BUSINESS"
+                        ? "Business"
+                        : "Personal"}{" "}
+                    · {FREQUENCY_LABELS[t.frequency]} · Next:{" "}
                     {new Date(t.nextDueDate + "T00:00:00").toLocaleDateString("en-US", {
                       month: "short",
                       day: "numeric",

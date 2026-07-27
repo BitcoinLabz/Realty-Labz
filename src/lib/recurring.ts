@@ -75,3 +75,18 @@ export function computeCatchUp(
 
   return { datesToLog, newNextDueDate: cursor };
 }
+
+export type BusinessUseSplit = { businessAmount: number; personalAmount: number };
+
+// Splits one amount into a business portion and a personal portion by a
+// business-use percentage (2026-07-28, e.g. a phone bill that's 60%
+// business use) -- computed in integer cents so the two portions always sum
+// back to exactly the original amount, never a penny off from ordinary
+// floating-point rounding (e.g. 33.33% of $10 must be $3.33 + $6.67, not
+// $3.33 + $6.67000000000001 or similar drift).
+export function splitByBusinessUse(amount: number, businessUsePercent: number): BusinessUseSplit {
+  const totalCents = Math.round(amount * 100);
+  const businessCents = Math.round((totalCents * businessUsePercent) / 100);
+  const personalCents = totalCents - businessCents;
+  return { businessAmount: businessCents / 100, personalAmount: personalCents / 100 };
+}

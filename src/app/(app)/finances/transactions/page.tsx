@@ -52,6 +52,7 @@ export default async function FinancesTransactionsPage({
     type: t.type,
     frequency: t.frequency,
     nextDueDate: t.nextDueDate.toISOString().slice(0, 10),
+    businessUsePercent: t.businessUsePercent ? Number(t.businessUsePercent) : null,
     updatedAt: t.updatedAt.toISOString(),
   }));
 

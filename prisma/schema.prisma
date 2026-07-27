@@ -735,6 +735,14 @@ model RecurringTransactionTemplate {
   createdAt    DateTime             @default(now())
   updatedAt    DateTime             @updatedAt
 
+  // Optional business-use split, EXPENSE templates only (2026-07-28) -- e.g.
+  // a phone bill that's 60% business use. When set, each auto-logged period
+  // creates TWO Transaction rows (business portion + personal portion, via
+  // splitByBusinessUse in src/lib/recurring.ts) instead of one. Null means no
+  // split -- the original single-scope behavior is unchanged. Never applies
+  // to INCOME templates; scope above still drives those as before.
+  businessUsePercent Decimal? @db.Decimal(5, 2)
+
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
