@@ -1,9 +1,9 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
-import { summarizeLoan } from "@/lib/loan-calculations";
+import { buildAmortizationChartData, buildAmortizationSchedule, summarizeLoan } from "@/lib/loan-calculations";
 import { SummaryCard } from "@/components/ui/summary-card";
-import { LoanBreakdownChart, type LoanBreakdownPoint } from "@/components/charts/loan-breakdown-chart";
+import { AmortizationChart, type AmortizationChartPoint } from "@/components/charts/amortization-chart";
 import { LoanForm } from "./loan-form";
 import { LoanList } from "./loan-list";
 import type { LoanDTO } from "./types";
@@ -61,18 +61,23 @@ export default async function FinancesLoansPage() {
   const totalMonthlyPayment = activeLoans.reduce((sum, l) => sum + l.totalMonthlyPayment, 0);
   const totalRemainingBalance = dtos.reduce((sum, l) => sum + l.remainingBalance, 0);
 
-  const breakdownData: LoanBreakdownPoint[] = dtos
-    .map((dto, i) => {
-      if (dto.isPaidOff) return null;
-      const summary = summaries[i];
-      return {
-        name: dto.name,
-        principal: summary.currentPrincipalPortion,
-        interest: summary.currentInterestPortion,
-        escrow: summary.monthlyEscrow,
-      };
+  // One amortization curve per active loan -- Balance, cumulative Principal
+  // paid, cumulative Interest paid, over the loan's full actual schedule
+  // (extra payments included, since this reflects what's really being paid,
+  // not just the original schedule).
+  const amortizationData: { id: string; name: string; points: AmortizationChartPoint[] }[] = loans
+    .map((l, i) => {
+      if (dtos[i].isPaidOff) return null;
+      const schedule = buildAmortizationSchedule(
+        summaries[i].loanAmount,
+        Number(l.interestRate),
+        l.termMonths,
+        l.startDate,
+        l.extraPayments.map((p) => ({ date: p.date, amount: Number(p.amount) })),
+      );
+      return { id: l.id, name: l.name, points: buildAmortizationChartData(schedule) };
     })
-    .filter((p): p is LoanBreakdownPoint => p !== null);
+    .filter((d): d is { id: string; name: string; points: AmortizationChartPoint[] } => d !== null);
 
   return (
     <div className="flex flex-col gap-8">
@@ -85,12 +90,17 @@ export default async function FinancesLoansPage() {
         <SummaryCard label="Total remaining balance" value={formatCurrency(totalRemainingBalance)} />
       </div>
 
-      {breakdownData.length > 0 ? (
+      {amortizationData.length > 0 ? (
         <section className="rounded-2xl border border-border bg-background p-8">
-          <h2 className="mb-6 text-base font-semibold text-foreground">
-            Monthly payment breakdown
-          </h2>
-          <LoanBreakdownChart data={breakdownData} />
+          <h2 className="mb-6 text-base font-semibold text-foreground">Amortization schedule</h2>
+          <div className="flex flex-col gap-10">
+            {amortizationData.map((loan) => (
+              <div key={loan.id}>
+                <h3 className="mb-4 text-sm font-semibold text-foreground">{loan.name}</h3>
+                <AmortizationChart data={loan.points} />
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 

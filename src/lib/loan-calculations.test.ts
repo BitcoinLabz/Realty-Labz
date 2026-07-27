@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAmortizationSchedule, monthlyPayment, scheduleAtDate } from "./loan-calculations";
+import { buildAmortizationChartData, buildAmortizationSchedule, monthlyPayment, scheduleAtDate } from "./loan-calculations";
 
 describe("monthlyPayment", () => {
   it("for 0% interest, is simply principal / term (no compounding to apply)", () => {
@@ -46,6 +46,48 @@ describe("buildAmortizationSchedule", () => {
       withoutExtra[1].principalPaid + withoutExtra[1].interestPaid,
       2,
     );
+  });
+});
+
+describe("buildAmortizationChartData", () => {
+  it("for a 0% loan, balance/principal/interest at each year are exactly derivable by hand", () => {
+    const schedule = buildAmortizationSchedule(1200, 0, 12, new Date(2026, 0, 1));
+    const points = buildAmortizationChartData(schedule);
+    expect(points[0]).toEqual({ label: "Yr 0", balance: 1200, principalToDate: 0, interestToDate: 0 });
+    expect(points[1]).toEqual({ label: "Yr 1", balance: 0, principalToDate: 1200, interestToDate: 0 });
+  });
+
+  it("principalToDate at the final point equals the loan amount, and interestToDate equals total interest over the loan's life (no extra payments)", () => {
+    const loanAmount = 300000;
+    const schedule = buildAmortizationSchedule(loanAmount, 6.5, 360, new Date(2020, 0, 1));
+    const points = buildAmortizationChartData(schedule);
+    const totalInterest = schedule.reduce((sum, p) => sum + p.interestPaid, 0);
+    const last = points[points.length - 1];
+    expect(last.principalToDate).toBeCloseTo(loanAmount, 0);
+    expect(last.interestToDate).toBeCloseTo(totalInterest, 0);
+    expect(last.balance).toBeCloseTo(0, 2);
+  });
+
+  it("balance + principalToDate always equals the original loan amount, at every sampled point", () => {
+    // Every dollar of principal either has been paid or is still owed --
+    // there's no third place for it to go.
+    const loanAmount = 300000;
+    const schedule = buildAmortizationSchedule(loanAmount, 6.5, 360, new Date(2020, 0, 1));
+    const points = buildAmortizationChartData(schedule);
+    for (const p of points) {
+      expect(p.balance + p.principalToDate).toBeCloseTo(loanAmount, 0);
+    }
+  });
+
+  it("an extra payment increases principalToDate (and reduces balance) at the same point vs. no extra payment", () => {
+    const start = new Date(2020, 0, 1);
+    const withoutExtra = buildAmortizationChartData(buildAmortizationSchedule(300000, 6.5, 360, start));
+    const withExtra = buildAmortizationChartData(
+      buildAmortizationSchedule(300000, 6.5, 360, start, [{ date: new Date(2020, 6, 1), amount: 50000 }]),
+    );
+    // Year 2 (24 months in) is well after the month-6 extra payment landed.
+    expect(withExtra[2].principalToDate).toBeGreaterThan(withoutExtra[2].principalToDate);
+    expect(withExtra[2].balance).toBeLessThan(withoutExtra[2].balance);
   });
 });
 

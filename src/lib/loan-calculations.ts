@@ -153,6 +153,45 @@ export function buildEquityChartData(
   return points;
 }
 
+export type AmortizationChartPoint = {
+  label: string;
+  balance: number;
+  principalToDate: number;
+  interestToDate: number;
+};
+
+// The full amortization curve over the life of a loan -- Balance, cumulative
+// Principal paid, and cumulative Interest paid, each as their own line
+// (2026-07-27 direct founder request). Cumulative sums are built once across
+// every month (not just the sampled year points below), since each year's
+// running total depends on every month before it, not just prior year
+// boundaries -- only the final result is sampled yearly for a readable
+// x-axis, same convention as buildPaydownChartData/buildEquityChartData.
+export function buildAmortizationChartData(schedule: SchedulePoint[]): AmortizationChartPoint[] {
+  const cumulative: { principal: number; interest: number }[] = [];
+  let principalToDate = 0;
+  let interestToDate = 0;
+  for (const point of schedule) {
+    principalToDate += point.principalPaid + point.extraPaid;
+    interestToDate += point.interestPaid;
+    cumulative[point.monthIndex] = { principal: principalToDate, interest: interestToDate };
+  }
+
+  const maxMonth = schedule[schedule.length - 1].monthIndex;
+  const points: AmortizationChartPoint[] = [];
+  for (let m = 0; m <= maxMonth; m += 12) {
+    const schedulePoint = schedule[Math.min(m, schedule.length - 1)];
+    const cum = cumulative[Math.min(m, cumulative.length - 1)];
+    points.push({
+      label: `Yr ${m / 12}`,
+      balance: schedulePoint.balance,
+      principalToDate: cum.principal,
+      interestToDate: cum.interest,
+    });
+  }
+  return points;
+}
+
 export type LoanSummary = {
   loanAmount: number;
   monthlyPrincipalAndInterest: number;
