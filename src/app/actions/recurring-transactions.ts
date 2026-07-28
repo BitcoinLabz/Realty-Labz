@@ -155,6 +155,7 @@ export async function createRecurringTransactionAction(
   await autoLogDueRecurringTransactions(session.user.id);
 
   revalidatePath("/finances");
+  revalidatePath("/finances/transactions");
   revalidatePath("/dashboard");
   return {};
 }
@@ -205,6 +206,7 @@ export async function updateRecurringTransactionAction(
   await autoLogDueRecurringTransactions(session.user.id);
 
   revalidatePath("/finances");
+  revalidatePath("/finances/transactions");
   revalidatePath("/dashboard");
   return {};
 }
@@ -219,5 +221,6 @@ export async function deleteRecurringTransactionAction(formData: FormData) {
   await prisma.recurringTransactionTemplate.deleteMany({ where: { id, userId: session.user.id } });
 
   revalidatePath("/finances");
+  revalidatePath("/finances/transactions");
   revalidatePath("/dashboard");
 }

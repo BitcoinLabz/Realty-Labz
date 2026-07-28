@@ -112,7 +112,11 @@ export default async function FinancesTransactionsPage({
       </div>
 
       <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Add a transaction</h2>
+        <h2 className="mb-1 text-base font-semibold text-foreground">Add a transaction</h2>
+        <p className="mb-6 text-sm text-muted">
+          One-time entry by default — check &quot;Make this a recurring cost&quot; below to have it
+          log automatically going forward instead.
+        </p>
         <div className="max-w-md">
           <TransactionForm deals={dealOptions} />
         </div>

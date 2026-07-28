@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { transactionSchema } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
+import { createRecurringTransactionAction } from "@/app/actions/recurring-transactions";
 
 function parseTransactionForm(formData: FormData) {
   const type = formData.get("type");
@@ -73,9 +74,29 @@ export async function createTransactionAction(
   });
 
   revalidatePath("/finances");
+  revalidatePath("/finances/transactions");
   revalidatePath("/dashboard");
   if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
   return {};
+}
+
+// The merged "Add a transaction" form's single stable action -- it offers a
+// "Make this a recurring cost" checkbox that toggles LOCAL state within one
+// mounted form instance, so which underlying action should run can change
+// between renders of the SAME component. useActionState doesn't reliably
+// pick up a swapped action reference across renders like that (confirmed
+// live: toggling the checkbox on then off before submitting still invoked
+// the recurring action) -- so instead there is exactly one stable action
+// bound to the form, and it branches on a hidden "isRecurring" field in the
+// submitted FormData itself, which is always read fresh per-request.
+export async function createTransactionOrRecurringAction(
+  prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  if (formData.get("isRecurring") === "true") {
+    return createRecurringTransactionAction(prevState, formData);
+  }
+  return createTransactionAction(prevState, formData);
 }
 
 export async function updateTransactionAction(
@@ -120,6 +141,7 @@ export async function updateTransactionAction(
   if (result.count === 0) return { error: "Transaction not found" };
 
   revalidatePath("/finances");
+  revalidatePath("/finances/transactions");
   revalidatePath("/dashboard");
   if (existing?.dealId) revalidatePath(`/deals/${existing.dealId}`);
   if (resolvedDeal.dealId && resolvedDeal.dealId !== existing?.dealId) {
@@ -140,6 +162,7 @@ export async function deleteTransactionAction(formData: FormData) {
   await prisma.transaction.deleteMany({ where: { id, userId: session.user.id } });
 
   revalidatePath("/finances");
+  revalidatePath("/finances/transactions");
   revalidatePath("/dashboard");
   if (existing?.dealId) revalidatePath(`/deals/${existing.dealId}`);
 }

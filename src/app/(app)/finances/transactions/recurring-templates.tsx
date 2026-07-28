@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
-  createRecurringTransactionAction,
   deleteRecurringTransactionAction,
   updateRecurringTransactionAction,
 } from "@/app/actions/recurring-transactions";
@@ -58,28 +57,20 @@ function RecurringForm({
   defaultValues,
   onDone,
 }: {
-  defaultValues?: RecurringTemplateDTO;
-  onDone?: () => void;
+  defaultValues: RecurringTemplateDTO;
+  onDone: () => void;
 }) {
-  const isEdit = !!defaultValues?.id;
-  const action = isEdit ? updateRecurringTransactionAction : createRecurringTransactionAction;
-  const [state, formAction, isPending] = useActionState(action, initialState);
-  const [scope, setScope] = useState<"BUSINESS" | "PERSONAL">(defaultValues?.scope ?? "BUSINESS");
-  const [type, setType] = useState<"INCOME" | "EXPENSE">(defaultValues?.type ?? "EXPENSE");
-  const [isSplit, setIsSplit] = useState(defaultValues?.businessUsePercent != null);
+  const [state, formAction, isPending] = useActionState(updateRecurringTransactionAction, initialState);
+  const [scope, setScope] = useState<"BUSINESS" | "PERSONAL">(defaultValues.scope);
+  const [type, setType] = useState<"INCOME" | "EXPENSE">(defaultValues.type);
+  const [isSplit, setIsSplit] = useState(defaultValues.businessUsePercent != null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
 
   useEffect(() => {
     if (succeeded) {
-      if (!isEdit) {
-        formRef.current?.reset();
-        setScope("BUSINESS");
-        setType("EXPENSE");
-        setIsSplit(false);
-      }
-      onDone?.();
+      onDone();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [succeeded]);
@@ -88,7 +79,7 @@ function RecurringForm({
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
-      {isEdit ? <input type="hidden" name="id" defaultValue={defaultValues!.id} /> : null}
+      <input type="hidden" name="id" defaultValue={defaultValues.id} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Select label="Scope" name="scope" value={scope} onChange={(e) => setScope(e.target.value as "BUSINESS" | "PERSONAL")}>
@@ -132,7 +123,7 @@ function RecurringForm({
           max="100"
           step="1"
           placeholder="e.g. 60"
-          defaultValue={defaultValues?.businessUsePercent ?? undefined}
+          defaultValue={defaultValues.businessUsePercent ?? undefined}
           required
           error={state.fieldErrors?.businessUsePercent}
         />
@@ -142,7 +133,7 @@ function RecurringForm({
         <Select
           label="Category"
           name="category"
-          defaultValue={defaultValues?.category ?? "OTHER"}
+          defaultValue={defaultValues.category ?? "OTHER"}
           error={state.fieldErrors?.category}
         >
           {CATEGORY_OPTIONS.map((c) => (
@@ -160,11 +151,11 @@ function RecurringForm({
           type="number"
           step="0.01"
           min="0"
-          defaultValue={defaultValues?.amount}
+          defaultValue={defaultValues.amount}
           required
           error={state.fieldErrors?.amount}
         />
-        <Select label="Frequency" name="frequency" defaultValue={defaultValues?.frequency ?? "MONTHLY"}>
+        <Select label="Frequency" name="frequency" defaultValue={defaultValues.frequency}>
           <option value="MONTHLY">Monthly</option>
           <option value="QUARTERLY">Quarterly</option>
           <option value="ANNUAL">Annual</option>
@@ -177,36 +168,32 @@ function RecurringForm({
           name="description"
           type="text"
           placeholder="e.g. MLS Dues"
-          defaultValue={defaultValues?.description ?? undefined}
+          defaultValue={defaultValues.description ?? undefined}
           error={state.fieldErrors?.description}
         />
         <Field
           label="Next due date"
           name="nextDueDate"
           type="date"
-          defaultValue={defaultValues?.nextDueDate}
+          defaultValue={defaultValues.nextDueDate}
           required
           error={state.fieldErrors?.nextDueDate}
         />
       </div>
-      {isEdit ? (
-        <p className="-mt-2 text-sm text-muted">
-          Changes only affect what gets logged going forward — anything already logged in
-          Transactions stays exactly as it was.
-        </p>
-      ) : null}
+      <p className="-mt-2 text-sm text-muted">
+        Changes only affect what gets logged going forward — anything already logged in
+        Transactions stays exactly as it was.
+      </p>
 
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving…" : isEdit ? "Save changes" : "Add recurring cost"}
+          {isPending ? "Saving…" : "Save changes"}
         </Button>
-        {isEdit ? (
-          <Button type="button" variant="secondary" onClick={onDone}>
-            Cancel
-          </Button>
-        ) : null}
+        <Button type="button" variant="secondary" onClick={onDone}>
+          Cancel
+        </Button>
       </div>
     </form>
   );
@@ -221,13 +208,9 @@ export function RecurringTemplates({ templates }: { templates: RecurringTemplate
       <p className="mb-6 text-sm text-muted">
         MLS dues, insurance, subscriptions — anything that repeats. Logged automatically on the due
         date you set, and backdated to catch up on any missed periods if the start date is in the
-        past. An expense can also be split by a business-use percentage, e.g. a phone bill that&apos;s
-        60% business.
+        past. Add a new one by checking &quot;Make this a recurring cost&quot; on the transaction
+        form above.
       </p>
-
-      <div className="mb-6 max-w-md border-b border-border pb-6">
-        <RecurringForm />
-      </div>
 
       {templates.length === 0 ? (
         <p className="text-sm text-muted">No recurring costs set up yet.</p>
@@ -236,7 +219,16 @@ export function RecurringTemplates({ templates }: { templates: RecurringTemplate
           {templates.map((t) =>
             editingId === t.id ? (
               <div key={t.id} className="rounded-xl border border-accent px-4 py-4">
-                <RecurringForm key={t.updatedAt} defaultValues={t} onDone={() => setEditingId(null)} />
+                {/* No separate remount-key needed here -- unlike the always-open
+                    Loan/Deal edit forms, this form already unmounts/mounts
+                    naturally via the editingId toggle above, so defaultValues
+                    are fresh on every open. Keying by updatedAt on top of that
+                    caused a real bug: a successful save's fresh server data
+                    changed this key mid-submit, remounting the form and
+                    discarding its pending onDone() close callback before it
+                    fired, so the form never visually closed even though the
+                    save succeeded -- confirmed live before removing the key. */}
+                <RecurringForm defaultValues={t} onDone={() => setEditingId(null)} />
               </div>
             ) : (
               <div
