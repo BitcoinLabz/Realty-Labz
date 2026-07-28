@@ -145,36 +145,48 @@ export function LoanForm({
         error={state.fieldErrors?.startDate}
       />
 
-      <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
-        <div>
-          <p className="text-sm font-medium text-foreground">Escrow (taxes &amp; insurance)</p>
-          <p className="mt-1 text-sm text-muted">
-            Most mortgage statements combine these into one escrow payment along with principal
-            and interest — enter them separately here and they&apos;ll show as one combined Escrow
-            line everywhere, matching your statement.
-          </p>
+      {type === "MORTGAGE" ? (
+        <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
+          <div>
+            <p className="text-sm font-medium text-foreground">Escrow (taxes &amp; insurance)</p>
+            <p className="mt-1 text-sm text-muted">
+              Most mortgage statements combine these into one escrow payment along with principal
+              and interest — enter them separately here and they&apos;ll show as one combined Escrow
+              line everywhere, matching your statement.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field
+              label="Annual property tax (optional)"
+              name="annualPropertyTax"
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={defaultValues?.annualPropertyTax ?? "0"}
+              error={state.fieldErrors?.annualPropertyTax}
+            />
+            <Field
+              label="Annual insurance (optional)"
+              name="annualInsurance"
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={defaultValues?.annualInsurance ?? "0"}
+              error={state.fieldErrors?.annualInsurance}
+            />
+          </div>
         </div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field
-            label="Annual property tax (optional)"
-            name="annualPropertyTax"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={defaultValues?.annualPropertyTax ?? "0"}
-            error={state.fieldErrors?.annualPropertyTax}
-          />
-          <Field
-            label="Annual insurance (optional)"
-            name="annualInsurance"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={defaultValues?.annualInsurance ?? "0"}
-            error={state.fieldErrors?.annualInsurance}
-          />
-        </div>
-      </div>
+      ) : (
+        <Field
+          label="Annual insurance (optional)"
+          name="annualInsurance"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={defaultValues?.annualInsurance ?? "0"}
+          error={state.fieldErrors?.annualInsurance}
+        />
+      )}
 
       {type === "MORTGAGE" ? (
         <>
