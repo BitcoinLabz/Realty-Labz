@@ -10,7 +10,7 @@ import type { DealOption, TransactionCategory, TransactionScope, TransactionType
 
 const initialState: FormState = {};
 
-const CATEGORY_OPTIONS: { value: TransactionCategory; label: string }[] = [
+export const CATEGORY_OPTIONS: { value: TransactionCategory; label: string }[] = [
   { value: "MARKETING_ADVERTISING", label: "Marketing & advertising" },
   { value: "MLS_DUES", label: "MLS / association dues" },
   { value: "CONTINUING_EDUCATION", label: "Continuing education" },

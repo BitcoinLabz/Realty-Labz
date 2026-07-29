@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
@@ -122,7 +123,18 @@ export default async function FinancesTransactionsPage({
         </div>
       </section>
 
-      <TransactionList transactions={dtos} deals={dealOptions} />
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <div className="mb-6 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-foreground">Recent transactions</h2>
+          <Link
+            href={`/finances/transactions/history?year=${year}`}
+            className="text-sm font-medium text-accent hover:opacity-80"
+          >
+            View all transactions →
+          </Link>
+        </div>
+        <TransactionList transactions={dtos.slice(0, 5)} deals={dealOptions} />
+      </section>
 
       <RecurringTemplates templates={recurringDtos} />
     </div>

@@ -27,7 +27,14 @@ export default function FinancesLayout({ children }: { children: React.ReactNode
       <div className="overflow-x-auto">
         <div className="flex w-fit gap-1 rounded-full border border-border bg-surface p-1">
           {tabs.map((tab) => {
-            const active = pathname === tab.href;
+            // Transactions has a nested /history route (like Forms' nested
+            // /templates/[id]) so it needs startsWith matching -- Overview
+            // must stay exact, or every Finances sub-route (which all begin
+            // with /finances) would wrongly highlight it too.
+            const active =
+              tab.href === "/finances/transactions"
+                ? pathname.startsWith(tab.href)
+                : pathname === tab.href;
             return (
               <Link
                 key={tab.href}
