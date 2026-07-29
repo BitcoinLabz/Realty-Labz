@@ -63,19 +63,19 @@ export default async function FinancesMileagePage({
       </div>
 
       <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-6 text-base font-semibold text-foreground">Log a trip</h2>
+        <div className="max-w-md">
+          <MileageForm />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Deduction by month</h2>
         {hasData ? (
           <MileageTrendChart data={monthlySeries} />
         ) : (
           <p className="text-sm text-muted">Log a business trip to see your trend here.</p>
         )}
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Log a trip</h2>
-        <div className="max-w-md">
-          <MileageForm />
-        </div>
       </section>
 
       <MileageList logs={dtos} />

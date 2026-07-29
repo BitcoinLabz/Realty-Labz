@@ -131,65 +131,6 @@ export function TransactionForm({
         </Select>
       ) : null}
 
-      {showDealPicker ? (
-        <Select
-          label="Deal (optional)"
-          name="dealId"
-          defaultValue={defaultValues?.dealId ?? ""}
-          error={state.fieldErrors?.dealId}
-        >
-          <option value="">No deal</option>
-          {deals.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.propertyAddress}
-            </option>
-          ))}
-        </Select>
-      ) : null}
-
-      {!isRecurring ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field
-            label="Amount"
-            name="amount"
-            type="number"
-            step="0.01"
-            min="0"
-            defaultValue={defaultValues?.amount}
-            required
-            error={state.fieldErrors?.amount}
-          />
-          <Field
-            label="Date"
-            name="date"
-            type="date"
-            defaultValue={defaultValues?.date}
-            required
-            error={state.fieldErrors?.date}
-          />
-        </div>
-      ) : (
-        <Field
-          label="Amount"
-          name="amount"
-          type="number"
-          step="0.01"
-          min="0"
-          defaultValue={defaultValues?.amount}
-          required
-          error={state.fieldErrors?.amount}
-        />
-      )}
-
-      <Field
-        label="Description (optional)"
-        name="description"
-        type="text"
-        placeholder={scope === "PERSONAL" ? "e.g. Paycheck, groceries" : undefined}
-        defaultValue={defaultValues?.description}
-        error={state.fieldErrors?.description}
-      />
-
       {canBeRecurring ? (
         <div className="flex flex-col gap-4">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -261,6 +202,65 @@ export function TransactionForm({
           ) : null}
         </div>
       ) : null}
+
+      {showDealPicker ? (
+        <Select
+          label="Deal (optional)"
+          name="dealId"
+          defaultValue={defaultValues?.dealId ?? ""}
+          error={state.fieldErrors?.dealId}
+        >
+          <option value="">No deal</option>
+          {deals.map((d) => (
+            <option key={d.id} value={d.id}>
+              {d.propertyAddress}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+
+      {!isRecurring ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field
+            label="Amount"
+            name="amount"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={defaultValues?.amount}
+            required
+            error={state.fieldErrors?.amount}
+          />
+          <Field
+            label="Date"
+            name="date"
+            type="date"
+            defaultValue={defaultValues?.date}
+            required
+            error={state.fieldErrors?.date}
+          />
+        </div>
+      ) : (
+        <Field
+          label="Amount"
+          name="amount"
+          type="number"
+          step="0.01"
+          min="0"
+          defaultValue={defaultValues?.amount}
+          required
+          error={state.fieldErrors?.amount}
+        />
+      )}
+
+      <Field
+        label="Description (optional)"
+        name="description"
+        type="text"
+        placeholder={scope === "PERSONAL" ? "e.g. Paycheck, groceries" : undefined}
+        defaultValue={defaultValues?.description}
+        error={state.fieldErrors?.description}
+      />
 
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 
