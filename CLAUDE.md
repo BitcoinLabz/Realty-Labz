@@ -77,6 +77,7 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 
 ### Future — Native App Phase (not v1, not v2 — a distinct later phase)
 - **Automatic, location-based mileage/trip detection** (background GPS logging, auto-classify business/personal) is explicitly deferred until the app is wrapped as a native app (React Native/Expo). Continuous background location tracking is not reliably achievable in a responsive web app (mobile browsers, especially iOS Safari, restrict background GPS access), so don't attempt to build this into the web app — manual entry is the correct v1 approach, not a stopgap to route around technically.
+  - **Reaffirmed 2026-07-29** after the founder asked what a MileIQ-style tracker would take: a web-only "tap Start, GPS tracks while the tab's open, trips land in a review queue" version (using the browser Geolocation API, no native app needed) was proposed as a buildable middle-ground stepping stone — real tradeoff disclosed being that tracking pauses if the phone locks or the user switches apps mid-drive, unlike true background tracking. Founder chose to wait for the full native iOS app instead of building that intermediate web version. Don't propose the web-Geolocation stepping stone again without a new founder ask — this was a considered decision, not an oversight.
 
 ### V2 (Post-MVP)
 - AI-powered image editor for listing photos — **superseded by Platform Expansion Phase 5 below**, which covers this plus broader marketing/AI tooling
