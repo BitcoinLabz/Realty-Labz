@@ -873,3 +873,19 @@ model MileageRate {
   @@unique([state, year])
   @@map("mileage_rates")
 }
+
+// Basic rate limiting (2026-07-30) -- one row per attempt, keyed by e.g.
+// "login:{ip}" or "pdf:{userId}". No Redis/external service: this reuses the
+// shared Postgres already paid for, matching this app's cost-conscious
+// pattern. Old rows are opportunistically pruned by src/lib/rate-limit.ts on
+// each check rather than via a cron job -- same "catch up on next visit"
+// philosophy as recurring transactions, so this table never needs external
+// maintenance.
+model RateLimitAttempt {
+  id        String   @id @default(cuid())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+  @@map("rate_limit_attempts")
+}

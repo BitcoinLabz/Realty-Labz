@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { calculateNetCommission, getHomeOfficeDeduction } from "@/lib/finance-data";
+import { isRateLimited } from "@/lib/rate-limit";
 import {
   FinancialReport,
   type FinancialReportData,
@@ -36,6 +37,12 @@ export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return new NextResponse("Unauthorized", { status: 401 });
+  }
+
+  if (await isRateLimited(`pdf:${session.user.id}`, { max: 20, windowMinutes: 60 })) {
+    return new NextResponse("Too many requests — please wait a few minutes and try again.", {
+      status: 429,
+    });
   }
 
   const yearParam = request.nextUrl.searchParams.get("year");

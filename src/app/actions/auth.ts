@@ -5,6 +5,9 @@ import { AuthError } from "next-auth";
 import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { loginSchema, signupSchema } from "@/lib/validation";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
+
+const TOO_MANY_ATTEMPTS = "Too many attempts — please wait a few minutes and try again.";
 
 export type FormState = {
   error?: string;
@@ -15,6 +18,11 @@ export async function signupAction(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const ip = await getClientIp();
+  if (await isRateLimited(`signup:${ip}`, { max: 5, windowMinutes: 60 })) {
+    return { error: TOO_MANY_ATTEMPTS };
+  }
+
   const parsed = signupSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -59,6 +67,11 @@ export async function loginAction(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
+  const ip = await getClientIp();
+  if (await isRateLimited(`login:${ip}`, { max: 10, windowMinutes: 15 })) {
+    return { error: TOO_MANY_ATTEMPTS };
+  }
+
   const parsed = loginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
