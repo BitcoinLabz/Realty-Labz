@@ -42,6 +42,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,
       clientSecret: process.env.AUTH_GOOGLE_SECRET,
+      // Without this, Google silently reuses whatever Google account is
+      // already active in the browser instead of showing the account
+      // chooser -- which is exactly the "it keeps logging me into the same
+      // account" symptom. This forces the chooser every time, so switching
+      // accounts (or signing into a different one after signing out) always
+      // works, regardless of the browser's existing Google session.
+      authorization: { params: { prompt: "select_account" } },
     }),
   ],
   callbacks: {
