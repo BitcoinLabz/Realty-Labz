@@ -4,11 +4,13 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamOrOwnFilter } from "@/lib/authorization";
 import { formatCurrency, formatFileSize } from "@/lib/format";
-import { calculateNetCommission } from "@/lib/finance-data";
+import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../deal-form";
 import { DeadlineList } from "./deadline-list";
 import { DeleteDealButton } from "./delete-deal-button";
-import type { DealDeadlineDTO } from "../types";
+import { OpenHouseSection } from "./open-house-section";
+import { ReferralPartnerSection } from "./referral-partner-section";
+import type { DealDeadlineDTO, OpenHouseDTO, ReferralPartnerDTO } from "../types";
 
 export default async function DealDetailPage({
   params,
@@ -18,7 +20,7 @@ export default async function DealDetailPage({
   const { id } = await params;
   const session = await auth();
 
-  const [deal, clients] = await Promise.all([
+  const [deal, clients, referralPartners] = await Promise.all([
     prisma.deal.findFirst({
       where: { id, ...teamOrOwnFilter(session!.user) },
       include: {
@@ -26,6 +28,10 @@ export default async function DealDetailPage({
         documents: { orderBy: { createdAt: "desc" } },
         client: { select: { id: true, name: true } },
         expenses: { where: { type: "EXPENSE" }, orderBy: { date: "desc" } },
+        openHouses: {
+          orderBy: { date: "desc" },
+          include: { visitors: { orderBy: { createdAt: "desc" } } },
+        },
       },
     }),
     prisma.client.findMany({
@@ -33,9 +39,12 @@ export default async function DealDetailPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
+    getReferralPartnerTotals(session!.user.id),
   ]);
 
   if (!deal) notFound();
+
+  const referralPartnerDtos: ReferralPartnerDTO[] = referralPartners;
 
   const defaultValues: DealFormValues = {
     id: deal.id,
@@ -49,6 +58,7 @@ export default async function DealDetailPage({
     commissionAmount: deal.commissionAmount ? String(deal.commissionAmount) : "",
     brokerageSplitPercent: deal.brokerageSplitPercent ? String(deal.brokerageSplitPercent) : "",
     referralFeeAmount: deal.referralFeeAmount ? String(deal.referralFeeAmount) : "",
+    referralPartnerId: deal.referralPartnerId ?? "",
     teamSplitAmount: deal.teamSplitAmount ? String(deal.teamSplitAmount) : "",
     otherDeductions: deal.otherDeductions ? String(deal.otherDeductions) : "",
     closingDate: deal.closingDate ? deal.closingDate.toISOString().slice(0, 10) : "",
@@ -75,6 +85,23 @@ export default async function DealDetailPage({
     completedAt: d.completedAt ? d.completedAt.toISOString() : null,
   }));
 
+  const openHouseDtos: OpenHouseDTO[] = deal.openHouses.map((oh) => ({
+    id: oh.id,
+    date: oh.date.toISOString().slice(0, 10),
+    startTime: oh.startTime,
+    endTime: oh.endTime,
+    notes: oh.notes,
+    visitors: oh.visitors.map((v) => ({
+      id: v.id,
+      name: v.name,
+      email: v.email,
+      phone: v.phone,
+      interested: v.interested,
+      feedback: v.feedback,
+      createdAt: v.createdAt.toISOString(),
+    })),
+  }));
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -96,6 +123,7 @@ export default async function DealDetailPage({
           <DealForm
             key={deal.updatedAt.toISOString()}
             clients={clients}
+            referralPartners={referralPartnerDtos}
             defaultValues={defaultValues}
           />
         </div>
@@ -153,10 +181,28 @@ export default async function DealDetailPage({
       ) : null}
 
       <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">
-          Contingencies &amp; deadlines
-        </h2>
+        <div className="mb-6 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
+          {deadlineDtos.length > 0 ? (
+            <a
+              href={`/api/calendar/deals/${deal.id}`}
+              className="text-sm font-medium text-accent hover:opacity-80"
+            >
+              Add to calendar
+            </a>
+          ) : null}
+        </div>
         <DeadlineList dealId={deal.id} deadlines={deadlineDtos} />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-6 text-base font-semibold text-foreground">Open houses</h2>
+        <OpenHouseSection dealId={deal.id} openHouses={openHouseDtos} />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-1 text-base font-semibold text-foreground">Referral partners</h2>
+        <ReferralPartnerSection dealId={deal.id} partners={referralPartnerDtos} />
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">

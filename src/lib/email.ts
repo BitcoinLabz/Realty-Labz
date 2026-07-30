@@ -67,6 +67,26 @@ export async function sendCompletedDocumentEmail(params: {
   });
 }
 
+export async function sendPortalAccessEmail(params: {
+  to: string;
+  clientName: string;
+  senderName: string;
+  portalUrl: string;
+}) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: `${params.senderName} shared a link to your deal and document status`,
+    html: `
+      <p>Hi ${params.clientName},</p>
+      <p>${params.senderName} has given you access to a private page where you can see your deal status and documents.</p>
+      <p><a href="${params.portalUrl}">View your deal status</a></p>
+      <p style="color:#86868b;font-size:13px;">This link is unique to you — please don't forward it. It stays valid for 30 days.</p>
+    `,
+  });
+}
+
 export async function sendDeclinedNotificationEmail(params: {
   to: string;
   signerName: string;

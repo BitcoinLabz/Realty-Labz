@@ -25,6 +25,8 @@ export default async function ClientsPage() {
     email: c.email,
     phone: c.phone,
     notes: c.notes,
+    source: c.source,
+    stage: c.stage,
   }));
 
   const clientOptions: ClientOption[] = dtos.map((c) => ({ id: c.id, name: c.name }));

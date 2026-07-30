@@ -124,9 +124,15 @@ export default async function DashboardPage() {
       <RecurringReminders items={dueRecurring} />
 
       <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">
-          Due dates &amp; reminders
-        </h2>
+        <div className="mb-6 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-foreground">Due dates &amp; reminders</h2>
+          <a
+            href="/api/calendar/deadlines"
+            className="text-sm font-medium text-accent hover:opacity-80"
+          >
+            Add to calendar
+          </a>
+        </div>
         {upcomingDeadlines.length === 0 ? (
           <p className="text-sm text-muted">Nothing due in the next 7 days.</p>
         ) : (

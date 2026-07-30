@@ -13,6 +13,8 @@ function parseClientForm(formData: FormData) {
     email: formData.get("email") || undefined,
     phone: formData.get("phone") || undefined,
     notes: formData.get("notes") || undefined,
+    source: formData.get("source") || undefined,
+    stage: formData.get("stage") || undefined,
   });
 }
 

@@ -74,11 +74,25 @@ export const mileageLogSchema = z.object({
   note: z.string().trim().max(200).optional(),
 });
 
+export const CLIENT_SOURCES = [
+  "REFERRAL",
+  "ZILLOW",
+  "OPEN_HOUSE",
+  "SPHERE",
+  "WEBSITE",
+  "SOCIAL_MEDIA",
+  "OTHER",
+] as const;
+
+export const CLIENT_STAGES = ["NEW", "CONTACTED", "NURTURING", "ACTIVE", "CLOSED", "LOST"] as const;
+
 export const clientSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
   email: z.email("Enter a valid email address").optional(),
   phone: z.string().trim().max(30).optional(),
   notes: z.string().trim().max(1000).optional(),
+  source: z.enum(CLIENT_SOURCES).optional(),
+  stage: z.enum(CLIENT_STAGES).default("NEW"),
 });
 
 export const createInviteSchema = z.object({
@@ -108,11 +122,35 @@ export const dealSchema = z.object({
   closingDate: z.string().optional(),
   notes: z.string().trim().max(2000).optional(),
   clientId: z.string().optional(),
+  referralPartnerId: z.string().optional(),
 });
 
 export const dealDeadlineSchema = z.object({
   label: z.string().trim().min(1, "Label is required").max(200),
   dueDate: z.string().min(1, "Due date is required"),
+});
+
+export const referralPartnerSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100),
+  email: z.email("Enter a valid email address").optional(),
+  phone: z.string().trim().max(30).optional(),
+  notes: z.string().trim().max(1000).optional(),
+});
+
+export const openHouseSchema = z.object({
+  date: z.string().min(1, "Date is required"),
+  startTime: z.string().min(1, "Start time is required"),
+  endTime: z.string().min(1, "End time is required"),
+  notes: z.string().trim().max(500).optional(),
+});
+
+// Public, unauthenticated -- filled out by a visitor on /open-house/[id].
+export const openHouseVisitorSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100),
+  email: z.email("Enter a valid email address").optional(),
+  phone: z.string().trim().max(30).optional(),
+  interested: z.enum(["true", "false"]).optional(),
+  feedback: z.string().trim().max(1000).optional(),
 });
 
 export const loanSchema = z.object({

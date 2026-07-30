@@ -23,7 +23,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
       />
       <Field label="Email" name="email" type="email" defaultValue={email} disabled />
       <div>
-        <Button type="submit" variant="secondary" disabled={isPending}>
+        <Button type="submit" disabled={isPending}>
           {isPending ? "Saving…" : "Save changes"}
         </Button>
       </div>

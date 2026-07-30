@@ -4,6 +4,8 @@ export type ClientDTO = {
   email: string | null;
   phone: string | null;
   notes: string | null;
+  source: string | null;
+  stage: string;
 };
 
 export type ClientOption = {

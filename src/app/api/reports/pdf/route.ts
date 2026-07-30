@@ -176,7 +176,7 @@ export async function GET(request: NextRequest) {
   return new NextResponse(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="realty-labs-financial-summary-${year}.pdf"`,
+      "Content-Disposition": `attachment; filename="realty-labz-financial-summary-${year}.pdf"`,
     },
   });
 }

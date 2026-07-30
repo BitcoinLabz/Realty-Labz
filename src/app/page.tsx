@@ -11,8 +11,8 @@ export default async function Home() {
       <div className="flex max-w-md flex-col items-center gap-6 text-center">
         <Logo size="lg" />
         <p className="text-lg text-muted">
-          Finances, mileage deductions, and client documents in one place — built for Michigan
-          real estate agents.
+          Deals, e-signed contracts, clients, and your full financial picture — business and
+          personal — in one calm place, built for Michigan real estate agents and their teams.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link href={session ? "/dashboard" : "/signup"}>

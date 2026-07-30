@@ -19,7 +19,7 @@ export function InviteForm() {
           <option value="TEAM_LEAD">Team Lead</option>
         </Select>
       </div>
-      <Button type="submit" variant="secondary" disabled={isPending}>
+      <Button type="submit" disabled={isPending}>
         {isPending ? "Creating…" : "Create invite link"}
       </Button>
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}

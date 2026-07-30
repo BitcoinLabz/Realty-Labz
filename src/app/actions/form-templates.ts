@@ -146,7 +146,11 @@ export async function deleteTemplateSignerAction(formData: FormData) {
   const remaining = await prisma.formTemplateSigner.count({ where: { formTemplateId: templateId } });
   if (remaining <= 1) return;
 
-  await prisma.formTemplateSigner.delete({ where: { id: signerId } });
+  // Scoped by both id AND formTemplateId -- id alone would let a user who
+  // manages ANY template (to pass assertTemplateManageAccess above) delete a
+  // signer role belonging to a completely different tenant's template, since
+  // FormTemplateSigner.id carries no ownership information of its own.
+  await prisma.formTemplateSigner.deleteMany({ where: { id: signerId, formTemplateId: templateId } });
 
   revalidatePath(`/forms/templates/${templateId}`);
 }

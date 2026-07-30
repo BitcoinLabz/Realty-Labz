@@ -76,18 +76,43 @@ model User {
   budgets            Budget[]
   financialGoals     FinancialGoal[]
   recurringTemplates RecurringTransactionTemplate[]
+  referralPartners   ReferralPartner[]
 
   @@map("users")
 }
 
+// Where a lead came from and how far along they are (2026-07-29 audit
+// follow-up) -- both optional/defaulted so this is purely additive over
+// existing Client rows, which all read as source=null/stage=NEW.
+enum ClientSource {
+  REFERRAL
+  ZILLOW
+  OPEN_HOUSE
+  SPHERE
+  WEBSITE
+  SOCIAL_MEDIA
+  OTHER
+}
+
+enum ClientStage {
+  NEW
+  CONTACTED
+  NURTURING
+  ACTIVE
+  CLOSED
+  LOST
+}
+
 model Client {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   name      String
   email     String?
   phone     String?
   notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  source    ClientSource?
+  stage     ClientStage   @default(NEW)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -95,8 +120,29 @@ model Client {
   documents       Document[]
   deals           Deal[]
   formSubmissions FormSubmission[]
+  portalSessions  ClientPortalSession[]
 
   @@map("clients")
+}
+
+// A client-facing "magic link" session (2026-07-29) -- deliberately NOT a
+// NextAuth/User account (Client isn't part of the Role/team model at all).
+// id itself is the unguessable bearer token, matching the same trust model
+// already established for TeamInvite/FormSubmissionSigner -- an agent issues
+// one via "Send portal access" on the client detail page, the client's
+// browser gets an HttpOnly cookie holding this id, and every /portal request
+// re-resolves clientId FROM THIS ROW server-side. Never trust a clientId
+// passed directly in a request -- that's the exact class of bug fixed
+// elsewhere in this same audit pass (see deal-deadlines.ts/form-templates.ts).
+model ClientPortalSession {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+
+  @@map("client_portal_sessions")
 }
 
 enum TransactionType {
@@ -267,12 +313,79 @@ model Deal {
   client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientId String?
 
+  // Who referralFeeAmount above is actually owed to (2026-07-29) -- the
+  // amount itself stays a flat deduction on the deal; this just attributes it
+  // to a specific partner so a running total-owed can be computed.
+  referralPartner   ReferralPartner? @relation(fields: [referralPartnerId], references: [id], onDelete: SetNull)
+  referralPartnerId String?
+
   deadlines       DealDeadline[]
   documents       Document[]
   formSubmissions FormSubmission[]
   expenses        Transaction[]
+  openHouses      OpenHouse[]
 
   @@map("deals")
+}
+
+// A contact an agent trades referrals with (2026-07-29) -- Deal.referralFeeAmount
+// stays a flat per-deal deduction; this just lets those deductions be
+// attributed to a specific partner so a running total owed can be computed
+// (src/lib/finance-data.ts). Deliberately no payment/disbursement workflow --
+// that's a bigger, explicitly out-of-scope feature (see CLAUDE.md).
+model ReferralPartner {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  deals Deal[]
+
+  @@map("referral_partners")
+}
+
+// A scheduled open house on a Deal's listing (2026-07-29). The public
+// sign-in page (/open-house/[id]) needs no login, matching the exact
+// unguessable-token trust model Forms already established for /sign/[id] --
+// id itself is the link.
+model OpenHouse {
+  id        String   @id @default(cuid())
+  date      DateTime
+  startTime String
+  endTime   String
+  notes     String?
+  createdAt DateTime @default(now())
+
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId String
+
+  visitors OpenHouseVisitor[]
+
+  @@map("open_houses")
+}
+
+// One sign-in / showing-feedback record from a public open-house page.
+// Deliberately one model covering both open-house walk-ins and private
+// showing feedback (the "source" isn't tracked further -- keeping this cheap,
+// per the audit's Tier 2 scoping) rather than two near-identical models.
+model OpenHouseVisitor {
+  id         String   @id @default(cuid())
+  name       String
+  email      String?
+  phone      String?
+  interested Boolean?
+  feedback   String?
+  createdAt  DateTime @default(now())
+
+  openHouse   OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
+  openHouseId String
+
+  @@map("open_house_visitors")
 }
 
 // Flexible per-deal task list (inspection, financing, closing, or anything

@@ -5,9 +5,29 @@ import { createClientAction, updateClientAction } from "@/app/actions/clients";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 const initialState: FormState = {};
+
+export const CLIENT_SOURCE_LABELS: Record<string, string> = {
+  REFERRAL: "Referral",
+  ZILLOW: "Zillow",
+  OPEN_HOUSE: "Open house",
+  SPHERE: "Sphere of influence",
+  WEBSITE: "Website",
+  SOCIAL_MEDIA: "Social media",
+  OTHER: "Other",
+};
+
+export const CLIENT_STAGE_LABELS: Record<string, string> = {
+  NEW: "New",
+  CONTACTED: "Contacted",
+  NURTURING: "Nurturing",
+  ACTIVE: "Active",
+  CLOSED: "Closed",
+  LOST: "Lost",
+};
 
 export type ClientFormValues = {
   id?: string;
@@ -15,6 +35,8 @@ export type ClientFormValues = {
   email: string;
   phone: string;
   notes: string;
+  source: string;
+  stage: string;
 };
 
 export function ClientForm({
@@ -70,6 +92,33 @@ export function ClientForm({
           defaultValue={defaultValues?.phone}
           error={state.fieldErrors?.phone}
         />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Select
+          label="Lead source (optional)"
+          name="source"
+          defaultValue={defaultValues?.source ?? ""}
+          error={state.fieldErrors?.source}
+        >
+          <option value="">Not set</option>
+          {Object.entries(CLIENT_SOURCE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
+        <Select
+          label="Stage"
+          name="stage"
+          defaultValue={defaultValues?.stage ?? "NEW"}
+          error={state.fieldErrors?.stage}
+        >
+          {Object.entries(CLIENT_STAGE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </Select>
       </div>
       <Textarea
         label="Notes (optional)"

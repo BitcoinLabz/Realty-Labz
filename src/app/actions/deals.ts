@@ -25,7 +25,20 @@ function parseDealForm(formData: FormData) {
     closingDate: formData.get("closingDate") || undefined,
     notes: formData.get("notes") || undefined,
     clientId: formData.get("clientId") || undefined,
+    referralPartnerId: formData.get("referralPartnerId") || undefined,
   });
+}
+
+async function resolveReferralPartnerId(
+  referralPartnerId: string | undefined,
+  userId: string,
+): Promise<{ ok: true; referralPartnerId: string | null } | { ok: false; error: string }> {
+  if (!referralPartnerId) return { ok: true, referralPartnerId: null };
+  // Referral partners are plain userId-scoped, not team-shared -- matches
+  // Client's own scoping (see CLAUDE.md).
+  const partner = await prisma.referralPartner.findFirst({ where: { id: referralPartnerId, userId } });
+  if (!partner) return { ok: false, error: "Referral partner not found" };
+  return { ok: true, referralPartnerId };
 }
 
 export async function createDealAction(
@@ -44,7 +57,7 @@ export async function createDealAction(
     return { fieldErrors };
   }
 
-  const { clientId, closingDate, ...rest } = parsed.data;
+  const { clientId, closingDate, referralPartnerId, ...rest } = parsed.data;
 
   if (clientId) {
     const client = await prisma.client.findFirst({
@@ -53,11 +66,15 @@ export async function createDealAction(
     if (!client) return { error: "Client not found" };
   }
 
+  const resolvedPartner = await resolveReferralPartnerId(referralPartnerId, session.user.id);
+  if (!resolvedPartner.ok) return { error: resolvedPartner.error };
+
   await prisma.deal.create({
     data: {
       ...rest,
       closingDate: closingDate ? new Date(closingDate) : null,
       clientId: clientId || null,
+      referralPartnerId: resolvedPartner.referralPartnerId,
       userId: session.user.id,
     },
   });
@@ -85,7 +102,7 @@ export async function updateDealAction(
     return { fieldErrors };
   }
 
-  const { clientId, closingDate, ...rest } = parsed.data;
+  const { clientId, closingDate, referralPartnerId, ...rest } = parsed.data;
 
   if (clientId) {
     const client = await prisma.client.findFirst({
@@ -94,12 +111,16 @@ export async function updateDealAction(
     if (!client) return { error: "Client not found" };
   }
 
+  const resolvedPartner = await resolveReferralPartnerId(referralPartnerId, session.user.id);
+  if (!resolvedPartner.ok) return { error: resolvedPartner.error };
+
   const result = await prisma.deal.updateMany({
     where: { id, ...teamOrOwnFilter(session.user) },
     data: {
       ...rest,
       closingDate: closingDate ? new Date(closingDate) : null,
       clientId: clientId || null,
+      referralPartnerId: resolvedPartner.referralPartnerId,
     },
   });
 

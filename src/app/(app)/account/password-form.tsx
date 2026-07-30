@@ -47,7 +47,7 @@ export function PasswordForm() {
       />
       {succeeded ? <p className="text-sm text-accent">Password updated.</p> : null}
       <div>
-        <Button type="submit" variant="secondary" disabled={isPending}>
+        <Button type="submit" disabled={isPending}>
           {isPending ? "Updating…" : "Update password"}
         </Button>
       </div>

@@ -66,8 +66,12 @@ export async function toggleDeadlineAction(formData: FormData) {
   const deal = await assertDealAccess(dealId, session.user);
   if (!deal) return;
 
-  await prisma.dealDeadline.update({
-    where: { id },
+  // Scoped by both id AND dealId -- id alone would let a user who owns/manages
+  // ANY deal (to pass assertDealAccess above) mutate a deadline belonging to a
+  // completely different tenant's deal, since DealDeadline.id carries no
+  // ownership information of its own.
+  await prisma.dealDeadline.updateMany({
+    where: { id, dealId },
     data: { completedAt: isCompleted ? null : new Date() },
   });
 
@@ -85,7 +89,9 @@ export async function deleteDeadlineAction(formData: FormData) {
   const deal = await assertDealAccess(dealId, session.user);
   if (!deal) return;
 
-  await prisma.dealDeadline.delete({ where: { id } });
+  // Same cross-tenant guard as toggleDeadlineAction above -- id alone isn't
+  // enough, dealId must be part of the actual where clause.
+  await prisma.dealDeadline.deleteMany({ where: { id, dealId } });
 
   revalidatePath(`/deals/${dealId}`);
 }

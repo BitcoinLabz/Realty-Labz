@@ -8,7 +8,7 @@ import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClientOption } from "@/app/(app)/forms/types";
-import type { DealDTO, DealSide } from "./types";
+import type { DealDTO, DealSide, ReferralPartnerOption } from "./types";
 
 const initialState: FormState = {};
 
@@ -24,6 +24,7 @@ export type DealFormValues = {
   commissionAmount: string;
   brokerageSplitPercent: string;
   referralFeeAmount: string;
+  referralPartnerId: string;
   teamSplitAmount: string;
   otherDeductions: string;
   closingDate: string;
@@ -39,11 +40,13 @@ function sidePillClass(active: boolean) {
 
 export function DealForm({
   clients,
+  referralPartners,
   defaultValues,
   onDone,
   lockedClientId,
 }: {
   clients?: ClientOption[];
+  referralPartners?: ReferralPartnerOption[];
   defaultValues?: DealFormValues;
   onDone?: () => void;
   lockedClientId?: string;
@@ -191,6 +194,21 @@ export function DealForm({
             error={state.fieldErrors?.referralFeeAmount}
           />
         </div>
+        {referralPartners && referralPartners.length > 0 ? (
+          <Select
+            label="Referral owed to (optional)"
+            name="referralPartnerId"
+            defaultValue={defaultValues?.referralPartnerId ?? ""}
+            error={state.fieldErrors?.referralPartnerId}
+          >
+            <option value="">No partner</option>
+            {referralPartners.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </Select>
+        ) : null}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
             label="Team split (optional)"

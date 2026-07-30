@@ -3,12 +3,18 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamSharedFilter } from "@/lib/authorization";
-import { ClientForm, type ClientFormValues } from "../client-form";
+import {
+  ClientForm,
+  CLIENT_SOURCE_LABELS,
+  CLIENT_STAGE_LABELS,
+  type ClientFormValues,
+} from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { DealForm } from "../../deals/deal-form";
 import { ClientDocuments } from "./client-documents";
 import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
 import { ClientFormSubmissions } from "./client-form-submissions";
+import { SendPortalAccessButton } from "./send-portal-access-button";
 import type { DocumentDTO } from "../types";
 import type { FormSubmissionSummaryDTO } from "../templates/types";
 
@@ -99,6 +105,8 @@ export default async function ClientDetailPage({
     email: client.email ?? "",
     phone: client.phone ?? "",
     notes: client.notes ?? "",
+    source: client.source ?? "",
+    stage: client.stage,
   };
 
   return (
@@ -110,9 +118,15 @@ export default async function ClientDetailPage({
         >
           ← Back to Clients
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{client.name}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">{client.name}</h1>
+          <span className="rounded-full bg-surface px-3 py-1 text-sm font-medium text-muted">
+            {CLIENT_STAGE_LABELS[client.stage]}
+          </span>
+        </div>
         <p className="mt-1 text-sm text-muted">
           Contact info, properties, and documents for this client.
+          {client.source ? ` Source: ${CLIENT_SOURCE_LABELS[client.source]}.` : ""}
         </p>
       </div>
 
@@ -161,6 +175,15 @@ export default async function ClientDetailPage({
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
         <ClientDocuments clientId={client.id} documents={documentDtos} deals={dealOptions} />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-1 text-base font-semibold text-foreground">Client portal</h2>
+        <p className="mb-6 text-sm text-muted">
+          Give {client.name} their own private link to see their deal status and documents,
+          without needing an account.
+        </p>
+        <SendPortalAccessButton clientId={client.id} hasEmail={!!client.email} />
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
