@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { CLIENT_STAGE_LABELS } from "./client-form";
+import { CLIENT_STAGE_LABELS } from "@/lib/client-categories";
 import type { ClientDTO } from "./types";
 
 const selectClass =

@@ -23,7 +23,7 @@ function AddDeadlineForm({ dealId }: { dealId: string }) {
   }, [succeeded]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex items-end gap-3">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
       <input type="hidden" name="dealId" value={dealId} />
       <div className="flex-1">
         <Field
@@ -35,10 +35,10 @@ function AddDeadlineForm({ dealId }: { dealId: string }) {
           error={state.fieldErrors?.label}
         />
       </div>
-      <div className="w-44">
+      <div className="sm:w-44">
         <Field label="Due date" name="dueDate" type="date" required error={state.fieldErrors?.dueDate} />
       </div>
-      <Button type="submit" variant="secondary" disabled={isPending}>
+      <Button type="submit" variant="secondary" disabled={isPending} className="shrink-0">
         {isPending ? "Adding…" : "Add"}
       </Button>
     </form>

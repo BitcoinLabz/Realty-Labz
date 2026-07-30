@@ -81,8 +81,8 @@ export function OpenHouseSection({
         <div className="flex flex-col gap-3">
           {openHouses.map((oh) => (
             <div key={oh.id} className="rounded-xl border border-border p-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex flex-col">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 flex-col">
                   <span className="text-sm font-medium text-foreground">
                     {new Date(oh.date + "T00:00:00").toLocaleDateString("en-US", {
                       month: "short",

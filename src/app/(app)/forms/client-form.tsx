@@ -7,27 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { CLIENT_SOURCE_LABELS, CLIENT_STAGE_LABELS } from "@/lib/client-categories";
 
 const initialState: FormState = {};
-
-export const CLIENT_SOURCE_LABELS: Record<string, string> = {
-  REFERRAL: "Referral",
-  ZILLOW: "Zillow",
-  OPEN_HOUSE: "Open house",
-  SPHERE: "Sphere of influence",
-  WEBSITE: "Website",
-  SOCIAL_MEDIA: "Social media",
-  OTHER: "Other",
-};
-
-export const CLIENT_STAGE_LABELS: Record<string, string> = {
-  NEW: "New",
-  CONTACTED: "Contacted",
-  NURTURING: "Nurturing",
-  ACTIVE: "Active",
-  CLOSED: "Closed",
-  LOST: "Lost",
-};
 
 export type ClientFormValues = {
   id?: string;

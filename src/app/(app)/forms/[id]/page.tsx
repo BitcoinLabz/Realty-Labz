@@ -3,12 +3,8 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamSharedFilter } from "@/lib/authorization";
-import {
-  ClientForm,
-  CLIENT_SOURCE_LABELS,
-  CLIENT_STAGE_LABELS,
-  type ClientFormValues,
-} from "../client-form";
+import { CLIENT_SOURCE_LABELS, CLIENT_STAGE_LABELS } from "@/lib/client-categories";
+import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { DealForm } from "../../deals/deal-form";
 import { ClientDocuments } from "./client-documents";

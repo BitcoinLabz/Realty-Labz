@@ -61,9 +61,9 @@ export function ReferralPartnerSection({
           {partners.map((p) => (
             <div
               key={p.id}
-              className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3"
+              className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <div className="flex flex-col">
+              <div className="flex min-w-0 flex-col">
                 <span className="text-sm font-medium text-foreground">{p.name}</span>
                 <span className="text-sm text-muted">
                   {[p.email, p.phone].filter(Boolean).join(" · ") || "No contact info"}
