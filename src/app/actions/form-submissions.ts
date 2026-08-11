@@ -13,6 +13,7 @@ import {
 } from "@/lib/email";
 import { readDocumentFile } from "@/lib/document-storage";
 import { finalizeFormSubmission } from "@/lib/pdf-finalize";
+import { formSignerSchema } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
 import type { Client, Deal } from "@/generated/prisma/client";
 import type { FormFieldAutoFillSource } from "@/generated/prisma/enums";
@@ -61,8 +62,6 @@ async function getRequestInfo() {
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? h.get("x-real-ip") ?? null;
   return { ip, userAgent: h.get("user-agent") };
 }
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function sendFormSubmissionAction(
   _prevState: FormState,
@@ -123,19 +122,26 @@ export async function sendFormSubmissionAction(
     });
   } else {
     for (const signer of template.signers) {
-      const name = formData.get(`name_${signer.id}`);
-      const email = formData.get(`email_${signer.id}`);
-      if (typeof name !== "string" || !name.trim()) {
-        return { fieldErrors: { [`name_${signer.id}`]: `Enter a name for ${signer.label}` } };
-      }
-      if (typeof email !== "string" || !EMAIL_RE.test(email)) {
-        return { fieldErrors: { [`email_${signer.id}`]: `Enter a valid email for ${signer.label}` } };
+      const result = formSignerSchema.safeParse({
+        name: formData.get(`name_${signer.id}`),
+        email: formData.get(`email_${signer.id}`),
+      });
+      if (!result.success) {
+        const issues = result.error.issues;
+        const nameIssue = issues.find((i) => i.path[0] === "name");
+        const emailIssue = issues.find((i) => i.path[0] === "email");
+        return {
+          fieldErrors: {
+            ...(nameIssue ? { [`name_${signer.id}`]: `${nameIssue.message} for ${signer.label}` } : {}),
+            ...(emailIssue ? { [`email_${signer.id}`]: `${emailIssue.message} for ${signer.label}` } : {}),
+          },
+        };
       }
       signerInputs.push({
         templateSignerId: signer.id,
         order: signer.order,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
+        name: result.data.name,
+        email: result.data.email,
       });
     }
   }
@@ -186,10 +192,17 @@ export async function sendFormSubmissionAction(
         templateName: template.name,
         signUrl: `${baseUrl}/sign/${firstSigner.id}`,
       });
-    } catch {
+    } catch (err) {
       // Email delivery isn't configured yet, or failed — the submission
       // (and its signable link) still exists; the agent can copy the link
       // manually from the submission list, same fallback TeamInvite uses.
+      // Logged (not swallowed silently) so a Resend outage/misconfig is
+      // actually visible in Vercel's function logs.
+      console.error("[form-submissions] sendSigningRequestEmail failed", {
+        submissionId: submission.id,
+        signerId: firstSigner.id,
+        err,
+      });
     }
   }
 
@@ -270,8 +283,13 @@ export async function submitSignerResponseAction(
         templateName: signer.formSubmission.formTemplate.name,
         signUrl: `${baseUrl}/sign/${nextSigner.id}`,
       });
-    } catch {
+    } catch (err) {
       // Same fallback as above — the link still exists even if delivery fails.
+      console.error("[form-submissions] sendSigningRequestEmail (next signer) failed", {
+        submissionId: signer.formSubmission.id,
+        signerId: nextSigner.id,
+        err,
+      });
     }
   } else {
     const finalized = await finalizeFormSubmission(signer.formSubmission.id);
@@ -302,9 +320,13 @@ export async function submitSignerResponseAction(
         pdfBuffer,
         fileName: finalized.fileName,
       });
-    } catch {
+    } catch (err) {
       // Completed document is already saved as a real Document regardless —
       // this is just the courtesy copy failing to send.
+      console.error("[form-submissions] sendCompletedDocumentEmail failed", {
+        submissionId: signer.formSubmission.id,
+        err,
+      });
     }
   }
 
@@ -343,8 +365,12 @@ export async function declineSignerAction(formData: FormData) {
       signerName: signer.name,
       templateName: signer.formSubmission.formTemplate.name,
     });
-  } catch {
+  } catch (err) {
     // Non-critical — the decline itself is already recorded.
+    console.error("[form-submissions] sendDeclinedNotificationEmail failed", {
+      signerId: signer.id,
+      err,
+    });
   }
 
   revalidatePath(`/sign/${signerId}`);

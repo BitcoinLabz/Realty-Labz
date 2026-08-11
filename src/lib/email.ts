@@ -22,6 +22,19 @@ function getFromAddress() {
   return from;
 }
 
+// Every string interpolated into an HTML email body below can originate from
+// user input (a signer's typed name, a template name, a contact form
+// message) — escape it so an agent or public visitor can't inject markup/
+// links into an email sent to someone else.
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function sendSigningRequestEmail(params: {
   to: string;
   recipientName: string;
@@ -35,8 +48,8 @@ export async function sendSigningRequestEmail(params: {
     to: params.to,
     subject: `${params.senderName} sent you "${params.templateName}" to review and sign`,
     html: `
-      <p>Hi ${params.recipientName},</p>
-      <p>${params.senderName} has sent you <strong>${params.templateName}</strong> to review and sign.</p>
+      <p>Hi ${escapeHtml(params.recipientName)},</p>
+      <p>${escapeHtml(params.senderName)} has sent you <strong>${escapeHtml(params.templateName)}</strong> to review and sign.</p>
       <p><a href="${params.signUrl}">Review &amp; sign</a></p>
       <p style="color:#86868b;font-size:13px;">This link is unique to you — please don't forward it.</p>
     `,
@@ -55,7 +68,7 @@ export async function sendCompletedDocumentEmail(params: {
     to: params.to,
     subject: `${params.templateName} — fully signed`,
     html: `
-      <p>Every signer has completed <strong>${params.templateName}</strong>.</p>
+      <p>Every signer has completed <strong>${escapeHtml(params.templateName)}</strong>.</p>
       <p>The fully signed document is attached.</p>
     `,
     attachments: [
@@ -79,10 +92,29 @@ export async function sendPortalAccessEmail(params: {
     to: params.to,
     subject: `${params.senderName} shared a link to your deal and document status`,
     html: `
-      <p>Hi ${params.clientName},</p>
-      <p>${params.senderName} has given you access to a private page where you can see your deal status and documents.</p>
+      <p>Hi ${escapeHtml(params.clientName)},</p>
+      <p>${escapeHtml(params.senderName)} has given you access to a private page where you can see your deal status and documents.</p>
       <p><a href="${params.portalUrl}">View your deal status</a></p>
       <p style="color:#86868b;font-size:13px;">This link is unique to you — please don't forward it. It stays valid for 30 days.</p>
+    `,
+  });
+}
+
+// Reuses RESEND_FROM_EMAIL as the destination too (send-to-self), so this
+// needs zero new env var configuration — if that inbox isn't actually
+// monitored, point this at a dedicated address later instead.
+export async function sendContactFormEmail(params: { name: string; email: string; message: string }) {
+  const resend = getResendClient();
+  const to = process.env.RESEND_FROM_EMAIL;
+  if (!to) throw new Error("RESEND_FROM_EMAIL is not set");
+  await resend.emails.send({
+    from: getFromAddress(),
+    to,
+    replyTo: params.email,
+    subject: `New Support message from ${params.name}`,
+    html: `
+      <p><strong>From:</strong> ${escapeHtml(params.name)} (${escapeHtml(params.email)})</p>
+      <p style="white-space:pre-wrap;">${escapeHtml(params.message)}</p>
     `,
   });
 }
@@ -97,6 +129,6 @@ export async function sendDeclinedNotificationEmail(params: {
     from: getFromAddress(),
     to: params.to,
     subject: `${params.signerName} declined to sign "${params.templateName}"`,
-    html: `<p>${params.signerName} declined to sign <strong>${params.templateName}</strong>.</p>`,
+    html: `<p>${escapeHtml(params.signerName)} declined to sign <strong>${escapeHtml(params.templateName)}</strong>.</p>`,
   });
 }

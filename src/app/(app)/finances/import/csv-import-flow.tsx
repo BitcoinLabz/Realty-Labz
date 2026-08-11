@@ -30,6 +30,10 @@ export function CsvImportFlow() {
 
   useEffect(() => {
     if (previewState.rows) {
+      // Syncing local editable-row state from a fresh useActionState result
+      // (the preview step's parsed rows) -- an external system by this rule's
+      // own definition, not derivable during render.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRows(previewState.rows.map((r) => ({ ...r, skip: r.isDuplicate })));
     }
   }, [previewState.rows]);

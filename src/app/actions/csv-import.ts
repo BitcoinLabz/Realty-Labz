@@ -19,6 +19,10 @@ export type CsvPreviewRow = {
 
 export type CsvPreviewState = FormState & { rows?: CsvPreviewRow[] };
 
+// Bank CSV exports are small text files in practice — this just stops an
+// authenticated user from forcing an arbitrarily large in-memory parse.
+const MAX_CSV_SIZE_BYTES = 5 * 1024 * 1024;
+
 // Step 1: parse the uploaded file and flag likely-already-imported rows --
 // nothing is written to the database yet. Defaults every row to BUSINESS
 // expense/income by amount sign; the confirm step lets the agent bulk-adjust
@@ -33,6 +37,10 @@ export async function previewCsvImportAction(
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choose a CSV file to upload" };
+  }
+
+  if (file.size > MAX_CSV_SIZE_BYTES) {
+    return { error: "File must be under 5MB" };
   }
 
   const text = await file.text();

@@ -35,6 +35,9 @@ export default function GlobalError({
             >
               Try again
             </button>
+            {/* Plain <a>, not <Link> -- deliberate, see the file-level
+                comment above: this boundary can't rely on the router. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
               className="rounded-full border border-gray-300 px-5 py-2.5 text-sm font-medium hover:bg-gray-50"

@@ -251,6 +251,20 @@ export const taxSettingsSchema = z.object({
     .optional(),
 });
 
+// Public, unauthenticated -- the Support page's contact form. A separate
+// visually-hidden honeypot field (checked directly in
+// submitContactFormAction, not part of this schema) catches basic spam bots.
+export const contactMessageSchema = z.object({
+  name: z.string().trim().min(1, "Name is required").max(100),
+  email: z.email("Enter a valid email address").trim().toLowerCase(),
+  message: z.string().trim().min(1, "Message is required").max(2000),
+});
+
+export const formSignerSchema = z.object({
+  name: z.string().trim().min(1, "Enter a name").max(100),
+  email: z.email("Enter a valid email").trim().toLowerCase(),
+});
+
 export const csvImportRowSchema = z.object({
   date: z.string().min(1),
   description: z.string().optional(),

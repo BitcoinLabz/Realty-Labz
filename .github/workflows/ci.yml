@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [dev, main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    env:
+      # Fake, non-secret values — these modules construct clients at import
+      # time (a pg.Pool, a Google OAuth provider config) but never connect
+      # until an actual request is handled, so a build/typecheck/test pass
+      # only needs *something* present, never real credentials. There is no
+      # separate CI/staging database for this project (see CLAUDE.md — local
+      # dev and production intentionally share one Supabase project), so CI
+      # is deliberately kept fully decoupled from any real database.
+      DATABASE_URL: "postgresql://ci:ci@localhost:5432/ci"
+      AUTH_SECRET: "ci-only-not-a-real-secret"
+      AUTH_GOOGLE_ID: "ci-placeholder"
+      AUTH_GOOGLE_SECRET: "ci-placeholder"
+      RESEND_API_KEY: "re_ci_placeholder"
+      RESEND_FROM_EMAIL: "ci@example.com"
+      SUPABASE_URL: "https://ci-placeholder.supabase.co"
+      SUPABASE_SERVICE_ROLE_KEY: "ci-placeholder"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build

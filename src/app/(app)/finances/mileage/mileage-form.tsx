@@ -40,6 +40,9 @@ export function MileageForm({
   useEffect(() => {
     if (succeeded) {
       formRef.current?.reset();
+      // Resetting local UI state after a successful useActionState submit
+      // -- the established pattern across every form in this app.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsBusiness(true);
       onDone?.();
     }

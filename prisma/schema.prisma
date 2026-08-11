@@ -78,6 +78,10 @@ model User {
   recurringTemplates RecurringTransactionTemplate[]
   referralPartners   ReferralPartner[]
 
+  // Backs every teamOrOwnFilter()/teamSharedFilter() manager-view query
+  // (src/lib/authorization.ts), which joins through user: { teamId } —
+  // the single priciest query shape in the app (e.g. the /team dashboard).
+  @@index([teamId])
   @@map("users")
 }
 
@@ -122,6 +126,7 @@ model Client {
   formSubmissions FormSubmission[]
   portalSessions  ClientPortalSession[]
 
+  @@index([userId])
   @@map("clients")
 }
 
@@ -142,6 +147,7 @@ model ClientPortalSession {
   client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
   clientId String
 
+  @@index([clientId])
   @@map("client_portal_sessions")
 }
 
@@ -197,6 +203,8 @@ model Transaction {
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
   dealId String?
 
+  @@index([userId])
+  @@index([dealId])
   @@map("transactions")
 }
 
@@ -213,6 +221,7 @@ model MileageLog {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
+  @@index([userId])
   @@map("mileage_logs")
 }
 
@@ -241,6 +250,9 @@ model Document {
   // FormSubmission.completedDocumentId, no FK column on this side.
   formSubmission FormSubmission?
 
+  @@index([userId])
+  @@index([clientId])
+  @@index([dealId])
   @@map("documents")
 }
 
@@ -259,6 +271,7 @@ model TeamInvite {
   createdByUser User   @relation(fields: [createdBy], references: [id], onDelete: Cascade)
   createdBy     String
 
+  @@index([teamId])
   @@map("team_invites")
 }
 
@@ -325,6 +338,9 @@ model Deal {
   expenses        Transaction[]
   openHouses      OpenHouse[]
 
+  @@index([userId])
+  @@index([clientId])
+  @@index([referralPartnerId])
   @@map("deals")
 }
 
@@ -346,6 +362,7 @@ model ReferralPartner {
 
   deals Deal[]
 
+  @@index([userId])
   @@map("referral_partners")
 }
 
@@ -366,6 +383,7 @@ model OpenHouse {
 
   visitors OpenHouseVisitor[]
 
+  @@index([dealId])
   @@map("open_houses")
 }
 
@@ -385,6 +403,7 @@ model OpenHouseVisitor {
   openHouse   OpenHouse @relation(fields: [openHouseId], references: [id], onDelete: Cascade)
   openHouseId String
 
+  @@index([openHouseId])
   @@map("open_house_visitors")
 }
 
@@ -401,6 +420,7 @@ model DealDeadline {
   deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
   dealId String
 
+  @@index([dealId])
   @@map("deal_deadlines")
 }
 
@@ -425,6 +445,7 @@ model DocumentTemplate {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
+  @@index([userId])
   @@map("document_templates")
 }
 
@@ -489,6 +510,7 @@ model FormTemplate {
   fields      FormField[]
   submissions FormSubmission[]
 
+  @@index([userId])
   @@map("form_templates")
 }
 
@@ -508,6 +530,7 @@ model FormTemplateSigner {
   fields            FormField[]
   submissionSigners FormSubmissionSigner[]
 
+  @@index([formTemplateId])
   @@map("form_template_signers")
 }
 
@@ -539,6 +562,8 @@ model FormField {
 
   values FormFieldValue[]
 
+  @@index([formTemplateId])
+  @@index([signerId])
   @@map("form_fields")
 }
 
@@ -576,6 +601,10 @@ model FormSubmission {
 
   signers FormSubmissionSigner[]
 
+  @@index([userId])
+  @@index([clientId])
+  @@index([dealId])
+  @@index([formTemplateId])
   @@map("form_submissions")
 }
 
@@ -607,6 +636,8 @@ model FormSubmissionSigner {
 
   values FormFieldValue[]
 
+  @@index([formSubmissionId])
+  @@index([templateSignerId])
   @@map("form_submission_signers")
 }
 
@@ -625,7 +656,11 @@ model FormFieldValue {
   signer   FormSubmissionSigner @relation(fields: [signerId], references: [id], onDelete: Cascade)
   signerId String
 
+  // @@unique([fieldId, signerId]) below covers fieldId-first lookups
+  // (Postgres left-prefix rule) but not a signerId-only filter (e.g.
+  // deleting/re-fetching every value for one signer) — needs its own index.
   @@unique([fieldId, signerId])
+  @@index([signerId])
   @@map("form_field_values")
 }
 
@@ -694,6 +729,7 @@ model Asset {
   valueSnapshots AssetValueSnapshot[]
   financialGoals FinancialGoal[]
 
+  @@index([userId])
   @@map("assets")
 }
 
@@ -710,6 +746,7 @@ model AssetValueSnapshot {
   asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
   assetId String
 
+  @@index([assetId])
   @@map("asset_value_snapshots")
 }
 
@@ -759,6 +796,7 @@ model Loan {
   userId        String
   extraPayments LoanExtraPayment[]
 
+  @@index([userId])
   @@map("loans")
 }
 
@@ -779,6 +817,7 @@ model LoanExtraPayment {
   loan   Loan   @relation(fields: [loanId], references: [id], onDelete: Cascade)
   loanId String
 
+  @@index([loanId])
   @@map("loan_extra_payments")
 }
 
@@ -797,6 +836,9 @@ model Budget {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
+  // No separate @@index([userId]) needed -- the compound unique below
+  // already leads with userId, so a userId-only filter (getBudgetUsage)
+  // is served by it via Postgres's left-prefix rule.
   @@unique([userId, scope, category])
   @@map("budgets")
 }
@@ -819,6 +861,7 @@ model FinancialGoal {
   linkedAsset   Asset?  @relation(fields: [linkedAssetId], references: [id], onDelete: SetNull)
   linkedAssetId String?
 
+  @@index([userId])
   @@map("financial_goals")
 }
 
@@ -859,6 +902,7 @@ model RecurringTransactionTemplate {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
 
+  @@index([userId])
   @@map("recurring_transaction_templates")
 }
 

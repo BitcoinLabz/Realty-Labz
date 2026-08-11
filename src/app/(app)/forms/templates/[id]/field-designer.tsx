@@ -94,6 +94,10 @@ export function FieldDesigner({
 
   useEffect(() => {
     if (signers[0] && !signers.some((s) => s.id === selectedSignerId)) {
+      // Keeps the selected signer valid as the signers list changes (e.g.
+      // one is removed) -- an external system (the signers array) by this
+      // rule's own definition, not derivable during render alone.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedSignerId(signers[0].id);
     }
   }, [signers, selectedSignerId]);
@@ -158,6 +162,7 @@ export function FieldDesigner({
   }
 
   const fieldsJson = JSON.stringify(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructure-to-omit: drop the client-only `key` before serializing
     fields.map(({ key: _key, ...rest }) => rest),
   );
 

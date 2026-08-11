@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { sendFormSubmissionAction } from "@/app/actions/form-submissions";
 import type { FormState } from "@/app/actions/auth";
@@ -45,9 +46,9 @@ export function SendFormWidget({
     return (
       <p className="text-sm text-muted">
         No form templates yet — add one on the{" "}
-        <a href="/forms/templates" className="font-medium text-accent hover:opacity-80">
+        <Link href="/forms/templates" className="font-medium text-accent hover:opacity-80">
           Templates
-        </a>{" "}
+        </Link>{" "}
         tab first.
       </p>
     );
