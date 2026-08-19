@@ -6,11 +6,15 @@ import {
   getAssetBreakdown,
   getClosedDealsSummary,
   getDueRecurringTemplates,
+  getMonthlyIncomeExpense,
   getNetWorthSeries,
   getPipelineValue,
+  getUpcomingDeadlines,
 } from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
+import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
+import { NetWorthChart } from "@/components/charts/net-worth-chart";
 import { RecurringReminders } from "@/app/(app)/finances/recurring-reminders";
 
 export default async function DashboardPage() {
@@ -22,8 +26,6 @@ export default async function DashboardPage() {
   const currentYear = new Date().getFullYear();
   const start = new Date(Date.UTC(currentYear, 0, 1));
   const end = new Date(Date.UTC(currentYear + 1, 0, 1));
-  const now = new Date();
-  const soon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const [
     incomeAgg,
@@ -37,6 +39,7 @@ export default async function DashboardPage() {
     closedDeals,
     netWorthSeries,
     dueRecurring,
+    monthlySeries,
   ] = await Promise.all([
     prisma.transaction.aggregate({
       _sum: { amount: true },
@@ -56,20 +59,13 @@ export default async function DashboardPage() {
     }),
     prisma.client.count({ where: { userId: session!.user.id } }),
     prisma.document.count({ where: { userId: session!.user.id } }),
-    prisma.dealDeadline.findMany({
-      where: {
-        completedAt: null,
-        dueDate: { lte: soon },
-        deal: { userId: session!.user.id },
-      },
-      include: { deal: true },
-      orderBy: { dueDate: "asc" },
-    }),
+    getUpcomingDeadlines(session!.user.id),
     getAssetBreakdown(session!.user.id),
     getPipelineValue(session!.user.id),
     getClosedDealsSummary(session!.user.id, currentYear),
     getNetWorthSeries(session!.user.id),
     getDueRecurringTemplates(session!.user.id),
+    getMonthlyIncomeExpense(session!.user.id, currentYear, "ALL"),
   ]);
 
   const income = Number(incomeAgg._sum.amount ?? 0);
@@ -82,6 +78,8 @@ export default async function DashboardPage() {
     { label: "Personal investments", value: assetBreakdown.total },
     { label: "Real estate pipeline", value: pipeline.value },
   ].filter((p) => p.value > 0);
+
+  const hasMonthlyData = monthlySeries.some((p) => p.income > 0 || p.expenses > 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -137,29 +135,38 @@ export default async function DashboardPage() {
           <p className="text-sm text-muted">Nothing due in the next 7 days.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {upcomingDeadlines.map((d) => {
-              const isOverdue = d.dueDate < now;
-              return (
-                <Link
-                  key={d.id}
-                  href={`/deals/${d.dealId}`}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
+            {upcomingDeadlines.map((d) => (
+              <Link
+                key={d.id}
+                href={`/deals/${d.dealId}`}
+                className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
+              >
+                <span className="text-sm font-medium text-foreground">
+                  {d.label} — {d.propertyAddress}
+                </span>
+                <span
+                  className={`text-sm font-medium ${d.isOverdue ? "text-danger" : "text-muted"}`}
                 >
-                  <span className="text-sm font-medium text-foreground">
-                    {d.label} — {d.deal.propertyAddress}
-                  </span>
-                  <span
-                    className={`text-sm font-medium ${isOverdue ? "text-danger" : "text-muted"}`}
-                  >
-                    {d.dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                    {isOverdue ? " · Overdue" : ""}
-                  </span>
-                </Link>
-              );
-            })}
+                  {new Date(d.dueDate + "T00:00:00").toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                  })}
+                  {d.isOverdue ? " · Overdue" : ""}
+                </span>
+              </Link>
+            ))}
           </div>
         )}
       </section>
+
+      {hasMonthlyData ? (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-6 text-base font-semibold text-foreground">
+            Income &amp; expenses this year
+          </h2>
+          <MonthlyBarChart data={monthlySeries} />
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <div className="mb-6 flex items-baseline justify-between">
@@ -176,7 +183,9 @@ export default async function DashboardPage() {
             </p>
           </div>
         ) : null}
-        {financialPicture.length > 0 ? (
+        {netWorthSeries.length >= 2 ? (
+          <NetWorthChart data={netWorthSeries} />
+        ) : financialPicture.length > 0 ? (
           <BreakdownDonutChart data={financialPicture} />
         ) : (
           <p className="text-sm text-muted">

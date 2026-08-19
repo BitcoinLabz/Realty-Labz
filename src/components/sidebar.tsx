@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { logoutAction } from "@/app/actions/auth";
 import { Logo } from "@/components/ui/logo";
+import { NotificationBell } from "@/components/notification-bell";
+import { ThemeToggle } from "@/components/theme-toggle";
+import type { UpcomingDeadline } from "@/lib/finance-data";
 
 const baseNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -28,9 +31,11 @@ const accountNavItem = { href: "/account", label: "Account", icon: Settings };
 export function Sidebar({
   userName,
   showTeamLink,
+  upcomingDeadlines = [],
 }: {
   userName?: string | null;
   showTeamLink?: boolean;
+  upcomingDeadlines?: UpcomingDeadline[];
 }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
@@ -46,14 +51,17 @@ export function Sidebar({
     <>
       <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden">
         <Logo size="sm" />
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          aria-label="Open menu"
-          className="text-foreground"
-        >
-          <Menu size={22} />
-        </button>
+        <div className="flex items-center gap-4">
+          <NotificationBell deadlines={upcomingDeadlines} />
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            aria-label="Open menu"
+            className="text-foreground"
+          >
+            <Menu size={22} />
+          </button>
+        </div>
       </div>
 
       {isOpen ? (
@@ -71,14 +79,17 @@ export function Sidebar({
       >
         <div className="flex items-center justify-between px-6 py-5">
           <Logo size="sm" />
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            aria-label="Close menu"
-            className="text-muted md:hidden"
-          >
-            <X size={20} />
-          </button>
+          <div className="flex items-center gap-4">
+            <NotificationBell deadlines={upcomingDeadlines} />
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              aria-label="Close menu"
+              className="text-muted md:hidden"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
@@ -102,6 +113,9 @@ export function Sidebar({
         </nav>
 
         <div className="border-t border-border px-6 py-4">
+          <div className="mb-3">
+            <ThemeToggle />
+          </div>
           <p className="mb-3 truncate text-sm text-muted">{userName}</p>
           <form action={logoutAction}>
             <button type="submit" className="text-sm font-medium text-muted hover:text-foreground">

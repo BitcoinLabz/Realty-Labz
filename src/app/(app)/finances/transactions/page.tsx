@@ -2,8 +2,10 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
+import { getMonthlyIncomeExpense } from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
+import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
 import { TransactionForm } from "./transaction-form";
 import { TransactionList } from "./transaction-list";
 import { RecurringTemplates, type RecurringTemplateDTO } from "./recurring-templates";
@@ -22,7 +24,7 @@ export default async function FinancesTransactionsPage({
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
 
-  const [transactions, mileageAgg, deals, recurringTemplates] = await Promise.all([
+  const [transactions, mileageAgg, deals, recurringTemplates, monthlySeries] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId: session!.user.id, date: { gte: start, lt: end } },
       orderBy: { date: "desc" },
@@ -40,6 +42,7 @@ export default async function FinancesTransactionsPage({
       where: { userId: session!.user.id },
       orderBy: { nextDueDate: "asc" },
     }),
+    getMonthlyIncomeExpense(session!.user.id, year, "ALL"),
   ]);
 
   const dealOptions: DealOption[] = deals;
@@ -87,6 +90,7 @@ export default async function FinancesTransactionsPage({
   const overallNet = businessNet + personalNet;
 
   const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
+  const hasMonthlyData = monthlySeries.some((p) => p.income > 0 || p.expenses > 0);
 
   return (
     <div className="flex flex-col gap-8">
@@ -111,6 +115,15 @@ export default async function FinancesTransactionsPage({
         <SummaryCard label="Mileage deduction" value={formatCurrency(mileageDeduction)} />
         <SummaryCard label="Overall net" value={formatCurrency(overallNet)} />
       </div>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-6 text-base font-semibold text-foreground">Income &amp; expenses by month</h2>
+        {hasMonthlyData ? (
+          <MonthlyBarChart data={monthlySeries} />
+        ) : (
+          <p className="text-sm text-muted">Add a transaction to see your trend here.</p>
+        )}
+      </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-1 text-base font-semibold text-foreground">Add a transaction</h2>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
@@ -78,7 +79,18 @@ export default async function FinancesMileagePage({
         )}
       </section>
 
-      <MileageList logs={dtos} />
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <div className="mb-6 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-foreground">Recent trips</h2>
+          <Link
+            href={`/finances/mileage/history?year=${year}`}
+            className="text-sm font-medium text-accent hover:opacity-80"
+          >
+            View all trips →
+          </Link>
+        </div>
+        <MileageList logs={dtos.slice(0, 5)} />
+      </section>
     </div>
   );
 }

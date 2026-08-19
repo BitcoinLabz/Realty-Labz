@@ -34,13 +34,13 @@ export type MonthlySeriesPoint = { month: string; income: number; expenses: numb
 export async function getMonthlyIncomeExpense(
   userId: string,
   year: number,
-  scope: "BUSINESS" | "PERSONAL",
+  scope: "BUSINESS" | "PERSONAL" | "ALL",
 ): Promise<MonthlySeriesPoint[]> {
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
 
   const rows = await prisma.transaction.findMany({
-    where: { userId, scope, date: { gte: start, lt: end } },
+    where: { userId, ...(scope === "ALL" ? {} : { scope }), date: { gte: start, lt: end } },
     select: { type: true, amount: true, date: true },
   });
 
@@ -407,5 +407,40 @@ export async function getDueRecurringTemplates(userId: string): Promise<DueRecur
     type: t.type,
     nextDueDate: t.nextDueDate.toISOString().slice(0, 10),
     isOverdue: t.nextDueDate < now,
+  }));
+}
+
+export type UpcomingDeadline = {
+  id: string;
+  label: string;
+  propertyAddress: string;
+  dealId: string;
+  dueDate: string; // yyyy-mm-dd
+  isOverdue: boolean;
+};
+
+// Extracted from what was originally an inline query on the dashboard, now
+// also used by the sidebar's notification bell (src/components/sidebar.tsx)
+// -- one source of truth for "what's coming up," same 7-day window the
+// dashboard already used. Deliberately DealDeadline only, not ClientDeadline
+// -- see the ClientDeadline model's own comment for why that one stays
+// isolated to the client detail page.
+export async function getUpcomingDeadlines(userId: string, days = 7): Promise<UpcomingDeadline[]> {
+  const now = new Date();
+  const soon = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+
+  const deadlines = await prisma.dealDeadline.findMany({
+    where: { completedAt: null, dueDate: { lte: soon }, deal: { userId } },
+    include: { deal: true },
+    orderBy: { dueDate: "asc" },
+  });
+
+  return deadlines.map((d) => ({
+    id: d.id,
+    label: d.label,
+    propertyAddress: d.deal.propertyAddress,
+    dealId: d.dealId,
+    dueDate: d.dueDate.toISOString().slice(0, 10),
+    isOverdue: d.dueDate < now,
   }));
 }

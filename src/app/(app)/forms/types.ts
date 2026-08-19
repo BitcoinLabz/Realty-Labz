@@ -28,3 +28,10 @@ export type DocumentDTO = {
   createdAt: string; // ISO
 };
 
+export type ClientDeadlineDTO = {
+  id: string;
+  label: string;
+  dueDate: string; // yyyy-mm-dd
+  completedAt: string | null;
+};
+

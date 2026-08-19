@@ -125,9 +125,31 @@ model Client {
   deals           Deal[]
   formSubmissions FormSubmission[]
   portalSessions  ClientPortalSession[]
+  deadlines       ClientDeadline[]
 
   @@index([userId])
   @@map("clients")
+}
+
+// A reminder tied to a client rather than one specific property/deal (e.g.
+// "send pre-approval letter") -- deliberately a separate model from
+// DealDeadline, not a nullable-dealId-plus-clientId extension of it.
+// DealDeadline's own comment already frames it as the deal's flexible task
+// list for Phase 3's automatic per-deal deadline detection; a client-level
+// reminder is a different enough concept, and a separate model avoids
+// "neither or both FKs set" edge cases. Same flexible label+dueDate shape.
+model ClientDeadline {
+  id          String    @id @default(cuid())
+  label       String
+  dueDate     DateTime
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  clientId String
+
+  @@index([clientId])
+  @@map("client_deadlines")
 }
 
 // A client-facing "magic link" session (2026-07-29) -- deliberately NOT a
