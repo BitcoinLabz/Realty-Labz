@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { FormSubmissionSummaryDTO } from "../templates/types";
+import type { FormSubmissionSummaryDTO } from "./templates/types";
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: "Waiting to be viewed",
@@ -34,7 +34,10 @@ function CopyLinkButton({ signerId }: { signerId: string }) {
   );
 }
 
-export function ClientFormSubmissions({ submissions }: { submissions: FormSubmissionSummaryDTO[] }) {
+// Generic envelope/submission list — reused on both a client's page and a
+// deal's page (a submission can be linked to either, or neither), so this
+// intentionally takes no clientId/dealId of its own.
+export function FormSubmissionList({ submissions }: { submissions: FormSubmissionSummaryDTO[] }) {
   if (submissions.length === 0) {
     return <p className="text-sm text-muted">No forms sent yet.</p>;
   }

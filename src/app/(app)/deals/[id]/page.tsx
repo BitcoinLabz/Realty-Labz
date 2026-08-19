@@ -2,15 +2,20 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter } from "@/lib/authorization";
-import { formatCurrency, formatFileSize } from "@/lib/format";
+import { teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
+import { formatCurrency } from "@/lib/format";
 import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../deal-form";
 import { DeadlineList } from "./deadline-list";
+import { DealDocuments } from "./deal-documents";
 import { DeleteDealButton } from "./delete-deal-button";
 import { OpenHouseSection } from "./open-house-section";
 import { ReferralPartnerSection } from "./referral-partner-section";
+import { FormSubmissionList } from "../../forms/form-submission-list";
+import { SendFormWidget, type SendableTemplate } from "../../forms/[id]/send-form-widget";
 import type { DealDeadlineDTO, OpenHouseDTO, ReferralPartnerDTO } from "../types";
+import type { DocumentDTO } from "../../forms/types";
+import type { FormSubmissionSummaryDTO } from "../../forms/templates/types";
 
 export default async function DealDetailPage({
   params,
@@ -20,13 +25,13 @@ export default async function DealDetailPage({
   const { id } = await params;
   const session = await auth();
 
-  const [deal, clients, referralPartners] = await Promise.all([
+  const [deal, clients, referralPartners, formSubmissions, formTemplates] = await Promise.all([
     prisma.deal.findFirst({
       where: { id, ...teamOrOwnFilter(session!.user) },
       include: {
         deadlines: { orderBy: { dueDate: "asc" } },
         documents: { orderBy: { createdAt: "desc" } },
-        client: { select: { id: true, name: true } },
+        client: { select: { id: true, name: true, email: true } },
         expenses: { where: { type: "EXPENSE" }, orderBy: { date: "desc" } },
         openHouses: {
           orderBy: { date: "desc" },
@@ -40,11 +45,51 @@ export default async function DealDetailPage({
       select: { id: true, name: true },
     }),
     getReferralPartnerTotals(session!.user.id),
+    prisma.formSubmission.findMany({
+      where: { dealId: id, ...teamOrOwnFilter(session!.user) },
+      include: { formTemplate: true, client: { select: { name: true } }, signers: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.formTemplate.findMany({
+      where: teamSharedFilter(session!.user),
+      include: { signers: { orderBy: { order: "asc" } } },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   if (!deal) notFound();
 
   const referralPartnerDtos: ReferralPartnerDTO[] = referralPartners;
+
+  const documentDtos: DocumentDTO[] = deal.documents.map((d) => ({
+    id: d.id,
+    fileName: d.fileName,
+    mimeType: d.mimeType,
+    size: d.size,
+    clientId: d.clientId,
+    dealId: d.dealId,
+    createdAt: d.createdAt.toISOString(),
+  }));
+
+  const formSubmissionDtos: FormSubmissionSummaryDTO[] = formSubmissions.map((s) => ({
+    id: s.id,
+    templateName: s.formTemplate.name,
+    status: s.status,
+    createdAt: s.createdAt.toISOString(),
+    clientId: s.clientId,
+    clientName: s.client?.name ?? null,
+    signers: s.signers
+      .map((signer) => ({ id: signer.id, name: signer.name, status: signer.status, order: signer.order }))
+      .sort((a, b) => a.order - b.order),
+  }));
+
+  const sendableTemplates: SendableTemplate[] = formTemplates
+    .filter((t) => t.signers.length > 0)
+    .map((t) => ({
+      id: t.id,
+      name: t.name,
+      signers: t.signers.map((s) => ({ id: s.id, order: s.order, label: s.label })),
+    }));
 
   const defaultValues: DealFormValues = {
     id: deal.id,
@@ -206,34 +251,30 @@ export default async function DealDetailPage({
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-foreground">Documents</h2>
-          <Link
-            href={deal.client ? `/forms/${deal.client.id}` : "/forms"}
-            className="text-sm font-medium text-accent hover:opacity-80"
-          >
-            {deal.client ? `Manage on ${deal.client.name}'s page` : "Manage on the Clients tab"}
-          </Link>
-        </div>
-        {deal.documents.length === 0 ? (
-          <p className="text-sm text-muted">
-            No documents linked yet. Upload one from{" "}
-            {deal.client ? `${deal.client.name}'s page` : "the Clients page"} and link it to this deal.
-          </p>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {deal.documents.map((doc) => (
-              <a
-                key={doc.id}
-                href={`/api/documents/${doc.id}`}
-                className="flex items-center justify-between rounded-xl border border-border px-4 py-3 hover:border-accent"
-              >
-                <span className="text-sm font-medium text-foreground">{doc.fileName}</span>
-                <span className="text-sm text-muted">{formatFileSize(doc.size)}</span>
-              </a>
-            ))}
+        <h2 className="mb-1 text-base font-semibold text-foreground">Forms &amp; envelopes</h2>
+        <p className="mb-6 text-sm text-muted">
+          Every contract and signature request sent for this property.
+        </p>
+
+        {formSubmissionDtos.length > 0 ? (
+          <div className="mb-6">
+            <FormSubmissionList submissions={formSubmissionDtos} />
           </div>
-        )}
+        ) : null}
+
+        <div className="max-w-md border-t border-border pt-6">
+          <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
+          <SendFormWidget
+            client={deal.client ? { id: deal.client.id, name: deal.client.name, email: deal.client.email } : undefined}
+            templates={sendableTemplates}
+            lockedDealId={deal.id}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
+        <DealDocuments dealId={deal.id} clientId={deal.clientId} documents={documentDtos} />
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">

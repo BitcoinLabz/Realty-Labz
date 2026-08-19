@@ -47,12 +47,3 @@ export type FormSubmissionSummaryDTO = {
   clientName: string | null;
   signers: { id: string; name: string; status: FormSignerStatus; order: number }[];
 };
-
-export type DocumentTemplateDTO = {
-  id: string;
-  name: string;
-  fileName: string;
-  size: number;
-  createdAt: string; // ISO
-  creatorName: string;
-};

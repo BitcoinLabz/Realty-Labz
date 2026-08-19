@@ -71,3 +71,31 @@ export async function readDocumentFile(storageKey: string): Promise<Buffer> {
 export async function deleteDocumentFile(storageKey: string): Promise<void> {
   await getSupabaseAdmin().storage.from(BUCKET).remove([storageKey]);
 }
+
+// Duplicates a stored file under a fresh key for a given owner — used when
+// promoting a shared DocumentTemplate (library file) into a new FormTemplate
+// (src/app/actions/form-templates.ts's createFormTemplateFromLibraryAction),
+// so the two rows end up with fully independent storage objects and deleting
+// one later can never break the other. Built on the existing
+// readDocumentFile/upload primitives rather than Supabase Storage's own
+// `.copy()` API, since that API surface hasn't been verified against the
+// version of @supabase/supabase-js this project pins.
+export async function copyDocumentFile(
+  sourceKey: string,
+  userId: string,
+  mimeType: string,
+): Promise<string> {
+  const buffer = await readDocumentFile(sourceKey);
+  const ext = path.extname(sourceKey);
+  const newKey = `${userId}/${randomUUID()}${ext}`;
+
+  const { error } = await getSupabaseAdmin()
+    .storage.from(BUCKET)
+    .upload(newKey, buffer, { contentType: mimeType });
+
+  if (error) {
+    throw new Error(`Failed to copy document: ${error.message}`);
+  }
+
+  return newKey;
+}

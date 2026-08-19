@@ -4,13 +4,12 @@ import { canManageSharedResources, teamOrOwnFilter, teamSharedFilter } from "@/l
 import { UploadTemplateForm } from "./upload-template-form";
 import { TemplateList } from "./template-list";
 import { SubmissionList } from "./submission-list";
-import { SharedTemplates } from "./shared-templates";
-import type { DocumentTemplateDTO, FormSubmissionSummaryDTO, FormTemplateDTO } from "./types";
+import type { FormSubmissionSummaryDTO, FormTemplateDTO } from "./types";
 
 export default async function TemplatesPage() {
   const session = await auth();
 
-  const [templates, submissions, documentTemplates] = await Promise.all([
+  const [templates, submissions] = await Promise.all([
     prisma.formTemplate.findMany({
       where: teamSharedFilter(session!.user),
       include: {
@@ -24,11 +23,6 @@ export default async function TemplatesPage() {
       include: { formTemplate: true, client: true, signers: true },
       orderBy: { createdAt: "desc" },
       take: 25,
-    }),
-    prisma.documentTemplate.findMany({
-      where: teamSharedFilter(session!.user),
-      include: { user: true },
-      orderBy: { createdAt: "desc" },
     }),
   ]);
 
@@ -56,15 +50,6 @@ export default async function TemplatesPage() {
       .sort((a, b) => a.order - b.order),
   }));
 
-  const documentTemplateDtos: DocumentTemplateDTO[] = documentTemplates.map((t) => ({
-    id: t.id,
-    name: t.name,
-    fileName: t.fileName,
-    size: t.size,
-    createdAt: t.createdAt.toISOString(),
-    creatorName: t.user.name ?? t.user.email,
-  }));
-
   const canManage = canManageSharedResources(session!.user);
   const isTeamShared = !!session!.user.teamId;
 
@@ -72,12 +57,12 @@ export default async function TemplatesPage() {
     <div className="flex flex-col gap-8">
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-1 text-base font-semibold text-foreground">
-          {isTeamShared ? "Team form library" : "Form library"}
+          {isTeamShared ? "Team fillable templates" : "Fillable templates"}
         </h2>
         <p className="mb-6 text-sm text-muted">
           {isTeamShared
-            ? "Contract templates shared with your whole team — place fields once, send to any client."
-            : "Contract templates you reuse across clients."}
+            ? "Ready-to-send templates shared with your whole team — place fields once, send to any client. Upload a new PDF here, or turn a file from your Library into one."
+            : "Ready-to-send templates you reuse across clients. Upload a new PDF here, or turn a file from your Library into one."}
         </p>
 
         {canManage ? (
@@ -93,12 +78,6 @@ export default async function TemplatesPage() {
         <h2 className="mb-6 text-base font-semibold text-foreground">Recent activity</h2>
         <SubmissionList submissions={submissionDtos} />
       </section>
-
-      <SharedTemplates
-        templates={documentTemplateDtos}
-        canManage={canManage}
-        isTeamShared={isTeamShared}
-      />
     </div>
   );
 }

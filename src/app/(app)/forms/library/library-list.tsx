@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef } from "react";
 import { deleteTemplateAction, uploadTemplateAction } from "@/app/actions/document-templates";
+import { createFormTemplateFromLibraryAction } from "@/app/actions/form-templates";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -23,7 +24,7 @@ function UploadTemplateForm() {
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       <Field
-        label="Template name"
+        label="File name"
         name="name"
         type="text"
         placeholder="e.g. Standard Purchase Agreement"
@@ -31,22 +32,23 @@ function UploadTemplateForm() {
         error={state.fieldErrors?.name}
       />
       <FileDropInput
-        id="template-file"
+        id="library-file"
         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
         required
+        helperText="Upload your brokerage's real contracts and forms. PDFs can be turned into a fillable, sendable template below."
         error={state.fieldErrors?.file}
       />
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
       <div>
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Uploading…" : "Add template"}
+          {isPending ? "Uploading…" : "Add to library"}
         </Button>
       </div>
     </form>
   );
 }
 
-export function SharedTemplates({
+export function LibraryList({
   templates,
   canManage,
   isTeamShared,
@@ -58,12 +60,12 @@ export function SharedTemplates({
   return (
     <section className="rounded-2xl border border-border bg-background p-8">
       <h2 className="mb-1 text-base font-semibold text-foreground">
-        {isTeamShared ? "Team templates" : "Templates"}
+        {isTeamShared ? "Team library" : "Library"}
       </h2>
       <p className="mb-6 text-sm text-muted">
         {isTeamShared
-          ? "Standard forms shared with your whole team — separate from a specific client or deal."
-          : "Standard forms you reuse across clients and deals."}
+          ? "Your brokerage's own contracts and forms, shared with the whole team. Turn a PDF into a fillable template to send it for signature."
+          : "Your own contracts and forms. Turn a PDF into a fillable template to send it for signature."}
       </p>
 
       {canManage ? (
@@ -75,35 +77,45 @@ export function SharedTemplates({
       {templates.length === 0 ? (
         <p className="text-sm text-muted">
           {canManage
-            ? "No templates yet. Add your first one above."
-            : "No templates yet. Ask a manager to add one."}
+            ? "No files in your library yet. Add your first one above."
+            : "No files in the library yet. Ask a manager to add one."}
         </p>
       ) : (
         <div className="flex flex-col gap-2">
           {templates.map((t) => (
             <div
               key={t.id}
-              className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3"
+              className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <a href={`/api/document-templates/${t.id}`} className="flex flex-col hover:text-accent">
-                <span className="text-sm font-medium text-foreground">{t.name}</span>
+              <a href={`/api/document-templates/${t.id}`} className="flex min-w-0 flex-col hover:text-accent">
+                <span className="truncate text-sm font-medium text-foreground">{t.name}</span>
                 <span className="text-sm text-muted">
                   {formatFileSize(t.size)}
                   {isTeamShared ? ` · Added by ${t.creatorName}` : ""}
                 </span>
               </a>
               {canManage ? (
-                <form
-                  action={deleteTemplateAction}
-                  onSubmit={(e) => {
-                    if (!confirm(`Delete the "${t.name}" template?`)) e.preventDefault();
-                  }}
-                >
-                  <input type="hidden" name="id" value={t.id} />
-                  <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                    Delete
-                  </button>
-                </form>
+                <div className="flex shrink-0 items-center gap-4">
+                  {t.mimeType === "application/pdf" ? (
+                    <form action={createFormTemplateFromLibraryAction}>
+                      <input type="hidden" name="documentTemplateId" value={t.id} />
+                      <button type="submit" className="text-sm font-medium text-accent hover:opacity-80">
+                        Create fillable template
+                      </button>
+                    </form>
+                  ) : null}
+                  <form
+                    action={deleteTemplateAction}
+                    onSubmit={(e) => {
+                      if (!confirm(`Delete "${t.name}" from the library?`)) e.preventDefault();
+                    }}
+                  >
+                    <input type="hidden" name="id" value={t.id} />
+                    <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
+                      Delete
+                    </button>
+                  </form>
+                </div>
               ) : null}
             </div>
           ))}

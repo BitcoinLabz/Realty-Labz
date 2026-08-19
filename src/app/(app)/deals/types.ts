@@ -1,6 +1,40 @@
 export type DealSide = "BUYER" | "SELLER" | "DUAL";
 export type DealStatus = "ACTIVE" | "UNDER_CONTRACT" | "PENDING" | "CLOSED" | "FELL_THROUGH";
 
+// Shared across every screen that shows a deal's side/status (previously
+// duplicated locally in forms/[id]/page.tsx) — one place to keep these in
+// sync, same pattern as src/lib/client-categories.ts.
+export const DEAL_SIDE_LABELS: Record<DealSide, string> = {
+  BUYER: "Buyer",
+  SELLER: "Seller",
+  DUAL: "Dual",
+};
+
+export const DEAL_STATUS_LABELS: Record<DealStatus, string> = {
+  ACTIVE: "Active",
+  UNDER_CONTRACT: "Under Contract",
+  PENDING: "Pending",
+  CLOSED: "Closed",
+  FELL_THROUGH: "Fell Through",
+};
+
+// One row in the "Files" list (/forms/files) — every deal across the
+// session's visible clients (teamOrOwnFilter), with the counts SkySlope's
+// Files view shows: how many plain Documents and how many e-signature
+// FormSubmissions ("envelopes") are attached to this property.
+export type DealFileDTO = {
+  id: string;
+  propertyAddress: string;
+  side: DealSide;
+  status: DealStatus;
+  clientId: string | null;
+  clientName: string | null;
+  agentName: string;
+  documentCount: number;
+  envelopeCount: number;
+  updatedAt: string; // ISO
+};
+
 export type DealDTO = {
   id: string;
   side: DealSide;

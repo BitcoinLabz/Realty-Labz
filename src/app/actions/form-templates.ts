@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { canManageSharedResources, teamSharedFilter } from "@/lib/authorization";
-import { MAX_FILE_SIZE_BYTES, deleteDocumentFile, saveDocumentFile } from "@/lib/document-storage";
+import {
+  MAX_FILE_SIZE_BYTES,
+  copyDocumentFile,
+  deleteDocumentFile,
+  saveDocumentFile,
+} from "@/lib/document-storage";
 import type { FormState } from "@/app/actions/auth";
 
 // Only PDFs — unlike DocumentTemplate (which also allows Word docs/images),
@@ -77,6 +82,47 @@ export async function deleteFormTemplateAction(formData: FormData) {
 
   revalidatePath("/forms/templates");
   redirect("/forms/templates");
+}
+
+// Promotes a raw library file (DocumentTemplate) into a new fillable
+// FormTemplate — SkySlope's "start a template from a library form" flow.
+// Copies the PDF to a fresh storage key (see copyDocumentFile) rather than
+// pointing the new template at the library file's own key, so the two rows
+// stay fully independent — deleting the library original later can't break
+// a template already built from it, and vice versa.
+export async function createFormTemplateFromLibraryAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+  if (!canManageSharedResources(session.user)) return;
+
+  const documentTemplateId = formData.get("documentTemplateId");
+  if (typeof documentTemplateId !== "string" || !documentTemplateId) return;
+
+  const libraryDoc = await prisma.documentTemplate.findFirst({
+    where: { id: documentTemplateId, ...teamSharedFilter(session.user) },
+  });
+  if (!libraryDoc) return;
+  // Only a PDF can go through the pdfjs/pdf-lib field designer — the
+  // "Create fillable template" button is already hidden for non-PDF rows,
+  // this is a defensive server-side re-check of the same rule.
+  if (libraryDoc.mimeType !== "application/pdf") return;
+
+  const storageKey = await copyDocumentFile(libraryDoc.storageKey, session.user.id, libraryDoc.mimeType);
+
+  const template = await prisma.formTemplate.create({
+    data: {
+      userId: session.user.id,
+      name: libraryDoc.name,
+      fileName: libraryDoc.fileName,
+      storageKey,
+      mimeType: libraryDoc.mimeType,
+      size: libraryDoc.size,
+      signers: { create: { order: 1, label: "Signer 1" } },
+    },
+  });
+
+  revalidatePath("/forms/templates");
+  redirect(`/forms/templates/${template.id}`);
 }
 
 async function assertTemplateManageAccess(

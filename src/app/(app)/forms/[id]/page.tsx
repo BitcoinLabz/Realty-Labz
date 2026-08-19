@@ -7,26 +7,13 @@ import { CLIENT_SOURCE_LABELS, CLIENT_STAGE_LABELS } from "@/lib/client-categori
 import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { DealForm } from "../../deals/deal-form";
+import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS } from "../../deals/types";
 import { ClientDocuments } from "./client-documents";
 import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
-import { ClientFormSubmissions } from "./client-form-submissions";
+import { FormSubmissionList } from "../form-submission-list";
 import { SendPortalAccessButton } from "./send-portal-access-button";
 import type { DocumentDTO } from "../types";
 import type { FormSubmissionSummaryDTO } from "../templates/types";
-
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: "Active",
-  UNDER_CONTRACT: "Under Contract",
-  PENDING: "Pending",
-  CLOSED: "Closed",
-  FELL_THROUGH: "Fell Through",
-};
-
-const SIDE_LABELS: Record<string, string> = {
-  BUYER: "Buyer",
-  SELLER: "Seller",
-  DUAL: "Dual",
-};
 
 export default async function ClientDetailPage({
   params,
@@ -152,10 +139,10 @@ export default async function ClientDetailPage({
                   <span className="text-sm font-medium text-foreground">
                     {deal.propertyAddress}
                   </span>
-                  <span className="text-sm text-muted">{SIDE_LABELS[deal.side]}</span>
+                  <span className="text-sm text-muted">{DEAL_SIDE_LABELS[deal.side]}</span>
                 </div>
                 <span className="text-sm font-medium text-muted">
-                  {STATUS_LABELS[deal.status]}
+                  {DEAL_STATUS_LABELS[deal.status]}
                 </span>
               </Link>
             ))}
@@ -187,16 +174,14 @@ export default async function ClientDetailPage({
 
         {formSubmissionDtos.length > 0 ? (
           <div className="mb-6">
-            <ClientFormSubmissions submissions={formSubmissionDtos} />
+            <FormSubmissionList submissions={formSubmissionDtos} />
           </div>
         ) : null}
 
         <div className="max-w-md border-t border-border pt-6">
           <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
           <SendFormWidget
-            clientId={client.id}
-            clientName={client.name}
-            clientEmail={client.email}
+            client={{ id: client.id, name: client.name, email: client.email }}
             templates={sendableTemplates}
             deals={dealOptions}
           />

@@ -16,18 +16,25 @@ export type SendableTemplate = {
   signers: { id: string; order: number; label: string }[];
 };
 
+export type SendFormClient = {
+  id: string;
+  name: string;
+  email: string | null;
+};
+
 export function SendFormWidget({
-  clientId,
-  clientName,
-  clientEmail,
+  client,
   templates,
   deals,
+  lockedDealId,
 }: {
-  clientId: string;
-  clientName: string;
-  clientEmail: string | null;
+  client?: SendFormClient;
   templates: SendableTemplate[];
-  deals: { id: string; propertyAddress: string }[];
+  // Deal picker options — ignored when lockedDealId is set.
+  deals?: { id: string; propertyAddress: string }[];
+  // When set (sending from a deal's own page), the deal is fixed and no
+  // picker is shown — a hidden input carries it instead.
+  lockedDealId?: string;
 }) {
   const [state, formAction, isPending] = useActionState(sendFormSubmissionAction, initialState);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
@@ -56,7 +63,8 @@ export function SendFormWidget({
 
   return (
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
-      <input type="hidden" name="clientId" value={clientId} />
+      {client ? <input type="hidden" name="clientId" value={client.id} /> : null}
+      {lockedDealId ? <input type="hidden" name="dealId" value={lockedDealId} /> : null}
       <input type="hidden" name="keepForRecords" value={keepForRecords ? "true" : "false"} />
 
       <Select
@@ -75,7 +83,7 @@ export function SendFormWidget({
         ))}
       </Select>
 
-      {deals.length > 0 ? (
+      {!lockedDealId && deals && deals.length > 0 ? (
         <Select label="Link to a property/offer (optional)" name="dealId" defaultValue="">
           <option value="">None</option>
           {deals.map((d) => (
@@ -95,7 +103,7 @@ export function SendFormWidget({
             className="mt-1"
           />
           I&apos;ll fill this out myself and keep it for my own records — don&apos;t send it to{" "}
-          {clientName} for signature.
+          {client ? client.name : "the signer"} for signature.
         </label>
       ) : null}
 
@@ -106,7 +114,7 @@ export function SendFormWidget({
                 label={`${signer.label} name`}
                 name={`name_${signer.id}`}
                 type="text"
-                defaultValue={i === 0 ? clientName : undefined}
+                defaultValue={i === 0 ? client?.name : undefined}
                 required
                 error={state.fieldErrors?.[`name_${signer.id}`]}
               />
@@ -114,7 +122,7 @@ export function SendFormWidget({
                 label={`${signer.label} email`}
                 name={`email_${signer.id}`}
                 type="email"
-                defaultValue={i === 0 ? (clientEmail ?? undefined) : undefined}
+                defaultValue={i === 0 ? (client?.email ?? undefined) : undefined}
                 required
                 error={state.fieldErrors?.[`email_${signer.id}`]}
               />
