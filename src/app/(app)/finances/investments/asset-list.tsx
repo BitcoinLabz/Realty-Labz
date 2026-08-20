@@ -1,10 +1,56 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { deleteAssetAction, refreshStockPriceAction, refreshWalletBalanceAction } from "@/app/actions/assets";
+import type { FormState } from "@/app/actions/auth";
 import { formatCurrency } from "@/lib/format";
 import { AssetForm } from "./asset-form";
 import type { AssetDTO } from "./types";
+
+const initialState: FormState = {};
+
+// Each list row gets its own instance of these, so pending/error state is
+// isolated per-asset. Previously a plain <form action={...}> with no
+// pending/error UI at all -- a failed refresh (rate limit, Yahoo/CoinGecko
+// hiccup, etc.) looked identical to a successful one: nothing visibly
+// happened either way.
+function RefreshWalletButton({ assetId }: { assetId: string }) {
+  const [state, formAction, isPending] = useActionState(refreshWalletBalanceAction, initialState);
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <form action={formAction}>
+        <input type="hidden" name="id" value={assetId} />
+        <button
+          type="submit"
+          disabled={isPending}
+          className="text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
+        >
+          {isPending ? "Refreshing…" : "Refresh"}
+        </button>
+      </form>
+      {state.error ? <span className="text-xs text-danger">{state.error}</span> : null}
+    </div>
+  );
+}
+
+function RefreshStockButton({ assetId }: { assetId: string }) {
+  const [state, formAction, isPending] = useActionState(refreshStockPriceAction, initialState);
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <form action={formAction}>
+        <input type="hidden" name="id" value={assetId} />
+        <button
+          type="submit"
+          disabled={isPending}
+          className="text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
+        >
+          {isPending ? "Refreshing…" : "Refresh"}
+        </button>
+      </form>
+      {state.error ? <span className="text-xs text-danger">{state.error}</span> : null}
+    </div>
+  );
+}
 
 const typeLabels: Record<string, string> = {
   STOCKS: "Stocks",
@@ -110,22 +156,8 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
               <span className="text-sm font-semibold text-foreground">
                 {formatCurrency(a.currentValue)}
               </span>
-              {a.walletNetwork ? (
-                <form action={refreshWalletBalanceAction}>
-                  <input type="hidden" name="id" value={a.id} />
-                  <button type="submit" className="text-sm font-medium text-muted hover:text-foreground">
-                    Refresh
-                  </button>
-                </form>
-              ) : null}
-              {a.stockTicker ? (
-                <form action={refreshStockPriceAction}>
-                  <input type="hidden" name="id" value={a.id} />
-                  <button type="submit" className="text-sm font-medium text-muted hover:text-foreground">
-                    Refresh
-                  </button>
-                </form>
-              ) : null}
+              {a.walletNetwork ? <RefreshWalletButton assetId={a.id} /> : null}
+              {a.stockTicker ? <RefreshStockButton assetId={a.id} /> : null}
               <button
                 type="button"
                 onClick={() => setEditingId(a.id)}

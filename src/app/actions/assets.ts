@@ -146,6 +146,7 @@ export async function createAssetAction(
   });
 
   revalidatePath("/finances");
+  revalidatePath("/finances/investments");
   revalidatePath("/dashboard");
   return {};
 }
@@ -185,6 +186,7 @@ export async function updateAssetAction(
   await prisma.assetValueSnapshot.create({ data: { assetId: id, value: resolved.currentValue } });
 
   revalidatePath("/finances");
+  revalidatePath("/finances/investments");
   revalidatePath("/dashboard");
   return {};
 }
@@ -199,18 +201,22 @@ export async function deleteAssetAction(formData: FormData) {
   await prisma.asset.deleteMany({ where: { id, userId: session.user.id } });
 
   revalidatePath("/finances");
+  revalidatePath("/finances/investments");
   revalidatePath("/dashboard");
 }
 
-export async function refreshWalletBalanceAction(formData: FormData) {
+export async function refreshWalletBalanceAction(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const session = await auth();
-  if (!session?.user) return;
+  if (!session?.user) return { error: "You must be signed in" };
 
   const id = formData.get("id");
-  if (typeof id !== "string" || !id) return;
+  if (typeof id !== "string" || !id) return { error: "Missing asset id" };
 
   const asset = await prisma.asset.findFirst({ where: { id, userId: session.user.id } });
-  if (!asset || !asset.walletNetwork || !asset.walletAddress) return;
+  if (!asset || !asset.walletNetwork || !asset.walletAddress) return { error: "Asset not found" };
 
   try {
     const { balance, usdValue } = await fetchWalletBalanceUsd(asset.walletNetwork, asset.walletAddress);
@@ -219,26 +225,32 @@ export async function refreshWalletBalanceAction(formData: FormData) {
       data: { currentValue: usdValue, walletBalance: balance, walletBalanceCheckedAt: new Date() },
     });
     await prisma.assetValueSnapshot.create({ data: { assetId: asset.id, value: usdValue } });
-  } catch {
-    // Silently ignore -- the asset keeps its last known balance/value, and
-    // this is a background-ish "refresh" action with no form state to show
-    // an error in. A future retry (or the founder asking for one) can add a
-    // visible error if this proves to matter in practice.
+  } catch (err) {
+    // Previously swallowed silently -- from the founder's chair that was
+    // indistinguishable from "the app just doesn't update prices." Now
+    // surfaced as a real FormState error the Refresh button can display.
+    const message = err instanceof WalletBalanceError ? err.message : "Couldn't refresh the wallet balance";
+    return { error: message };
   }
 
   revalidatePath("/finances");
+  revalidatePath("/finances/investments");
   revalidatePath("/dashboard");
+  return {};
 }
 
-export async function refreshStockPriceAction(formData: FormData) {
+export async function refreshStockPriceAction(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const session = await auth();
-  if (!session?.user) return;
+  if (!session?.user) return { error: "You must be signed in" };
 
   const id = formData.get("id");
-  if (typeof id !== "string" || !id) return;
+  if (typeof id !== "string" || !id) return { error: "Missing asset id" };
 
   const asset = await prisma.asset.findFirst({ where: { id, userId: session.user.id } });
-  if (!asset || !asset.stockTicker || !asset.shareCount) return;
+  if (!asset || !asset.stockTicker || !asset.shareCount) return { error: "Asset not found" };
 
   try {
     const { pricePerShare, usdValue } = await fetchStockValueUsd(asset.stockTicker, Number(asset.shareCount));
@@ -247,10 +259,14 @@ export async function refreshStockPriceAction(formData: FormData) {
       data: { currentValue: usdValue, stockPricePerShare: pricePerShare, stockPriceCheckedAt: new Date() },
     });
     await prisma.assetValueSnapshot.create({ data: { assetId: asset.id, value: usdValue } });
-  } catch {
-    // Same fallback philosophy as refreshWalletBalanceAction above.
+  } catch (err) {
+    // Same fix as refreshWalletBalanceAction above -- see that comment.
+    const message = err instanceof StockPriceError ? err.message : "Couldn't refresh the stock price";
+    return { error: message };
   }
 
   revalidatePath("/finances");
+  revalidatePath("/finances/investments");
   revalidatePath("/dashboard");
+  return {};
 }
