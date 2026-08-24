@@ -13,6 +13,7 @@ import { OpenHouseSection } from "./open-house-section";
 import { ReferralPartnerSection } from "./referral-partner-section";
 import { FormSubmissionList } from "../../forms/form-submission-list";
 import { SendFormWidget, type SendableTemplate } from "../../forms/[id]/send-form-widget";
+import { DetailTabs } from "@/components/ui/detail-tabs";
 import type { DealDeadlineDTO, OpenHouseDTO, ReferralPartnerDTO } from "../types";
 import type { DocumentDTO } from "../../forms/types";
 import type { FormSubmissionSummaryDTO } from "../../forms/templates/types";
@@ -147,6 +148,155 @@ export default async function DealDetailPage({
     })),
   }));
 
+  const tabs = [
+    {
+      id: "overview",
+      label: "Overview",
+      content: (
+        <>
+          <section className="rounded-2xl border border-border bg-background p-8">
+            <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
+            <div className="max-w-md">
+              <DealForm
+                key={deal.updatedAt.toISOString()}
+                clients={clients}
+                referralPartners={referralPartnerDtos}
+                defaultValues={defaultValues}
+              />
+            </div>
+          </section>
+
+          {grossCommission > 0 ? (
+            <section className="rounded-2xl border border-border bg-background p-8">
+              <h2 className="mb-6 text-base font-semibold text-foreground">Deal financials</h2>
+              <div className="flex flex-col gap-2 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted">Gross commission</span>
+                  <span className="font-medium text-foreground">{formatCurrency(grossCommission)}</span>
+                </div>
+                {hasCommissionSplits ? (
+                  <div className="flex items-center justify-between border-t border-border pt-2">
+                    <span className="text-muted">Net commission (after splits)</span>
+                    <span className="font-medium text-foreground">{formatCurrency(netCommission)}</span>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between">
+                  <span className="text-muted">
+                    Deal expenses{deal.expenses.length > 0 ? ` (${deal.expenses.length})` : ""}
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {dealExpenseTotal > 0 ? `-${formatCurrency(dealExpenseTotal)}` : formatCurrency(0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t border-border pt-2">
+                  <span className="font-semibold text-foreground">Deal profit</span>
+                  <span className={`font-semibold ${dealProfit >= 0 ? "text-accent" : "text-danger"}`}>
+                    {formatCurrency(dealProfit)}
+                  </span>
+                </div>
+              </div>
+
+              {deal.expenses.length > 0 ? (
+                <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6">
+                  {deal.expenses.map((t) => (
+                    <div key={t.id} className="flex items-center justify-between text-sm">
+                      <span className="text-foreground">{t.description || "Expense"}</span>
+                      <span className="text-muted">{formatCurrency(Number(t.amount))}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-6 text-sm text-muted">
+                  No expenses linked to this deal yet — link one from{" "}
+                  <a href="/finances/transactions" className="font-medium text-accent hover:opacity-80">
+                    Transactions
+                  </a>
+                  .
+                </p>
+              )}
+            </section>
+          ) : null}
+        </>
+      ),
+    },
+    {
+      id: "deadlines",
+      label: "Deadlines",
+      content: (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <div className="mb-6 flex items-baseline justify-between">
+            <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
+            {deadlineDtos.length > 0 ? (
+              <a
+                href={`/api/calendar/deals/${deal.id}`}
+                className="text-sm font-medium text-accent hover:opacity-80"
+              >
+                Add to calendar
+              </a>
+            ) : null}
+          </div>
+          <DeadlineList dealId={deal.id} deadlines={deadlineDtos} />
+        </section>
+      ),
+    },
+    {
+      id: "documents-forms",
+      label: "Documents & Forms",
+      content: (
+        <>
+          <section className="rounded-2xl border border-border bg-background p-8">
+            <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
+            <DealDocuments dealId={deal.id} clientId={deal.clientId} documents={documentDtos} />
+          </section>
+
+          <section className="rounded-2xl border border-border bg-background p-8">
+            <h2 className="mb-1 text-base font-semibold text-foreground">Forms &amp; envelopes</h2>
+            <p className="mb-6 text-sm text-muted">
+              Every contract and signature request sent for this property.
+            </p>
+
+            {formSubmissionDtos.length > 0 ? (
+              <div className="mb-6">
+                <FormSubmissionList submissions={formSubmissionDtos} />
+              </div>
+            ) : null}
+
+            <div className="max-w-md border-t border-border pt-6">
+              <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
+              <SendFormWidget
+                client={
+                  deal.client ? { id: deal.client.id, name: deal.client.name, email: deal.client.email } : undefined
+                }
+                templates={sendableTemplates}
+                lockedDealId={deal.id}
+              />
+            </div>
+          </section>
+        </>
+      ),
+    },
+    {
+      id: "open-houses",
+      label: "Open houses",
+      content: (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-6 text-base font-semibold text-foreground">Open houses</h2>
+          <OpenHouseSection dealId={deal.id} openHouses={openHouseDtos} />
+        </section>
+      ),
+    },
+    {
+      id: "referral-partners",
+      label: "Referral partners",
+      content: (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-1 text-base font-semibold text-foreground">Referral partners</h2>
+          <ReferralPartnerSection dealId={deal.id} partners={referralPartnerDtos} />
+        </section>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -162,120 +312,7 @@ export default async function DealDetailPage({
         <p className="mt-1 text-sm text-muted">Manage this deal&apos;s details and deadlines.</p>
       </div>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
-        <div className="max-w-md">
-          <DealForm
-            key={deal.updatedAt.toISOString()}
-            clients={clients}
-            referralPartners={referralPartnerDtos}
-            defaultValues={defaultValues}
-          />
-        </div>
-      </section>
-
-      {grossCommission > 0 ? (
-        <section className="rounded-2xl border border-border bg-background p-8">
-          <h2 className="mb-6 text-base font-semibold text-foreground">Deal financials</h2>
-          <div className="flex flex-col gap-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-muted">Gross commission</span>
-              <span className="font-medium text-foreground">{formatCurrency(grossCommission)}</span>
-            </div>
-            {hasCommissionSplits ? (
-              <div className="flex items-center justify-between border-t border-border pt-2">
-                <span className="text-muted">Net commission (after splits)</span>
-                <span className="font-medium text-foreground">{formatCurrency(netCommission)}</span>
-              </div>
-            ) : null}
-            <div className="flex items-center justify-between">
-              <span className="text-muted">
-                Deal expenses{deal.expenses.length > 0 ? ` (${deal.expenses.length})` : ""}
-              </span>
-              <span className="font-medium text-foreground">
-                {dealExpenseTotal > 0 ? `-${formatCurrency(dealExpenseTotal)}` : formatCurrency(0)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between border-t border-border pt-2">
-              <span className="font-semibold text-foreground">Deal profit</span>
-              <span className={`font-semibold ${dealProfit >= 0 ? "text-accent" : "text-danger"}`}>
-                {formatCurrency(dealProfit)}
-              </span>
-            </div>
-          </div>
-
-          {deal.expenses.length > 0 ? (
-            <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6">
-              {deal.expenses.map((t) => (
-                <div key={t.id} className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">{t.description || "Expense"}</span>
-                  <span className="text-muted">{formatCurrency(Number(t.amount))}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-6 text-sm text-muted">
-              No expenses linked to this deal yet — link one from{" "}
-              <a href="/finances/transactions" className="font-medium text-accent hover:opacity-80">
-                Transactions
-              </a>
-              .
-            </p>
-          )}
-        </section>
-      ) : null}
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
-          {deadlineDtos.length > 0 ? (
-            <a
-              href={`/api/calendar/deals/${deal.id}`}
-              className="text-sm font-medium text-accent hover:opacity-80"
-            >
-              Add to calendar
-            </a>
-          ) : null}
-        </div>
-        <DeadlineList dealId={deal.id} deadlines={deadlineDtos} />
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Open houses</h2>
-        <OpenHouseSection dealId={deal.id} openHouses={openHouseDtos} />
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-1 text-base font-semibold text-foreground">Referral partners</h2>
-        <ReferralPartnerSection dealId={deal.id} partners={referralPartnerDtos} />
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-1 text-base font-semibold text-foreground">Forms &amp; envelopes</h2>
-        <p className="mb-6 text-sm text-muted">
-          Every contract and signature request sent for this property.
-        </p>
-
-        {formSubmissionDtos.length > 0 ? (
-          <div className="mb-6">
-            <FormSubmissionList submissions={formSubmissionDtos} />
-          </div>
-        ) : null}
-
-        <div className="max-w-md border-t border-border pt-6">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
-          <SendFormWidget
-            client={deal.client ? { id: deal.client.id, name: deal.client.name, email: deal.client.email } : undefined}
-            templates={sendableTemplates}
-            lockedDealId={deal.id}
-          />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
-        <DealDocuments dealId={deal.id} clientId={deal.clientId} documents={documentDtos} />
-      </section>
+      <DetailTabs tabs={tabs} />
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-3 text-base font-semibold text-foreground">Danger zone</h2>

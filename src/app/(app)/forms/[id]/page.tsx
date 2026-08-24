@@ -13,6 +13,7 @@ import { ClientDocuments } from "./client-documents";
 import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
 import { FormSubmissionList } from "../form-submission-list";
 import { SendPortalAccessButton } from "./send-portal-access-button";
+import { DetailTabs } from "@/components/ui/detail-tabs";
 import type { ClientDeadlineDTO, DocumentDTO } from "../types";
 import type { FormSubmissionSummaryDTO } from "../templates/types";
 
@@ -104,6 +105,119 @@ export default async function ClientDetailPage({
     stage: client.stage,
   };
 
+  const tabs = [
+    {
+      id: "overview",
+      label: "Overview",
+      content: (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-6 text-base font-semibold text-foreground">Contact info</h2>
+          <div className="max-w-md">
+            <ClientForm key={client.updatedAt.toISOString()} defaultValues={defaultValues} />
+          </div>
+        </section>
+      ),
+    },
+    {
+      id: "deadlines",
+      label: "Deadlines",
+      content: (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-1 text-base font-semibold text-foreground">Deadlines</h2>
+          <p className="mb-6 text-sm text-muted">
+            Reminders for {client.name} that aren&apos;t tied to one specific property.
+          </p>
+          <ClientDeadlineList clientId={client.id} deadlines={deadlineDtos} />
+        </section>
+      ),
+    },
+    {
+      id: "properties",
+      label: "Properties",
+      content: (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-6 text-base font-semibold text-foreground">Properties &amp; offers</h2>
+
+          {deals.length === 0 ? (
+            <p className="mb-6 text-sm text-muted">
+              No properties or offers yet for {client.name}. Add one below.
+            </p>
+          ) : (
+            <div className="mb-6 flex flex-col gap-2">
+              {deals.map((deal) => (
+                <Link
+                  key={deal.id}
+                  href={`/deals/${deal.id}`}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-foreground">
+                      {deal.propertyAddress}
+                    </span>
+                    <span className="text-sm text-muted">{DEAL_SIDE_LABELS[deal.side]}</span>
+                  </div>
+                  <span className="text-sm font-medium text-muted">
+                    {DEAL_STATUS_LABELS[deal.status]}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          <div className="max-w-md border-t border-border pt-6">
+            <h3 className="mb-4 text-sm font-semibold text-foreground">Add a deal</h3>
+            <DealForm lockedClientId={client.id} />
+          </div>
+        </section>
+      ),
+    },
+    {
+      id: "documents",
+      label: "Documents",
+      content: (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
+          <ClientDocuments clientId={client.id} documents={documentDtos} deals={dealOptions} />
+        </section>
+      ),
+    },
+    {
+      id: "sharing",
+      label: "Sharing",
+      content: (
+        <>
+          <section className="rounded-2xl border border-border bg-background p-8">
+            <h2 className="mb-1 text-base font-semibold text-foreground">Client portal</h2>
+            <p className="mb-6 text-sm text-muted">
+              Give {client.name} their own private link to see their deal status and documents,
+              without needing an account.
+            </p>
+            <SendPortalAccessButton clientId={client.id} hasEmail={!!client.email} />
+          </section>
+
+          <section className="rounded-2xl border border-border bg-background p-8">
+            <h2 className="mb-6 text-base font-semibold text-foreground">Forms</h2>
+
+            {formSubmissionDtos.length > 0 ? (
+              <div className="mb-6">
+                <FormSubmissionList submissions={formSubmissionDtos} />
+              </div>
+            ) : null}
+
+            <div className="max-w-md border-t border-border pt-6">
+              <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
+              <SendFormWidget
+                client={{ id: client.id, name: client.name, email: client.email }}
+                templates={sendableTemplates}
+                deals={dealOptions}
+              />
+            </div>
+          </section>
+        </>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-8">
       <div>
@@ -125,88 +239,7 @@ export default async function ClientDetailPage({
         </p>
       </div>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Contact info</h2>
-        <div className="max-w-md">
-          <ClientForm key={client.updatedAt.toISOString()} defaultValues={defaultValues} />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-1 text-base font-semibold text-foreground">Deadlines</h2>
-        <p className="mb-6 text-sm text-muted">
-          Reminders for {client.name} that aren&apos;t tied to one specific property.
-        </p>
-        <ClientDeadlineList clientId={client.id} deadlines={deadlineDtos} />
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Properties &amp; offers</h2>
-
-        {deals.length === 0 ? (
-          <p className="mb-6 text-sm text-muted">
-            No properties or offers yet for {client.name}. Add one below.
-          </p>
-        ) : (
-          <div className="mb-6 flex flex-col gap-2">
-            {deals.map((deal) => (
-              <Link
-                key={deal.id}
-                href={`/deals/${deal.id}`}
-                className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
-              >
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground">
-                    {deal.propertyAddress}
-                  </span>
-                  <span className="text-sm text-muted">{DEAL_SIDE_LABELS[deal.side]}</span>
-                </div>
-                <span className="text-sm font-medium text-muted">
-                  {DEAL_STATUS_LABELS[deal.status]}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        <div className="max-w-md border-t border-border pt-6">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">Add a deal</h3>
-          <DealForm lockedClientId={client.id} />
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
-        <ClientDocuments clientId={client.id} documents={documentDtos} deals={dealOptions} />
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-1 text-base font-semibold text-foreground">Client portal</h2>
-        <p className="mb-6 text-sm text-muted">
-          Give {client.name} their own private link to see their deal status and documents,
-          without needing an account.
-        </p>
-        <SendPortalAccessButton clientId={client.id} hasEmail={!!client.email} />
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Forms</h2>
-
-        {formSubmissionDtos.length > 0 ? (
-          <div className="mb-6">
-            <FormSubmissionList submissions={formSubmissionDtos} />
-          </div>
-        ) : null}
-
-        <div className="max-w-md border-t border-border pt-6">
-          <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
-          <SendFormWidget
-            client={{ id: client.id, name: client.name, email: client.email }}
-            templates={sendableTemplates}
-            deals={dealOptions}
-          />
-        </div>
-      </section>
+      <DetailTabs tabs={tabs} />
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-3 text-base font-semibold text-foreground">Danger zone</h2>
