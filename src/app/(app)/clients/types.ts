@@ -28,10 +28,9 @@ export type DocumentDTO = {
   createdAt: string; // ISO
 };
 
-export type ClientDeadlineDTO = {
-  id: string;
-  label: string;
-  dueDate: string; // yyyy-mm-dd
-  completedAt: string | null;
-};
+// NOTE: client-level deadlines were removed from the UI (2026-08-25) --
+// a client's page is for their contact details and their transactions, not
+// a second place to track dates. Deadlines live on a transaction, where the
+// contract dates actually belong. The ClientDeadline table still exists in
+// the database so no data was destroyed; nothing reads it today.
 

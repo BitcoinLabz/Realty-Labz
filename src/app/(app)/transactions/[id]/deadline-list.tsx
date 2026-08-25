@@ -33,13 +33,15 @@ function SendReminderButton({ deadlineId, dealId }: { deadlineId: string; dealId
       <button
         type="submit"
         disabled={isPending}
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
       >
         <Send size={14} />
         {isPending ? "Sending…" : "Send reminder"}
       </button>
-      {state.success ? <span className="text-xs text-accent">{state.success}</span> : null}
-      {state.error ? <span className="text-xs text-danger">{state.error}</span> : null}
+      {state.success ? (
+        <span className="text-right text-xs text-accent">{state.success}</span>
+      ) : null}
+      {state.error ? <span className="text-right text-xs text-danger">{state.error}</span> : null}
     </form>
   );
 }
@@ -99,9 +101,13 @@ export function DeadlineList({
             return (
               <div
                 key={d.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3"
+                // Stacks on phones: at 375px the label, date, "Reminder sent",
+                // "Send reminder" and "Delete" all competing on one row
+                // squeezed the text into an unreadable sliver. Same fix
+                // already applied to the open-house and referral rows.
+                className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                   <form action={toggleDeadlineAction}>
                     <input type="hidden" name="id" value={d.id} />
                     <input type="hidden" name="dealId" value={dealId} />
@@ -116,7 +122,7 @@ export function DeadlineList({
                       {isDone ? "✓" : ""}
                     </button>
                   </form>
-                  <div className="flex flex-col">
+                  <div className="flex min-w-0 flex-col">
                     <span
                       className={`text-sm font-medium ${
                         isDone ? "text-muted line-through" : "text-foreground"
@@ -143,7 +149,7 @@ export function DeadlineList({
                     ) : null}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-4">
+                <div className="flex shrink-0 items-center justify-end gap-4 pl-8 sm:pl-0">
                   {!isDone ? <SendReminderButton deadlineId={d.id} dealId={dealId} /> : null}
                   <form action={deleteDeadlineAction}>
                     <input type="hidden" name="id" value={d.id} />

@@ -8,13 +8,12 @@ import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { DealForm } from "@/app/(app)/transactions/transaction-form";
 import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName } from "@/app/(app)/transactions/types";
-import { ClientDeadlineList } from "./client-deadline-list";
 import { ClientDocuments } from "./client-documents";
 import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
 import { FormSubmissionList } from "../form-submission-list";
 import { SendPortalAccessButton } from "./send-portal-access-button";
 import { DetailTabs } from "@/components/ui/detail-tabs";
-import type { ClientDeadlineDTO, DocumentDTO } from "../types";
+import type { DocumentDTO } from "../types";
 import type { FormSubmissionSummaryDTO } from "@/app/(app)/forms/templates/types";
 
 export default async function ClientDetailPage({
@@ -31,7 +30,7 @@ export default async function ClientDetailPage({
 
   if (!client) notFound();
 
-  const [deals, documents, formTemplates, formSubmissions, deadlines] = await Promise.all([
+  const [deals, documents, formTemplates, formSubmissions] = await Promise.all([
     prisma.deal.findMany({
       where: { clientId: client.id, userId: session!.user.id },
       orderBy: { createdAt: "desc" },
@@ -50,18 +49,7 @@ export default async function ClientDetailPage({
       include: { formTemplate: true, signers: true },
       orderBy: { createdAt: "desc" },
     }),
-    prisma.clientDeadline.findMany({
-      where: { clientId: client.id },
-      orderBy: { dueDate: "asc" },
-    }),
   ]);
-
-  const deadlineDtos: ClientDeadlineDTO[] = deadlines.map((d) => ({
-    id: d.id,
-    label: d.label,
-    dueDate: d.dueDate.toISOString().slice(0, 10),
-    completedAt: d.completedAt ? d.completedAt.toISOString() : null,
-  }));
 
   const sendableTemplates: SendableTemplate[] = formTemplates
     .filter((t) => t.signers.length > 0)
@@ -116,19 +104,6 @@ export default async function ClientDetailPage({
           <div className="max-w-md">
             <ClientForm key={client.updatedAt.toISOString()} defaultValues={defaultValues} />
           </div>
-        </section>
-      ),
-    },
-    {
-      id: "deadlines",
-      label: "Deadlines",
-      content: (
-        <section className="rounded-2xl border border-border bg-background p-8">
-          <h2 className="mb-1 text-base font-semibold text-foreground">Deadlines</h2>
-          <p className="mb-6 text-sm text-muted">
-            Reminders for {client.name} that aren&apos;t tied to one specific property.
-          </p>
-          <ClientDeadlineList clientId={client.id} deadlines={deadlineDtos} />
         </section>
       ),
     },
