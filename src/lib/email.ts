@@ -137,9 +137,18 @@ export async function sendDeclinedNotificationEmail(params: {
 // Only sent when the client opted in (Client.emailDeadlineReminders) and has
 // a real email on file -- see sendDueDeadlineReminders in
 // src/app/actions/deadline-reminders.ts.
+// One reminder, sent to the client and the agent together, so the agent
+// always sees exactly what their client saw -- deliberately not two
+// differently-worded emails.
+//
+// `to` is an array because both recipients go on the same send. The greeting
+// is conditional: a deadline can sit on a transaction with no client
+// attached (or a client who opted out), in which case this goes to the agent
+// alone and "Hi {client}," would be wrong. No app link, since the client has
+// no login and it would be a dead end for them.
 export async function sendDeadlineReminderEmail(params: {
-  to: string;
-  clientName: string;
+  to: string[];
+  clientName: string | null;
   agentName: string;
   deadlineLabel: string;
   propertyLabel: string;
@@ -151,7 +160,7 @@ export async function sendDeadlineReminderEmail(params: {
     to: params.to,
     subject: `Reminder: ${params.deadlineLabel} is due ${params.dueDate}`,
     html: `
-      <p>Hi ${escapeHtml(params.clientName)},</p>
+      ${params.clientName ? `<p>Hi ${escapeHtml(params.clientName)},</p>` : ""}
       <p>A quick reminder that <strong>${escapeHtml(params.deadlineLabel)}</strong> for
       ${escapeHtml(params.propertyLabel)} is due <strong>${escapeHtml(params.dueDate)}</strong>.</p>
       <p>Reply to this email or reach out to ${escapeHtml(params.agentName)} with any questions.</p>

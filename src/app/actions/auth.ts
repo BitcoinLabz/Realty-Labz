@@ -12,6 +12,11 @@ const TOO_MANY_ATTEMPTS = "Too many attempts — please wait a few minutes and t
 export type FormState = {
   error?: string;
   fieldErrors?: Record<string, string>;
+  // Optional confirmation message for actions where "it worked" isn't
+  // self-evident from the page re-rendering -- e.g. sending an email, where
+  // nothing on screen changes. Purely additive: existing call sites that
+  // check `!state.error && !state.fieldErrors` are unaffected.
+  success?: string;
 };
 
 export async function signupAction(

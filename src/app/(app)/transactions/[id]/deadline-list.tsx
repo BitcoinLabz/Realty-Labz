@@ -1,17 +1,48 @@
 "use client";
 
 import { useActionState, useEffect, useRef } from "react";
+import { Send } from "lucide-react";
 import {
   createDeadlineAction,
   deleteDeadlineAction,
   toggleDeadlineAction,
 } from "@/app/actions/deal-deadlines";
+import { sendDeadlineReminderNowAction } from "@/app/actions/deadline-reminders";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import type { DealDeadlineDTO } from "../types";
 
 const initialState: FormState = {};
+
+// Sends the reminder immediately, to the agent and their client together.
+// Separate from the automatic 3-days-out pass: this can be fired as many
+// times as a client needs chasing, and doesn't touch emailReminderSentAt.
+// Its own useActionState instance per row keeps pending/result state from
+// leaking between deadlines.
+function SendReminderButton({ deadlineId, dealId }: { deadlineId: string; dealId: string }) {
+  const [state, formAction, isPending] = useActionState(
+    sendDeadlineReminderNowAction,
+    initialState,
+  );
+
+  return (
+    <form action={formAction} className="flex flex-col items-end gap-1">
+      <input type="hidden" name="id" value={deadlineId} />
+      <input type="hidden" name="dealId" value={dealId} />
+      <button
+        type="submit"
+        disabled={isPending}
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
+      >
+        <Send size={14} />
+        {isPending ? "Sending…" : "Send reminder"}
+      </button>
+      {state.success ? <span className="text-xs text-accent">{state.success}</span> : null}
+      {state.error ? <span className="text-xs text-danger">{state.error}</span> : null}
+    </form>
+  );
+}
 
 function AddDeadlineForm({ dealId }: { dealId: string }) {
   const [state, formAction, isPending] = useActionState(createDeadlineAction, initialState);
@@ -103,13 +134,19 @@ export function DeadlineList({
                     </span>
                   </div>
                 </div>
-                <form action={deleteDeadlineAction}>
-                  <input type="hidden" name="id" value={d.id} />
-                  <input type="hidden" name="dealId" value={dealId} />
-                  <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                    Delete
-                  </button>
-                </form>
+                <div className="flex shrink-0 items-center gap-4">
+                  {!isDone ? <SendReminderButton deadlineId={d.id} dealId={dealId} /> : null}
+                  <form action={deleteDeadlineAction}>
+                    <input type="hidden" name="id" value={d.id} />
+                    <input type="hidden" name="dealId" value={dealId} />
+                    <button
+                      type="submit"
+                      className="text-sm font-medium text-danger hover:opacity-80"
+                    >
+                      Delete
+                    </button>
+                  </form>
+                </div>
               </div>
             );
           })}
