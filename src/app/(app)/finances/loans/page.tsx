@@ -2,7 +2,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { buildAmortizationChartData, buildAmortizationSchedule, summarizeLoan } from "@/lib/loan-calculations";
+import { Landmark } from "lucide-react";
 import { SummaryCard } from "@/components/ui/summary-card";
+import { Card } from "@/components/ui/card";
 import { AmortizationChart, type AmortizationChartPoint } from "@/components/charts/amortization-chart";
 import { LoanForm } from "./loan-form";
 import { LoanList } from "./loan-list";
@@ -92,7 +94,11 @@ export default async function FinancesLoansPage() {
 
       {amortizationData.length > 0 ? (
         <section className="rounded-2xl border border-border bg-background p-8">
-          <h2 className="mb-6 text-base font-semibold text-foreground">Amortization schedule</h2>
+          <h2 className="mb-1 text-base font-semibold text-foreground">How these get paid off</h2>
+          <p className="mb-6 text-sm text-muted">
+            What you still owe over time, and how much of what you&apos;ve paid went to the loan
+            itself versus interest.
+          </p>
           <div className="flex flex-col gap-10">
             {amortizationData.map((loan) => (
               <div key={loan.id}>
@@ -111,7 +117,9 @@ export default async function FinancesLoansPage() {
         </div>
       </section>
 
-      <LoanList loans={dtos} />
+      <Card title="Your loans" icon={Landmark}>
+        <LoanList loans={dtos} />
+      </Card>
     </div>
   );
 }

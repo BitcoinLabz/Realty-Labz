@@ -1,7 +1,7 @@
 import { Logo } from "@/components/ui/logo";
 import { prisma } from "@/lib/db";
 import { resolvePortalClientId } from "@/lib/client-portal";
-import { dealDisplayName } from "@/app/(app)/deals/types";
+import { dealDisplayName } from "@/app/(app)/transactions/types";
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Active",

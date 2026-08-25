@@ -10,7 +10,7 @@ import {
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type { DocumentDTO } from "../../forms/types";
+import type { DocumentDTO } from "@/app/(app)/clients/types";
 
 const initialAnalysisState: AnalysisState = {};
 const initialApplyState: FormState = {};

@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { sendDeadlineReminderEmail } from "@/lib/email";
-import { dealDisplayName } from "@/app/(app)/deals/types";
+import { dealDisplayName } from "@/app/(app)/transactions/types";
 
 // How far ahead of a deadline the client gets their heads-up.
 const REMINDER_LEAD_DAYS = 3;

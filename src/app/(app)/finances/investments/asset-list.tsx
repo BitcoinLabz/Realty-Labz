@@ -85,7 +85,7 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
   if (assets.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-        No assets yet. Add your first one above.
+        Nothing added yet. Track savings, retirement, property, or anything else you own using the form above.
       </div>
     );
   }

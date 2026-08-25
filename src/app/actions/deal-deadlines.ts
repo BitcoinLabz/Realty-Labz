@@ -50,7 +50,7 @@ export async function createDeadlineAction(
     },
   });
 
-  revalidatePath(`/deals/${dealId}`);
+  revalidatePath(`/transactions/${dealId}`);
   return {};
 }
 
@@ -75,7 +75,7 @@ export async function toggleDeadlineAction(formData: FormData) {
     data: { completedAt: isCompleted ? null : new Date() },
   });
 
-  revalidatePath(`/deals/${dealId}`);
+  revalidatePath(`/transactions/${dealId}`);
 }
 
 export async function deleteDeadlineAction(formData: FormData) {
@@ -93,5 +93,5 @@ export async function deleteDeadlineAction(formData: FormData) {
   // enough, dealId must be part of the actual where clause.
   await prisma.dealDeadline.deleteMany({ where: { id, dealId } });
 
-  revalidatePath(`/deals/${dealId}`);
+  revalidatePath(`/transactions/${dealId}`);
 }

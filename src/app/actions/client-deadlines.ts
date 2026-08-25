@@ -45,7 +45,7 @@ export async function createClientDeadlineAction(
     },
   });
 
-  revalidatePath(`/forms/${clientId}`);
+  revalidatePath(`/clients/${clientId}`);
   return {};
 }
 
@@ -70,7 +70,7 @@ export async function toggleClientDeadlineAction(formData: FormData) {
     data: { completedAt: isCompleted ? null : new Date() },
   });
 
-  revalidatePath(`/forms/${clientId}`);
+  revalidatePath(`/clients/${clientId}`);
 }
 
 export async function deleteClientDeadlineAction(formData: FormData) {
@@ -87,5 +87,5 @@ export async function deleteClientDeadlineAction(formData: FormData) {
   // Same cross-tenant guard as toggleClientDeadlineAction above.
   await prisma.clientDeadline.deleteMany({ where: { id, clientId } });
 
-  revalidatePath(`/forms/${clientId}`);
+  revalidatePath(`/clients/${clientId}`);
 }

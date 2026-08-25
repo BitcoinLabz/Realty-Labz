@@ -133,7 +133,7 @@ export const dealSchema = z.object({
   referralPartnerId: z.string().optional(),
 });
 
-// The guided "Create a file" wizard (/forms/files/new) -- a lighter-weight
+// The guided "Create a file" wizard (/transactions/new) -- a lighter-weight
 // variant of dealSchema that also resolves the client (pick an existing one,
 // or create a new one inline) in the same submit, rather than requiring a
 // separate trip to a client's page first.

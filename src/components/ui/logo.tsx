@@ -1,7 +1,17 @@
+import {
+  LOGO_CHIMNEY_BUBBLES,
+  LOGO_CHIMNEY_PATH,
+  LOGO_HOUSE_PATH,
+  LOGO_LIQUID_BUBBLES,
+  LOGO_LIQUID_COLOR,
+  LOGO_LIQUID_PATH,
+  LOGO_STROKE_WIDTH,
+} from "./logo-mark";
+
 const sizes = {
-  sm: { icon: 22, text: "text-sm" },
-  md: { icon: 26, text: "text-lg" },
-  lg: { icon: 34, text: "text-2xl" },
+  sm: { icon: 24, text: "text-sm" },
+  md: { icon: 28, text: "text-lg" },
+  lg: { icon: 36, text: "text-2xl" },
 };
 
 export function Logo({
@@ -16,9 +26,30 @@ export function Logo({
   return (
     <span className={`inline-flex items-center gap-2.5 ${className}`}>
       <svg width={icon} height={icon} viewBox="0 0 100 100" aria-hidden="true" className="shrink-0">
-        <rect width="100" height="100" rx="24" className="fill-accent" />
-        <path d="M50 25 L78 57 L22 57 Z" className="fill-accent-foreground" />
-        <rect x="30" y="57" width="40" height="19" rx="4" className="fill-accent-foreground" />
+        {/* Chimney sits under the roofline so the roof stroke hides its base. */}
+        <path
+          d={LOGO_CHIMNEY_PATH}
+          fill="none"
+          strokeWidth={LOGO_STROKE_WIDTH}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="stroke-foreground"
+        />
+        <path d={LOGO_LIQUID_PATH} fill={LOGO_LIQUID_COLOR} />
+        {LOGO_LIQUID_BUBBLES.map((b, i) => (
+          <circle key={i} cx={b.cx} cy={b.cy} r={b.r} fill="#ffffff" fillOpacity={0.85} />
+        ))}
+        <path
+          d={LOGO_HOUSE_PATH}
+          fill="none"
+          strokeWidth={LOGO_STROKE_WIDTH}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="stroke-foreground"
+        />
+        {LOGO_CHIMNEY_BUBBLES.map((b, i) => (
+          <circle key={i} cx={b.cx} cy={b.cy} r={b.r} fill={LOGO_LIQUID_COLOR} />
+        ))}
       </svg>
       <span className={`font-semibold tracking-tight text-foreground ${text}`}>Realty Labz</span>
     </span>

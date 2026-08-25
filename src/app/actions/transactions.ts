@@ -74,9 +74,9 @@ export async function createTransactionAction(
   });
 
   revalidatePath("/finances");
-  revalidatePath("/finances/transactions");
+  revalidatePath("/finances/income");
   revalidatePath("/dashboard");
-  if (resolvedDeal.dealId) revalidatePath(`/deals/${resolvedDeal.dealId}`);
+  if (resolvedDeal.dealId) revalidatePath(`/transactions/${resolvedDeal.dealId}`);
   return {};
 }
 
@@ -141,11 +141,11 @@ export async function updateTransactionAction(
   if (result.count === 0) return { error: "Transaction not found" };
 
   revalidatePath("/finances");
-  revalidatePath("/finances/transactions");
+  revalidatePath("/finances/income");
   revalidatePath("/dashboard");
-  if (existing?.dealId) revalidatePath(`/deals/${existing.dealId}`);
+  if (existing?.dealId) revalidatePath(`/transactions/${existing.dealId}`);
   if (resolvedDeal.dealId && resolvedDeal.dealId !== existing?.dealId) {
-    revalidatePath(`/deals/${resolvedDeal.dealId}`);
+    revalidatePath(`/transactions/${resolvedDeal.dealId}`);
   }
   return {};
 }
@@ -162,7 +162,7 @@ export async function deleteTransactionAction(formData: FormData) {
   await prisma.transaction.deleteMany({ where: { id, userId: session.user.id } });
 
   revalidatePath("/finances");
-  revalidatePath("/finances/transactions");
+  revalidatePath("/finances/income");
   revalidatePath("/dashboard");
-  if (existing?.dealId) revalidatePath(`/deals/${existing.dealId}`);
+  if (existing?.dealId) revalidatePath(`/transactions/${existing.dealId}`);
 }

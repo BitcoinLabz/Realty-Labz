@@ -177,7 +177,7 @@ export async function sendFormSubmissionAction(
   const firstSigner = submission.signers[0];
 
   if (keepForRecords) {
-    if (clientId) revalidatePath(`/forms/${clientId}`);
+    if (clientId) revalidatePath(`/clients/${clientId}`);
     revalidatePath("/forms/templates");
     redirect(`/sign/${firstSigner.id}`);
   }
@@ -206,7 +206,7 @@ export async function sendFormSubmissionAction(
     }
   }
 
-  if (clientId) revalidatePath(`/forms/${clientId}`);
+  if (clientId) revalidatePath(`/clients/${clientId}`);
   revalidatePath("/forms/templates");
   return {};
 }

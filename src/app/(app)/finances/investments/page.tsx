@@ -2,7 +2,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { getNetWorthSeries } from "@/lib/finance-data";
+import { Wallet } from "lucide-react";
 import { SummaryCard } from "@/components/ui/summary-card";
+import { Card } from "@/components/ui/card";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
 import { NetWorthChart } from "@/components/charts/net-worth-chart";
 import { AssetForm } from "./asset-form";
@@ -84,7 +86,7 @@ export default async function FinancesInvestmentsPage() {
 
       {breakdown.length > 0 ? (
         <section className="rounded-2xl border border-border bg-background p-8">
-          <h2 className="mb-6 text-base font-semibold text-foreground">Allocation</h2>
+          <h2 className="mb-6 text-base font-semibold text-foreground">Where your money is</h2>
           <BreakdownDonutChart data={breakdown} />
         </section>
       ) : null}
@@ -93,21 +95,23 @@ export default async function FinancesInvestmentsPage() {
         <section className="rounded-2xl border border-border bg-background p-8">
           <h2 className="mb-1 text-base font-semibold text-foreground">Net worth over time</h2>
           <p className="mb-6 text-sm text-muted">
-            Assets minus loan balances. History starts accruing from your first recorded asset
-            value forward — it can&apos;t reconstruct values from before that.
+            What you own, minus what you still owe on your loans. This starts from the first day
+            you added something here — it can&apos;t look further back than that.
           </p>
           <NetWorthChart data={netWorthSeries} />
         </section>
       ) : null}
 
       <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Add an asset</h2>
+        <h2 className="mb-6 text-base font-semibold text-foreground">Add something you own</h2>
         <div className="max-w-md">
           <AssetForm />
         </div>
       </section>
 
-      <AssetList assets={dtos} />
+      <Card title="What you own" icon={Wallet}>
+        <AssetList assets={dtos} />
+      </Card>
 
       <GoalsSection goals={goalDtos} assets={assetOptions} />
     </div>

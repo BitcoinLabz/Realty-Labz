@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { CreateFileForm } from "./create-file-form";
+import { CreateFileForm } from "./create-transaction-form";
 
 export default async function NewFilePage() {
   const session = await auth();
@@ -16,7 +16,7 @@ export default async function NewFilePage() {
     <div className="flex flex-col gap-8">
       <div>
         <Link
-          href="/forms/files"
+          href="/transactions"
           className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
         >
           ← Back to Files

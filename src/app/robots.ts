@@ -12,9 +12,9 @@ export default function robots(): MetadataRoute.Robots {
         "/account",
         "/transactions",
         "/finances",
-        "/deals",
+        "/transactions",
         "/team",
-        "/forms",
+        "/clients",
         // Public but token-gated, not real indexable content.
         "/sign",
         "/join",

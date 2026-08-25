@@ -54,7 +54,7 @@ export function UnfiledDocuments({
       <UnfiledUploadForm />
 
       {documents.length === 0 ? (
-        <p className="text-sm text-muted">Nothing unfiled.</p>
+        <p className="text-sm text-muted">Everything you have uploaded is filed with a client. Anything you upload without picking a client shows up here.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {documents.map((doc) => (

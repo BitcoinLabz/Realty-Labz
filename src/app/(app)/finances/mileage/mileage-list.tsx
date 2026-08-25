@@ -12,7 +12,7 @@ export function MileageList({ logs }: { logs: MileageLogDTO[] }) {
   if (logs.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-        No trips logged yet for this year. Log your first one above.
+        No trips logged this year. Every business mile you drive is worth money back at tax time — log your first one above.
       </div>
     );
   }

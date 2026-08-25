@@ -1,4 +1,14 @@
 import { ImageResponse } from "next/og";
+import {
+  LOGO_CHIMNEY_BUBBLES,
+  LOGO_CHIMNEY_PATH,
+  LOGO_HOUSE_PATH,
+  LOGO_LIQUID_BUBBLES,
+  LOGO_LIQUID_COLOR,
+  LOGO_LIQUID_PATH,
+  LOGO_OUTLINE_LIGHT,
+  LOGO_STROKE_WIDTH,
+} from "@/components/ui/logo-mark";
 
 export const size = { width: 180, height: 180 };
 export const contentType = "image/png";
@@ -10,15 +20,39 @@ export default function AppleIcon() {
         style={{
           width: "100%",
           height: "100%",
-          background: "#0071e3",
+          // Explicitly light, not transparent: iOS composites home-screen
+          // icons onto its own mask and renders transparency as black, which
+          // would swallow the navy outline.
+          background: "#ffffff",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
         }}
       >
-        <svg width="130" height="130" viewBox="0 0 100 100">
-          <path d="M50 25 L78 57 L22 57 Z" fill="#ffffff" />
-          <rect x="30" y="57" width="40" height="19" rx="4" fill="#ffffff" />
+        <svg width="140" height="140" viewBox="0 0 100 100">
+          <path
+            d={LOGO_CHIMNEY_PATH}
+            fill="none"
+            stroke={LOGO_OUTLINE_LIGHT}
+            strokeWidth={LOGO_STROKE_WIDTH}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path d={LOGO_LIQUID_PATH} fill={LOGO_LIQUID_COLOR} />
+          {LOGO_LIQUID_BUBBLES.map((b, i) => (
+            <circle key={i} cx={b.cx} cy={b.cy} r={b.r} fill="#ffffff" fillOpacity={0.85} />
+          ))}
+          <path
+            d={LOGO_HOUSE_PATH}
+            fill="none"
+            stroke={LOGO_OUTLINE_LIGHT}
+            strokeWidth={LOGO_STROKE_WIDTH}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {LOGO_CHIMNEY_BUBBLES.map((b, i) => (
+            <circle key={i} cx={b.cx} cy={b.cy} r={b.r} fill={LOGO_LIQUID_COLOR} />
+          ))}
         </svg>
       </div>
     ),

@@ -1,3 +1,15 @@
+// ⚠️ UI LABEL vs. MODEL NAME (2026-08-20)
+//
+// The founder chose "Transaction" as the user-facing name for a real estate
+// deal. That word was already taken in the database by the income/expense
+// ledger, so ONLY the labels changed -- the Prisma models are untouched:
+//
+//   Prisma `Deal`         -> UI says "Transaction"        (this file)
+//   Prisma `Transaction`  -> UI says "Income & expenses"  (finances/income)
+//
+// Renaming the models would have meant a migration across every table and
+// query for zero user benefit. When reading code, trust the model name;
+// when writing user-facing copy, use the UI name.
 export type DealSide = "BUYER" | "SELLER" | "DUAL" | "TENANT" | "LANDLORD";
 export type DealStatus = "ACTIVE" | "UNDER_CONTRACT" | "PENDING" | "CLOSED" | "FELL_THROUGH";
 
@@ -20,7 +32,7 @@ export const DEAL_STATUS_LABELS: Record<DealStatus, string> = {
   FELL_THROUGH: "Fell Through",
 };
 
-// One row in the "Files" list (/forms/files) — every deal across the
+// One row in the "Files" list (/transactions) — every deal across the
 // session's visible clients (teamOrOwnFilter), with the counts SkySlope's
 // Files view shows: how many plain Documents and how many e-signature
 // FormSubmissions ("envelopes") are attached to this property.

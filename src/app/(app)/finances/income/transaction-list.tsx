@@ -35,7 +35,7 @@ export function TransactionList({
   if (transactions.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-        No transactions yet for this year. Add your first one above.
+        Nothing logged for this year yet. Add your first income or expense above.
       </div>
     );
   }

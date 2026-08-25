@@ -6,9 +6,11 @@ import { useState } from "react";
 import {
   Building2,
   ClipboardSignature,
+  Home,
   LayoutDashboard,
   Menu,
   Settings,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -18,8 +20,15 @@ import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { UpcomingDeadline } from "@/lib/finance-data";
 
+// Flat and noun-shaped on purpose: the two things an agent works in every
+// day (their transactions and their clients) used to be buried two levels
+// deep inside "Forms", which meant creating a transaction took six unguided
+// clicks. Every item carries an icon -- a wall of same-weight text is what
+// non-technical users scan worst.
 const baseNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/transactions", label: "Transactions", icon: Home },
+  { href: "/clients", label: "Clients", icon: Users },
   { href: "/finances", label: "Finances", icon: Wallet },
   { href: "/forms", label: "Forms", icon: ClipboardSignature },
 ];

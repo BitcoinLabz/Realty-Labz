@@ -12,7 +12,7 @@ export function LoanList({ loans }: { loans: LoanDTO[] }) {
   if (loans.length === 0) {
     return (
       <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-        No loans yet. Add your first one above.
+        No loans yet. Add a mortgage, car loan, or anything else you are paying off using the form above.
       </div>
     );
   }

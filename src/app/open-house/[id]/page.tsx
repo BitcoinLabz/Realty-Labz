@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Logo } from "@/components/ui/logo";
-import { dealDisplayName } from "@/app/(app)/deals/types";
+import { dealDisplayName } from "@/app/(app)/transactions/types";
 import { VisitorForm } from "./visitor-form";
 
 export default async function OpenHousePage({ params }: { params: Promise<{ id: string }> }) {

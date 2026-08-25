@@ -46,7 +46,7 @@ export function CsvImportFlow() {
         <p className="text-sm font-medium text-foreground">Import complete.</p>
         <p className="mt-1 text-sm text-muted">
           Head over to{" "}
-          <a href="/finances/transactions" className="font-medium text-accent hover:opacity-80">
+          <a href="/finances/income" className="font-medium text-accent hover:opacity-80">
             Transactions
           </a>{" "}
           to see them.

@@ -3,13 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+// "Income & expenses" rather than "Transactions": a transaction is a real
+// estate deal everywhere else in this app now, and one word can't mean two
+// things. Import is no longer a tab -- it's a button on Income & expenses,
+// where you'd actually reach for it.
 const tabs = [
   { href: "/finances", label: "Overview" },
-  { href: "/finances/transactions", label: "Transactions" },
+  { href: "/finances/income", label: "Income & expenses" },
   { href: "/finances/mileage", label: "Mileage" },
   { href: "/finances/investments", label: "Investments" },
   { href: "/finances/loans", label: "Loans" },
-  { href: "/finances/import", label: "Import" },
+  { href: "/finances/taxes", label: "Taxes & budgets" },
 ];
 
 export default function FinancesLayout({ children }: { children: React.ReactNode }) {
@@ -32,7 +36,7 @@ export default function FinancesLayout({ children }: { children: React.ReactNode
             // must stay exact, or every Finances sub-route (which all begin
             // with /finances) would wrongly highlight it too.
             const active =
-              tab.href === "/finances/transactions"
+              tab.href === "/finances/income"
                 ? pathname.startsWith(tab.href)
                 : pathname === tab.href;
             return (

@@ -42,7 +42,7 @@ export async function createClientAction(
     },
   });
 
-  revalidatePath("/forms");
+  revalidatePath("/clients");
   return {};
 }
 
@@ -75,8 +75,8 @@ export async function updateClientAction(
 
   if (result.count === 0) return { error: "Client not found" };
 
-  revalidatePath("/forms");
-  revalidatePath(`/forms/${id}`);
+  revalidatePath("/clients");
+  revalidatePath(`/clients/${id}`);
   return {};
 }
 
@@ -89,6 +89,6 @@ export async function deleteClientAction(formData: FormData) {
 
   await prisma.client.deleteMany({ where: { id, userId: session.user.id } });
 
-  revalidatePath("/forms");
-  redirect("/forms");
+  revalidatePath("/clients");
+  redirect("/clients");
 }

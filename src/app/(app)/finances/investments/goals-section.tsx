@@ -97,7 +97,7 @@ export function GoalsSection({ goals, assets }: { goals: FinancialGoalDTO[]; ass
       </div>
 
       {goals.length === 0 ? (
-        <p className="text-sm text-muted">No goals yet. Add your first one above.</p>
+        <p className="text-sm text-muted">No savings goals yet. Set a target above and watch your progress toward it.</p>
       ) : (
         <div className="flex flex-col gap-4">
           {goals.map((g) => {

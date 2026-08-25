@@ -36,7 +36,7 @@ export function NotificationBell({ deadlines }: { deadlines: UpcomingDeadline[] 
                 {deadlines.map((d) => (
                   <Link
                     key={d.id}
-                    href={`/deals/${d.dealId}`}
+                    href={`/transactions/${d.dealId}`}
                     onClick={() => setIsOpen(false)}
                     className="flex flex-col rounded-xl px-2 py-2 hover:bg-surface"
                   >

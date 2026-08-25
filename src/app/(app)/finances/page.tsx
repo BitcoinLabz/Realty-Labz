@@ -1,27 +1,26 @@
 import Link from "next/link";
+import { BarChart3, PieChart, TrendingUp, Wallet } from "lucide-react";
 import { auth } from "@/auth";
-import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import {
   getAssetBreakdown,
-  getBudgetUsage,
   getBusinessExpenseBreakdown,
   getDueRecurringTemplates,
   getMonthlyIncomeExpense,
   getPipelineValue,
 } from "@/lib/finance-data";
-import { estimateQuarterlyTax } from "@/lib/estimated-tax";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
+import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
-import { UnfiledDocuments } from "@/app/(app)/forms/unfiled-documents";
-import { HomeOfficeCard } from "./home-office-card";
-import { TaxEstimateCard } from "./tax-estimate-card";
-import { BudgetsSection } from "./budgets-section";
 import { RecurringReminders } from "./recurring-reminders";
-import type { ClientOption, DocumentDTO } from "@/app/(app)/forms/types";
 
+// Overview is read-only on purpose. It used to carry ten stacked sections,
+// four of which were settings forms (home office size, tax rate, budgets,
+// document upload) -- those are now on the Taxes & budgets tab, where you go
+// deliberately rather than scroll past every time you want to see a number.
 export default async function FinancesOverviewPage({
   searchParams,
 }: {
@@ -33,65 +32,21 @@ export default async function FinancesOverviewPage({
   const { year: yearParam } = await searchParams;
   const year = Number(yearParam) || currentYear;
 
-  const currentMonth = new Date().getMonth();
-
-  const [
-    businessSeries,
-    personalSeries,
-    expenseBreakdown,
-    assetBreakdown,
-    pipeline,
-    taxDocuments,
-    clients,
-    user,
-    budgets,
-    dueRecurring,
-  ] = await Promise.all([
-    getMonthlyIncomeExpense(userId, year, "BUSINESS"),
-    getMonthlyIncomeExpense(userId, year, "PERSONAL"),
-    getBusinessExpenseBreakdown(userId, year),
-    getAssetBreakdown(userId),
-    getPipelineValue(userId),
-    prisma.document.findMany({
-      where: { userId, clientId: null },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.client.findMany({
-      where: { userId },
-      orderBy: { name: "asc" },
-      select: { id: true, name: true },
-    }),
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: { homeOfficeSqFt: true, estimatedIncomeTaxRatePercent: true },
-    }),
-    getBudgetUsage(userId, year, currentMonth),
-    getDueRecurringTemplates(userId),
-  ]);
+  const [businessSeries, personalSeries, expenseBreakdown, assetBreakdown, pipeline, dueRecurring] =
+    await Promise.all([
+      getMonthlyIncomeExpense(userId, year, "BUSINESS"),
+      getMonthlyIncomeExpense(userId, year, "PERSONAL"),
+      getBusinessExpenseBreakdown(userId, year),
+      getAssetBreakdown(userId),
+      getPipelineValue(userId),
+      getDueRecurringTemplates(userId),
+    ]);
 
   const businessNet = businessSeries.reduce((sum, m) => sum + m.income - m.expenses, 0);
   const personalNet = personalSeries.reduce((sum, m) => sum + m.income - m.expenses, 0);
+  const hasBusinessData = businessSeries.some((m) => m.income > 0 || m.expenses > 0);
   const hasPersonalData = personalSeries.some((m) => m.income > 0 || m.expenses > 0);
   const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
-
-  const homeOfficeDeduction = expenseBreakdown.find((p) => p.label === "Home office")?.value ?? 0;
-  const mileageDeduction = expenseBreakdown.find((p) => p.label === "Mileage")?.value ?? 0;
-  const netBusinessIncome = businessNet - homeOfficeDeduction - mileageDeduction;
-  const taxSummary =
-    user?.estimatedIncomeTaxRatePercent != null
-      ? estimateQuarterlyTax(netBusinessIncome, Number(user.estimatedIncomeTaxRatePercent), year)
-      : null;
-
-  const taxDocumentDtos: DocumentDTO[] = taxDocuments.map((d) => ({
-    id: d.id,
-    fileName: d.fileName,
-    mimeType: d.mimeType,
-    size: d.size,
-    clientId: d.clientId,
-    dealId: d.dealId,
-    createdAt: d.createdAt.toISOString(),
-  }));
-  const clientOptions: ClientOption[] = clients.map((c) => ({ id: c.id, name: c.name }));
 
   return (
     <div className="flex flex-col gap-8">
@@ -104,94 +59,80 @@ export default async function FinancesOverviewPage({
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard label={`Business net (${year})`} value={formatCurrency(businessNet)} />
         <SummaryCard label={`Personal net (${year})`} value={formatCurrency(personalNet)} />
-        <SummaryCard label="Active pipeline value" value={formatCurrency(pipeline.value)} />
+        <SummaryCard
+          label="Work in progress"
+          value={formatCurrency(pipeline.value)}
+          hint="The combined price of every transaction you have going right now that hasn't closed yet."
+        />
         <SummaryCard label="Total invested" value={formatCurrency(assetBreakdown.total)} />
       </div>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">
-          Business income &amp; expenses
-        </h2>
-        <MonthlyBarChart data={businessSeries} />
-      </section>
+      <Card title="Business money in & out" icon={BarChart3}>
+        {hasBusinessData ? (
+          <MonthlyBarChart data={businessSeries} />
+        ) : (
+          <EmptyState
+            icon={BarChart3}
+            title="No business income or expenses yet"
+            description={`Once you log what you earn and spend on your real estate business, ${year} shows up here month by month.`}
+            actionLabel="Log income or an expense"
+            actionHref="/finances/income"
+          />
+        )}
+      </Card>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">
-          Business expenses by category
-        </h2>
+      <Card title="Where your business money goes" icon={PieChart}>
         {expenseBreakdown.length > 0 ? (
           <BreakdownDonutChart data={expenseBreakdown} />
         ) : (
-          <p className="text-sm text-muted">
-            No business expenses logged for {year} yet — add one on the{" "}
-            <Link href="/finances/transactions" className="font-medium text-accent hover:opacity-80">
-              Transactions
-            </Link>{" "}
-            tab.
-          </p>
+          <EmptyState
+            icon={PieChart}
+            title="No business expenses yet"
+            description="Log expenses like marketing, MLS dues, or client gifts and you'll see what's costing you the most."
+            actionLabel="Add an expense"
+            actionHref="/finances/income"
+          />
         )}
-      </section>
+      </Card>
 
-      <HomeOfficeCard homeOfficeSqFt={user?.homeOfficeSqFt ?? null} deduction={homeOfficeDeduction} />
-
-      <TaxEstimateCard
-        estimatedIncomeTaxRatePercent={
-          user?.estimatedIncomeTaxRatePercent != null ? Number(user.estimatedIncomeTaxRatePercent) : null
-        }
-        summary={taxSummary}
-      />
-
-      <BudgetsSection budgets={budgets} />
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">
-          Personal income &amp; expenses
-        </h2>
+      <Card title="Personal money in & out" icon={TrendingUp}>
         {hasPersonalData ? (
           <MonthlyBarChart data={personalSeries} />
         ) : (
-          <p className="text-sm text-muted">
-            No personal transactions logged for {year} yet — add one on the{" "}
-            <Link href="/finances/transactions" className="font-medium text-accent hover:opacity-80">
-              Transactions
-            </Link>{" "}
-            tab.
-          </p>
+          <EmptyState
+            icon={TrendingUp}
+            title="No personal income or expenses yet"
+            description="Track your personal side here too — it stays completely separate from your business numbers and never appears on tax exports."
+            actionLabel="Log something personal"
+            actionHref="/finances/income"
+          />
         )}
-      </section>
+      </Card>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <div className="mb-6 flex items-baseline justify-between">
-          <h2 className="text-base font-semibold text-foreground">Investments</h2>
+      <Card
+        title="Where your money is"
+        icon={Wallet}
+        action={
           <Link
             href="/finances/investments"
             className="text-sm font-medium text-accent hover:opacity-80"
           >
-            Manage investments
+            Manage
           </Link>
-        </div>
+        }
+      >
         {assetBreakdown.points.length > 0 ? (
           <BreakdownDonutChart data={assetBreakdown.points} />
         ) : (
-          <p className="text-sm text-muted">
-            No assets added yet — track a brokerage account, retirement fund, or property on the
-            Investments tab.
-          </p>
+          <EmptyState
+            icon={Wallet}
+            title="Nothing tracked yet"
+            description="Add savings, a retirement account, a rental property, or anything else you own to see it all in one picture."
+            actionLabel="Add what you own"
+            actionHref="/finances/investments"
+          />
         )}
-      </section>
-
-      <section className="rounded-2xl border border-border bg-background p-8">
-        <h2 className="mb-1 text-base font-semibold text-foreground">Tax documents</h2>
-        <p className="mb-6 text-sm text-muted">
-          Receipts, statements, or anything else you want on hand for taxes — not tied to a
-          specific client. The same list also shows as &quot;Unfiled documents&quot; on the{" "}
-          <Link href="/forms" className="font-medium text-accent hover:opacity-80">
-            Clients
-          </Link>{" "}
-          tab, under Forms.
-        </p>
-        <UnfiledDocuments documents={taxDocumentDtos} clients={clientOptions} />
-      </section>
+      </Card>
     </div>
   );
 }

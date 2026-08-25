@@ -55,7 +55,14 @@ This is the top priority of the project, alongside cost-consciousness — **the 
 - **loan_extra_payments** — one-off extra-principal payments a user logs against a loan (added 2026-07-20): date, amount, optional note. Applied at the month they fall in during the amortization simulation — pulls the payoff date earlier without changing the loan's required monthly payment, same as how extra payments work on a real fixed-rate loan.
 - **form_templates / form_template_signers / form_fields / form_submissions / form_submission_signers / form_field_values** — the Forms/e-signature feature (added 2026-07-22, see Current Status). `FormTemplate` is the reusable PDF + its defined signer roles and fields; `FormSubmission` is one sent instance to specific signers (sequential, legally-binding-grade e-signature with a consent/IP/timestamp audit trail); the completed, flattened PDF becomes a normal `Document` row, reusing that model's storage/list/download plumbing rather than duplicating it.
 
-**⚠️ Naming collision to plan around:** the existing `Transaction` model means an *income/expense ledger entry*. The Platform Expansion Roadmap's "Transaction Management" (Phase 2) means a *real estate deal* (buyer/seller side, timeline, deadlines, commission). These are different things that will both need to exist — when Phase 2 is built, the deal-tracking model needs its own name (e.g. `Deal` or `RealEstateTransaction`), not `Transaction`. Flagging now so it isn't a surprise later.
+**⚠️ Naming collision — RESOLVED 2026-08-20, read this before writing any user-facing copy.** The `Transaction` Prisma model means an *income/expense ledger entry*; a *real estate deal* is the `Deal` model. During the UX revamp the founder chose **"Transaction"** as the user-facing name for a real estate deal (it's what agents actually call it), which collides with the model name. The resolution: **UI labels changed, database models did not.**
+
+| Prisma model | What the UI calls it | Where it lives |
+| --- | --- | --- |
+| `Deal` | **Transaction** | `/transactions`, `src/app/(app)/transactions/` |
+| `Transaction` | **Income & expenses** | `/finances/income`, `src/app/(app)/finances/income/` |
+
+Renaming the models would have meant a migration touching every table and query for zero user benefit. When reading code, trust the model name; when writing anything a user reads, use the UI name. Same note is repeated at the top of `src/app/(app)/transactions/types.ts`.
 
 **Not yet in the schema, needed for Phase 2+ (see Platform Expansion Roadmap):**
 - `Role` enum needs a `BROKER` value added (currently `AGENT` / `TEAM_LEAD` / `ADMIN`) to match the doc's Broker / Admin / Team Lead / Agent hierarchy.

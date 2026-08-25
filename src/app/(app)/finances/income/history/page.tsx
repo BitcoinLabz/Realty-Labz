@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { TransactionHistory } from "./transaction-history";
-import { dealDisplayName } from "@/app/(app)/deals/types";
+import { dealDisplayName } from "@/app/(app)/transactions/types";
 import type { DealOption, TransactionDTO } from "../types";
 
 export default async function TransactionHistoryPage({
@@ -49,7 +49,7 @@ export default async function TransactionHistoryPage({
     <div className="flex flex-col gap-6">
       <div>
         <Link
-          href="/finances/transactions"
+          href="/finances/income"
           className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
         >
           ← Back to Transactions

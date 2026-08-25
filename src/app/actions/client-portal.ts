@@ -51,6 +51,6 @@ export async function sendPortalAccessAction(
     return { error: "Couldn't send the email — check Resend is configured" };
   }
 
-  revalidatePath(`/forms/${clientId}`);
+  revalidatePath(`/clients/${clientId}`);
   return {};
 }

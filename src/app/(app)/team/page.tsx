@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { isManager, roleLabel } from "@/lib/authorization";
 import { formatCurrency } from "@/lib/format";
 import { SummaryCard } from "@/components/ui/summary-card";
-import { dealDisplayName } from "../deals/types";
+import { dealDisplayName } from "@/app/(app)/transactions/types";
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Active",
@@ -146,7 +146,7 @@ export default async function TeamDashboardPage() {
               return (
                 <Link
                   key={d.id}
-                  href={`/deals/${d.dealId}`}
+                  href={`/transactions/${d.dealId}`}
                   className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
                 >
                   <div className="flex flex-col">
@@ -170,14 +170,14 @@ export default async function TeamDashboardPage() {
         <h2 className="mb-6 text-base font-semibold text-foreground">Missing documents</h2>
         {missingDocDeals.length === 0 ? (
           <p className="text-sm text-muted">
-            No under-contract or pending deals are missing documents.
+            Every active transaction has at least one document attached. Nice.
           </p>
         ) : (
           <div className="flex flex-col gap-2">
             {missingDocDeals.map((deal) => (
               <Link
                 key={deal.id}
-                href={`/deals/${deal.id}`}
+                href={`/transactions/${deal.id}`}
                 className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
               >
                 <div className="flex flex-col">

@@ -34,7 +34,7 @@ export async function createReferralPartnerAction(
   // the agent was actually on when they added one.
   const returnToDealId = formData.get("returnToDealId");
   if (typeof returnToDealId === "string" && returnToDealId) {
-    revalidatePath(`/deals/${returnToDealId}`);
+    revalidatePath(`/transactions/${returnToDealId}`);
   }
   return {};
 }
@@ -50,6 +50,6 @@ export async function deleteReferralPartnerAction(formData: FormData) {
 
   const returnToDealId = formData.get("returnToDealId");
   if (typeof returnToDealId === "string" && returnToDealId) {
-    revalidatePath(`/deals/${returnToDealId}`);
+    revalidatePath(`/transactions/${returnToDealId}`);
   }
 }

@@ -94,7 +94,7 @@ export function TransactionForm({
       {canBeRecurring ? <input type="hidden" name="isRecurring" value={isRecurring ? "true" : "false"} /> : null}
 
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-foreground">Scope</span>
+        <span className="text-sm font-medium text-foreground">Business or personal?</span>
         <div className="grid grid-cols-2 gap-2">
           <button type="button" onClick={() => setScope("BUSINESS")} className={pillClass(scope === "BUSINESS")}>
             Business

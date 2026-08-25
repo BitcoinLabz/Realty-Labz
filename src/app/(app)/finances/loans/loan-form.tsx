@@ -5,10 +5,31 @@ import { createLoanAction, updateLoanAction } from "@/app/actions/loans";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { LoanType } from "./types";
 
 const initialState: FormState = {};
+
+const COMMON_TERM_MONTHS = [360, 240, 180, 120, 84, 72, 60, 48, 36];
+
+// Years in the label, months as the value. If an existing loan has a term
+// that isn't one of the common ones, it's prepended so editing that loan
+// can't silently change its length.
+function termOptions(current?: string) {
+  const months = [...COMMON_TERM_MONTHS];
+  const currentMonths = Number(current);
+  if (current && !Number.isNaN(currentMonths) && !months.includes(currentMonths)) {
+    months.unshift(currentMonths);
+  }
+  return months.map((m) => {
+    const years = m / 12;
+    const label = Number.isInteger(years)
+      ? `${years} year${years === 1 ? "" : "s"}`
+      : `${m} months`;
+    return { value: String(m), label };
+  });
+}
 
 export type LoanFormValues = {
   id?: string;
@@ -126,17 +147,22 @@ export function LoanForm({
           required
           error={state.fieldErrors?.interestRate}
         />
-        <Field
-          label="Term (months)"
+        {/* Was a raw "Term (months)" number box -- nobody thinks of their
+            mortgage as 360. Still submits months so the server action and
+            all the amortization math are untouched. An existing loan with an
+            unusual term keeps its exact value via the extra option below. */}
+        <Select
+          label="Length of the loan"
           name="termMonths"
-          type="number"
-          step="1"
-          min="1"
-          placeholder="e.g. 360 for 30 years"
-          defaultValue={defaultValues?.termMonths}
-          required
+          defaultValue={defaultValues?.termMonths ?? "360"}
           error={state.fieldErrors?.termMonths}
-        />
+        >
+          {termOptions(defaultValues?.termMonths).map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <Field

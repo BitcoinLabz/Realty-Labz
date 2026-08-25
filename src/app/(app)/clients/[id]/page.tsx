@@ -6,8 +6,8 @@ import { teamSharedFilter } from "@/lib/authorization";
 import { CLIENT_SOURCE_LABELS, CLIENT_STAGE_LABELS } from "@/lib/client-categories";
 import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
-import { DealForm } from "../../deals/deal-form";
-import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName } from "../../deals/types";
+import { DealForm } from "@/app/(app)/transactions/transaction-form";
+import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName } from "@/app/(app)/transactions/types";
 import { ClientDeadlineList } from "./client-deadline-list";
 import { ClientDocuments } from "./client-documents";
 import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
@@ -15,7 +15,7 @@ import { FormSubmissionList } from "../form-submission-list";
 import { SendPortalAccessButton } from "./send-portal-access-button";
 import { DetailTabs } from "@/components/ui/detail-tabs";
 import type { ClientDeadlineDTO, DocumentDTO } from "../types";
-import type { FormSubmissionSummaryDTO } from "../templates/types";
+import type { FormSubmissionSummaryDTO } from "@/app/(app)/forms/templates/types";
 
 export default async function ClientDetailPage({
   params,
@@ -148,7 +148,7 @@ export default async function ClientDetailPage({
               {deals.map((deal) => (
                 <Link
                   key={deal.id}
-                  href={`/deals/${deal.id}`}
+                  href={`/transactions/${deal.id}`}
                   className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
                 >
                   <div className="flex flex-col">
@@ -223,7 +223,7 @@ export default async function ClientDetailPage({
     <div className="flex flex-col gap-8">
       <div>
         <Link
-          href="/forms"
+          href="/clients"
           className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
         >
           ← Back to Clients

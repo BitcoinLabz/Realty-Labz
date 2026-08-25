@@ -55,7 +55,7 @@ export function ReferralPartnerSection({
       </p>
 
       {partners.length === 0 ? (
-        <p className="text-sm text-muted">No referral partners yet.</p>
+        <p className="text-sm text-muted">Nobody added yet. If another agent sends you business, add them here to keep track of what you owe them.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {partners.map((p) => (

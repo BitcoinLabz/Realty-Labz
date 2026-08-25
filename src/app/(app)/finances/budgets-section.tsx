@@ -18,7 +18,7 @@ function BudgetForm() {
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Select label="Scope" name="scope" defaultValue="BUSINESS">
+        <Select label="Business or personal?" name="scope" defaultValue="BUSINESS">
           <option value="BUSINESS">Business</option>
           <option value="PERSONAL">Personal</option>
         </Select>
@@ -61,7 +61,7 @@ export function BudgetsSection({ budgets }: { budgets: BudgetUsage[] }) {
       </div>
 
       {budgets.length === 0 ? (
-        <p className="text-sm text-muted">No budgets yet. Add your first one above.</p>
+        <p className="text-sm text-muted">No spending limits set. Add one above to get a heads-up when a category is running hot.</p>
       ) : (
         <div className="flex flex-col gap-4">
           {budgets.map((b) => {

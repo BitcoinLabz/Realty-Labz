@@ -79,7 +79,7 @@ export async function createDealAction(
     },
   });
 
-  if (clientId) revalidatePath(`/forms/${clientId}`);
+  if (clientId) revalidatePath(`/clients/${clientId}`);
   return {};
 }
 
@@ -126,8 +126,8 @@ export async function updateDealAction(
 
   if (result.count === 0) return { error: "Deal not found" };
 
-  revalidatePath(`/deals/${id}`);
-  if (clientId) revalidatePath(`/forms/${clientId}`);
+  revalidatePath(`/transactions/${id}`);
+  if (clientId) revalidatePath(`/clients/${clientId}`);
   return {};
 }
 
@@ -165,7 +165,7 @@ async function resolveOrCreateClientId(
   return { ok: true, clientId: created.id };
 }
 
-// The guided "Create a file" wizard (/forms/files/new) -- resolves the
+// The guided "Create a file" wizard (/transactions/new) -- resolves the
 // client (existing pick or inline create) and creates the Deal in one
 // submit, rather than requiring a separate trip to a client's page first.
 export async function createFileAction(
@@ -210,9 +210,9 @@ export async function createFileAction(
     },
   });
 
-  revalidatePath("/forms/files");
-  revalidatePath(`/forms/${resolvedClient.clientId}`);
-  redirect(`/deals/${deal.id}`);
+  revalidatePath("/transactions");
+  revalidatePath(`/clients/${resolvedClient.clientId}`);
+  redirect(`/transactions/${deal.id}`);
 }
 
 export async function deleteDealAction(formData: FormData) {
@@ -230,9 +230,9 @@ export async function deleteDealAction(formData: FormData) {
   await prisma.deal.deleteMany({ where: { id, ...teamOrOwnFilter(session.user) } });
 
   if (deal?.clientId) {
-    revalidatePath(`/forms/${deal.clientId}`);
-    redirect(`/forms/${deal.clientId}`);
+    revalidatePath(`/clients/${deal.clientId}`);
+    redirect(`/clients/${deal.clientId}`);
   } else {
-    redirect("/forms");
+    redirect("/clients");
   }
 }

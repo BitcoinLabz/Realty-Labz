@@ -17,7 +17,7 @@ const STATUS_CLASSES: Record<string, string> = {
 
 export function SubmissionList({ submissions }: { submissions: FormSubmissionSummaryDTO[] }) {
   if (submissions.length === 0) {
-    return <p className="text-sm text-muted">Nothing sent yet.</p>;
+    return <p className="text-sm text-muted">Nothing sent for signature yet. Pick a ready-to-send form and email it to a client from their page.</p>;
   }
 
   return (
@@ -38,7 +38,7 @@ export function SubmissionList({ submissions }: { submissions: FormSubmissionSum
           </div>
         );
         return s.clientId ? (
-          <Link key={s.id} href={`/forms/${s.clientId}`} className="hover:opacity-80">
+          <Link key={s.id} href={`/clients/${s.clientId}`} className="hover:opacity-80">
             {row}
           </Link>
         ) : (

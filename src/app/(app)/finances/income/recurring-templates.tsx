@@ -82,7 +82,7 @@ function RecurringForm({
       <input type="hidden" name="id" defaultValue={defaultValues.id} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Select label="Scope" name="scope" value={scope} onChange={(e) => setScope(e.target.value as "BUSINESS" | "PERSONAL")}>
+        <Select label="Business or personal?" name="scope" value={scope} onChange={(e) => setScope(e.target.value as "BUSINESS" | "PERSONAL")}>
           <option value="BUSINESS">Business</option>
           <option value="PERSONAL">Personal</option>
         </Select>
@@ -213,7 +213,7 @@ export function RecurringTemplates({ templates }: { templates: RecurringTemplate
       </p>
 
       {templates.length === 0 ? (
-        <p className="text-sm text-muted">No recurring costs set up yet.</p>
+        <p className="text-sm text-muted">Nothing repeating yet. Costs you pay every month — MLS dues, your phone bill — can log themselves automatically.</p>
       ) : (
         <div className="flex flex-col gap-2">
           {templates.map((t) =>

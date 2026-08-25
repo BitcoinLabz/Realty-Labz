@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { FileText, Mail } from "lucide-react";
-import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName, type DealFileDTO } from "../../deals/types";
+import { FileText, Home, Mail } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName, type DealFileDTO } from "./types";
 
 const selectClass =
   "rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -42,8 +44,14 @@ export function FilesList({
 
   if (files.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-        No properties yet. Add a deal from a client&apos;s page to see it here.
+      <div className="rounded-2xl border border-border bg-background">
+        <EmptyState
+          icon={Home}
+          title="No transactions yet"
+          description="A transaction is one property you're working — the buyer or seller, the paperwork, the deadlines, and what you earn on it. You don't need an address to start one."
+          actionLabel="Start your first transaction"
+          actionHref="/transactions/new"
+        />
       </div>
     );
   }
@@ -59,7 +67,7 @@ export function FilesList({
           className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
         />
         <select value={side} onChange={(e) => setSide(e.target.value)} className={selectClass}>
-          <option value="">All representation</option>
+          <option value="">Anyone I represent</option>
           {Object.entries(DEAL_SIDE_LABELS).map(([value, label]) => (
             <option key={value} value={value}>
               {label}
@@ -78,7 +86,7 @@ export function FilesList({
 
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted">
-          Showing {filtered.length} of {files.length} files
+          Showing {filtered.length} of {files.length} transactions
         </p>
         {hasActiveFilters ? (
           <button
@@ -93,14 +101,14 @@ export function FilesList({
 
       {filtered.length === 0 ? (
         <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-          No files match your search or filters.
+          No transactions match your search or filters.
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           {filtered.map((f) => (
             <Link
               key={f.id}
-              href={`/deals/${f.id}`}
+              href={`/transactions/${f.id}`}
               className="flex flex-col gap-3 rounded-2xl border border-border bg-background px-6 py-4 transition-colors hover:border-accent sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex min-w-0 flex-col">
@@ -113,19 +121,16 @@ export function FilesList({
                 </span>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <span className="rounded-full bg-surface px-3 py-1 text-sm font-medium text-muted">
-                  {DEAL_SIDE_LABELS[f.side]}
+                <Badge>{DEAL_SIDE_LABELS[f.side]}</Badge>
+                <Badge>{DEAL_STATUS_LABELS[f.status]}</Badge>
+                {/* Titled, not bare icons -- "📄 3 ✉️ 1" left the reader guessing. */}
+                <span title={`${f.documentCount} document${f.documentCount === 1 ? "" : "s"}`}>
+                  <Badge icon={FileText}>{f.documentCount}</Badge>
                 </span>
-                <span className="rounded-full bg-surface px-3 py-1 text-sm font-medium text-muted">
-                  {DEAL_STATUS_LABELS[f.status]}
-                </span>
-                <span className="flex items-center gap-1 rounded-full bg-surface px-3 py-1 text-sm font-medium text-muted">
-                  <FileText size={14} />
-                  {f.documentCount}
-                </span>
-                <span className="flex items-center gap-1 rounded-full bg-surface px-3 py-1 text-sm font-medium text-muted">
-                  <Mail size={14} />
-                  {f.envelopeCount}
+                <span
+                  title={`${f.envelopeCount} signature request${f.envelopeCount === 1 ? "" : "s"}`}
+                >
+                  <Badge icon={Mail}>{f.envelopeCount}</Badge>
                 </span>
               </div>
             </Link>

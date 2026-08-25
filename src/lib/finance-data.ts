@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { buildAmortizationSchedule, scheduleAtDate } from "@/lib/loan-calculations";
 import { CATEGORY_LABELS } from "@/lib/transaction-categories";
-import { dealDisplayName } from "@/app/(app)/deals/types";
+import { dealDisplayName } from "@/app/(app)/transactions/types";
 
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",

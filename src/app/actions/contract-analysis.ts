@@ -132,7 +132,7 @@ export async function applyContractAnalysisAction(
     });
   }
 
-  revalidatePath(`/deals/${dealId}`);
+  revalidatePath(`/transactions/${dealId}`);
   revalidatePath("/dashboard");
   return {};
 }

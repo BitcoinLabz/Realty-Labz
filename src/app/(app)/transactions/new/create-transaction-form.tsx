@@ -6,8 +6,8 @@ import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
-import { DEAL_SIDE_LABELS } from "../../../deals/types";
-import type { ClientOption } from "../../types";
+import { DEAL_SIDE_LABELS } from "@/app/(app)/transactions/types";
+import type { ClientOption } from "@/app/(app)/clients/types";
 
 const initialState: FormState = {};
 

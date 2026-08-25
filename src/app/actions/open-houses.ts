@@ -52,7 +52,7 @@ export async function createOpenHouseAction(
     },
   });
 
-  revalidatePath(`/deals/${dealId}`);
+  revalidatePath(`/transactions/${dealId}`);
   return {};
 }
 
@@ -71,7 +71,7 @@ export async function deleteOpenHouseAction(formData: FormData) {
   // deal-deadlines.ts -- id alone isn't enough.
   await prisma.openHouse.deleteMany({ where: { id, dealId } });
 
-  revalidatePath(`/deals/${dealId}`);
+  revalidatePath(`/transactions/${dealId}`);
 }
 
 // Public, unauthenticated -- matches the /sign/[id] trust model: openHouseId
