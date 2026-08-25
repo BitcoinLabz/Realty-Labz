@@ -3,7 +3,6 @@ import { isManager } from "@/lib/authorization";
 import { getUpcomingDeadlines } from "@/lib/finance-data";
 import { Sidebar } from "@/components/sidebar";
 import { autoLogDueRecurringTransactions } from "@/app/actions/recurring-transactions";
-import { sendDueDeadlineReminders } from "@/app/actions/deadline-reminders";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -14,23 +13,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // a schedule: this app has no background jobs anywhere, so "on your next
   // visit" is how every other on-demand feature here already works.
   //
-  // Each is wrapped separately and never rethrows. These are background
-  // chores, and this layout wraps EVERY authenticated page -- an error in
-  // one of them (a transient DB blip, or a migration not yet applied in
-  // production) must not be able to take the whole app down. Failing here
-  // means a reminder goes out late, which is recoverable; a blank site
-  // isn't. Errors are logged, not swallowed silently, so a real problem is
-  // still visible in the Vercel function logs.
+  // Wrapped and never rethrows. This is a background chore, and this layout
+  // wraps EVERY authenticated page -- an error here (a transient DB blip,
+  // say) must not be able to take the whole app down. A recurring cost
+  // logging late is recoverable; a blank site isn't. Logged, not swallowed
+  // silently, so a real problem stays visible in the Vercel function logs.
+  //
+  // Deadline reminders deliberately do NOT run here: emails should only go
+  // out when the agent presses "Send reminder" (founder decision), never as
+  // a side effect of opening a page.
   if (session?.user) {
     try {
       await autoLogDueRecurringTransactions(session.user.id);
     } catch (err) {
       console.error("[app-layout] autoLogDueRecurringTransactions failed", err);
-    }
-    try {
-      await sendDueDeadlineReminders(session.user.id);
-    } catch (err) {
-      console.error("[app-layout] sendDueDeadlineReminders failed", err);
     }
   }
 

@@ -8,9 +8,6 @@ import { sendDeadlineReminderEmail } from "@/lib/email";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import type { FormState } from "@/app/actions/auth";
 
-// How far ahead of a deadline the reminder goes out.
-const REMINDER_LEAD_DAYS = 3;
-
 function formatDueDate(dueDate: Date) {
   return dueDate.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
@@ -66,46 +63,17 @@ const deadlineInclude = {
   },
 } as const;
 
-// Runs on every authenticated page load (see src/app/(app)/layout.tsx),
-// alongside autoLogDueRecurringTransactions. This app has no scheduled-job
-// runner anywhere -- "catch up on your next visit" is the established
-// pattern here, not new infrastructure.
+// The "Send reminder" button next to each deadline -- the ONLY way a
+// reminder email goes out.
 //
-// Note the query no longer filters on the client's opt-in: the AGENT gets a
-// reminder for every deadline, including ones on transactions with no client
-// attached or whose client opted out. The opt-in only gates the client's copy
-// (see sendRemindersFor).
+// There is deliberately no automatic pass: an earlier version sent these
+// from the shared (app) layout on every page load, and the founder was
+// explicit that email should only leave when they press the button. Nothing
+// here runs on a schedule or as a side effect of navigation.
 //
-// emailReminderSentAt is stamped whether or not delivery succeeded, so a
-// Resend outage can't turn into the same reminder re-sending on every
-// subsequent page view -- same fire-and-forget philosophy as every other
-// email in this app (there's no retry queue anywhere here).
-export async function sendDueDeadlineReminders(userId: string): Promise<void> {
-  const now = new Date();
-  const soon = new Date(now.getTime() + REMINDER_LEAD_DAYS * 24 * 60 * 60 * 1000);
-
-  const deadlines = await prisma.dealDeadline.findMany({
-    where: {
-      completedAt: null,
-      emailReminderSentAt: null,
-      dueDate: { lte: soon },
-      deal: { userId },
-    },
-    include: deadlineInclude,
-  });
-
-  for (const deadline of deadlines) {
-    await sendRemindersFor(deadline);
-    await prisma.dealDeadline.update({
-      where: { id: deadline.id },
-      data: { emailReminderSentAt: new Date() },
-    });
-  }
-}
-
-// The "Send reminder" button next to each deadline. Unlike the automatic
-// pass above this does NOT check or stamp emailReminderSentAt -- it's a
-// deliberate action the agent can repeat whenever a client needs chasing.
+// Repeatable by design -- press it as often as a client needs chasing.
+// emailReminderSentAt is stamped purely so the UI can show when the last
+// one went out; it never gates whether a send is allowed.
 export async function sendDeadlineReminderNowAction(
   _prevState: FormState,
   formData: FormData,
@@ -137,6 +105,11 @@ export async function sendDeadlineReminderNowAction(
   if (!sent) {
     return { error: "Couldn't send right now — try again in a moment." };
   }
+
+  await prisma.dealDeadline.updateMany({
+    where: { id, dealId },
+    data: { emailReminderSentAt: new Date() },
+  });
 
   revalidatePath(`/transactions/${dealId}`);
 

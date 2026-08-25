@@ -132,6 +132,7 @@ export default async function DealDetailPage({
     label: d.label,
     dueDate: d.dueDate.toISOString().slice(0, 10),
     completedAt: d.completedAt ? d.completedAt.toISOString() : null,
+    reminderSentAt: d.emailReminderSentAt ? d.emailReminderSentAt.toISOString() : null,
   }));
 
   const openHouseDtos: OpenHouseDTO[] = deal.openHouses.map((oh) => ({

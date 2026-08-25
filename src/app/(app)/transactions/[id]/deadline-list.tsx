@@ -132,6 +132,15 @@ export function DeadlineList({
                       })}
                       {isOverdue ? " · Overdue" : ""}
                     </span>
+                    {d.reminderSentAt ? (
+                      <span className="text-xs text-muted">
+                        Reminder sent{" "}
+                        {new Date(d.reminderSentAt).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-4">
