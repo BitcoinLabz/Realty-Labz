@@ -20,9 +20,10 @@ export const LOGO_HOUSE_PATH = "M16 48 L50 17 L84 48 L84 70 Q84 80 74 80 L26 80 
 export const LOGO_CHIMNEY_PATH = "M67 32 L67 25 L76 25 L76 40";
 
 // Wavy surface, then straight down the inside of the walls to the bottom.
-// Inset 3.5 from the outline to sit under the centered 7-wide stroke.
+// Inset ~2.5 so it tucks under the centered 5.6-wide stroke with a little
+// overlap -- matching the half-stroke exactly leaves a hairline gap.
 export const LOGO_LIQUID_PATH =
-  "M19.5 51 C30 45 38 57 50 51 C62 45 70 55 80.5 49 L80.5 70 Q80.5 76.5 74 76.5 L26 76.5 Q19.5 76.5 19.5 70 Z";
+  "M18.5 51 C30 45 38 57 50 51 C62 45 70 55 81.5 49 L81.5 70 Q81.5 77.5 74 77.5 L26 77.5 Q18.5 77.5 18.5 70 Z";
 
 // Bubbles escaping the chimney, and the highlights suspended in the liquid.
 export const LOGO_CHIMNEY_BUBBLES = [
@@ -38,7 +39,7 @@ export const LOGO_LIQUID_BUBBLES = [
   { cx: 30, cy: 55, r: 1.8 },
 ];
 
-export const LOGO_STROKE_WIDTH = 7;
+export const LOGO_STROKE_WIDTH = 5.6;
 
 // The liquid keeps the same cyan in both themes -- it reads against white and
 // black alike. Only the outline has to flip, since navy on a dark background
