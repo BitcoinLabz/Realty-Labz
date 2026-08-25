@@ -14,10 +14,10 @@
       .outline { stroke: #F5F5F7; }
     }
   </style>
-  <path class="outline" d="M67 32 L67 25 L76 25 L76 40" fill="none" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M18.5 51 C30 45 38 57 50 51 C62 45 70 55 81.5 49 L81.5 70 Q81.5 77.5 74 77.5 L26 77.5 Q18.5 77.5 18.5 70 Z" fill="#5BC5F2" />
-  <circle cx="35" cy="62" r="4.5" fill="#ffffff" fill-opacity="0.85" />
-  <path class="outline" d="M16 48 L50 17 L84 48 L84 70 Q84 80 74 80 L26 80 Q16 80 16 70 Z" fill="none" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round" />
-  <circle cx="80" cy="9" r="5" fill="#5BC5F2" />
-  <circle cx="88" cy="18" r="3" fill="#5BC5F2" />
+  <path class="outline" d="M63.6 32 L63.6 25 L70.8 25 L70.8 40" fill="none" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M24.8 51 C34 45 40.4 57 50 51 C59.6 45 66 55 75.2 49 L75.2 70 Q75.2 77.5 69.2 77.5 L30.8 77.5 Q24.8 77.5 24.8 70 Z" fill="#5BC5F2" />
+  <circle cx="38" cy="62" r="4.5" fill="#ffffff" fill-opacity="0.85" />
+  <path class="outline" d="M22.8 48 L50 17 L77.2 48 L77.2 70 Q77.2 80 69.2 80 L30.8 80 Q22.8 80 22.8 70 Z" fill="none" stroke-width="5.6" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="74" cy="9" r="5" fill="#5BC5F2" />
+  <circle cx="80.4" cy="18" r="3" fill="#5BC5F2" />
 </svg>

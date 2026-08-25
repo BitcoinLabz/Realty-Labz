@@ -9,34 +9,43 @@
 // and opengraph-image.tsx, has only partial clip-path support. One geometry
 // that works everywhere beats two that have to be kept in agreement.
 //
+// Every x below was narrowed 20% toward the centre line (x=50) on
+// 2026-08-25: newX = 50 + (oldX - 50) * 0.8. Heights are untouched, so the
+// house reads taller and slimmer. Keep that transform in mind before nudging
+// any single coordinate -- the shapes only line up because they were all
+// scaled together.
+//
 // src/app/icon.svg is a static file and can't import this — it carries a
 // copy of these same paths and a comment pointing back here.
 
 // Outer outline: left eave -> apex -> right eave -> down the right wall ->
-// rounded flask bottom -> back up the left wall.
-export const LOGO_HOUSE_PATH = "M16 48 L50 17 L84 48 L84 70 Q84 80 74 80 L26 80 Q16 80 16 70 Z";
+// rounded flask bottom -> back up the left wall. Spans x=22.8..77.2.
+export const LOGO_HOUSE_PATH =
+  "M22.8 48 L50 17 L77.2 48 L77.2 70 Q77.2 80 69.2 80 L30.8 80 Q22.8 80 22.8 70 Z";
 
 // Open path (up, across, down) so the roofline drawn over it hides the base.
-export const LOGO_CHIMNEY_PATH = "M67 32 L67 25 L76 25 L76 40";
+// The y values are unchanged: scaling x uniformly about the centre preserves
+// each point's position along the roof slope, so it still meets the roofline.
+export const LOGO_CHIMNEY_PATH = "M63.6 32 L63.6 25 L70.8 25 L70.8 40";
 
 // Wavy surface, then straight down the inside of the walls to the bottom.
-// Inset ~2.5 so it tucks under the centered 5.6-wide stroke with a little
+// Inset ~2 so it tucks under the centered 5.6-wide stroke with a little
 // overlap -- matching the half-stroke exactly leaves a hairline gap.
 export const LOGO_LIQUID_PATH =
-  "M18.5 51 C30 45 38 57 50 51 C62 45 70 55 81.5 49 L81.5 70 Q81.5 77.5 74 77.5 L26 77.5 Q18.5 77.5 18.5 70 Z";
+  "M24.8 51 C34 45 40.4 57 50 51 C59.6 45 66 55 75.2 49 L75.2 70 Q75.2 77.5 69.2 77.5 L30.8 77.5 Q24.8 77.5 24.8 70 Z";
 
 // Bubbles escaping the chimney, and the highlights suspended in the liquid.
 export const LOGO_CHIMNEY_BUBBLES = [
-  { cx: 80, cy: 9, r: 4.5 },
-  { cx: 72, cy: 17, r: 2.5 },
-  { cx: 87, cy: 17, r: 3 },
+  { cx: 74, cy: 9, r: 4.5 },
+  { cx: 67.6, cy: 17, r: 2.5 },
+  { cx: 79.6, cy: 17, r: 3 },
 ];
 
 export const LOGO_LIQUID_BUBBLES = [
-  { cx: 34, cy: 62, r: 4 },
-  { cx: 44, cy: 57, r: 2.5 },
-  { cx: 46, cy: 70, r: 2 },
-  { cx: 30, cy: 55, r: 1.8 },
+  { cx: 37.2, cy: 62, r: 4 },
+  { cx: 45.2, cy: 57, r: 2.5 },
+  { cx: 46.8, cy: 70, r: 2 },
+  { cx: 34, cy: 55, r: 1.8 },
 ];
 
 export const LOGO_STROKE_WIDTH = 5.6;
