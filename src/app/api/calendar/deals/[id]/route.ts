@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamOrOwnFilter } from "@/lib/authorization";
 import { buildDeadlineIcs } from "@/lib/calendar-export";
+import { dealDisplayName } from "@/app/(app)/deals/types";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -15,14 +16,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   });
   if (!deal) return new NextResponse("Not found", { status: 404 });
 
+  const displayName = dealDisplayName(deal.propertyAddress);
   const ics = buildDeadlineIcs(
-    deal.deadlines.map((d) => ({ label: d.label, dueDate: d.dueDate, propertyAddress: deal.propertyAddress })),
+    deal.deadlines.map((d) => ({ label: d.label, dueDate: d.dueDate, propertyAddress: displayName })),
   );
 
   return new NextResponse(ics, {
     headers: {
       "Content-Type": "text/calendar",
-      "Content-Disposition": `attachment; filename="${deal.propertyAddress.replace(/[^a-z0-9]/gi, "-")}-deadlines.ics"`,
+      "Content-Disposition": `attachment; filename="${displayName.replace(/[^a-z0-9]/gi, "-")}-deadlines.ics"`,
     },
   });
 }

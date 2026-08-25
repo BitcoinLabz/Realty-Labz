@@ -1,6 +1,7 @@
 import { Logo } from "@/components/ui/logo";
 import { prisma } from "@/lib/db";
 import { resolvePortalClientId } from "@/lib/client-portal";
+import { dealDisplayName } from "@/app/(app)/deals/types";
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Active",
@@ -71,7 +72,9 @@ export default async function ClientPortalPage() {
             {deals.map((deal) => (
               <div key={deal.id} className="rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <span className="text-sm font-medium text-foreground">{deal.propertyAddress}</span>
+                  <span className="text-sm font-medium text-foreground">
+                    {dealDisplayName(deal.propertyAddress)}
+                  </span>
                   <span className="text-sm font-medium text-muted">{STATUS_LABELS[deal.status]}</span>
                 </div>
                 {deal.closingDate ? (

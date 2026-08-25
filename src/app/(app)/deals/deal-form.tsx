@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { createDealAction, updateDealAction } from "@/app/actions/deals";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClientOption } from "@/app/(app)/forms/types";
-import type { DealDTO, DealSide, ReferralPartnerOption } from "./types";
+import { DEAL_SIDE_LABELS, type DealDTO, type DealSide, type ReferralPartnerOption } from "./types";
 
 const initialState: FormState = {};
 
@@ -32,12 +32,6 @@ export type DealFormValues = {
   clientId: string;
 };
 
-function sidePillClass(active: boolean) {
-  return `rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
-    active ? "border-accent bg-accent/10 text-accent" : "border-border text-foreground hover:bg-surface"
-  }`;
-}
-
 export function DealForm({
   clients,
   referralPartners,
@@ -54,7 +48,6 @@ export function DealForm({
   const isEdit = !!defaultValues?.id;
   const action = isEdit ? updateDealAction : createDealAction;
   const [state, formAction, isPending] = useActionState(action, initialState);
-  const [side, setSide] = useState<DealSide>(defaultValues?.side ?? "BUYER");
   const formRef = useRef<HTMLFormElement>(null);
 
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
@@ -76,28 +69,24 @@ export function DealForm({
     <form ref={formRef} action={formAction} className="flex flex-col gap-4">
       {isEdit ? <input type="hidden" name="id" defaultValue={defaultValues!.id} /> : null}
 
-      <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-foreground">Side</span>
-        <div className="grid grid-cols-3 gap-2">
-          <button type="button" onClick={() => setSide("BUYER")} className={sidePillClass(side === "BUYER")}>
-            Buyer
-          </button>
-          <button type="button" onClick={() => setSide("SELLER")} className={sidePillClass(side === "SELLER")}>
-            Seller
-          </button>
-          <button type="button" onClick={() => setSide("DUAL")} className={sidePillClass(side === "DUAL")}>
-            Dual
-          </button>
-        </div>
-        <input type="hidden" name="side" value={side} />
-      </div>
+      <Select
+        label="Representation"
+        name="side"
+        defaultValue={defaultValues?.side ?? "BUYER"}
+        error={state.fieldErrors?.side}
+      >
+        {Object.entries(DEAL_SIDE_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </Select>
 
       <Field
-        label="Property address"
+        label="Property address (optional)"
         name="propertyAddress"
         type="text"
         defaultValue={defaultValues?.propertyAddress}
-        required
         error={state.fieldErrors?.propertyAddress}
       />
 

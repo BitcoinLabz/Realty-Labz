@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamOrOwnFilter } from "@/lib/authorization";
 import { buildDeadlineIcs } from "@/lib/calendar-export";
+import { dealDisplayName } from "@/app/(app)/deals/types";
 
 export async function GET() {
   const session = await auth();
@@ -15,7 +16,11 @@ export async function GET() {
   });
 
   const ics = buildDeadlineIcs(
-    deadlines.map((d) => ({ label: d.label, dueDate: d.dueDate, propertyAddress: d.deal.propertyAddress })),
+    deadlines.map((d) => ({
+      label: d.label,
+      dueDate: d.dueDate,
+      propertyAddress: dealDisplayName(d.deal.propertyAddress),
+    })),
   );
 
   return new NextResponse(ics, {

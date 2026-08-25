@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { TransactionHistory } from "./transaction-history";
+import { dealDisplayName } from "@/app/(app)/deals/types";
 import type { DealOption, TransactionDTO } from "../types";
 
 export default async function TransactionHistoryPage({
@@ -24,7 +25,10 @@ export default async function TransactionHistoryPage({
     }),
   ]);
 
-  const dealOptions: DealOption[] = deals;
+  const dealOptions: DealOption[] = deals.map((d) => ({
+    id: d.id,
+    propertyAddress: dealDisplayName(d.propertyAddress),
+  }));
 
   const dtos: TransactionDTO[] = transactions.map((t) => ({
     id: t.id,

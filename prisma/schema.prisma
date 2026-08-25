@@ -115,6 +115,12 @@ model Client {
   notes     String?
   source    ClientSource?
   stage     ClientStage   @default(NEW)
+  // Email is the only real notification channel this app has (Resend is
+  // already configured) -- a plain opt-in/out rather than a channel picker,
+  // which would imply options (text/SMS) that don't actually exist yet (see
+  // CLAUDE.md's explicit SMS-out-of-scope note: needs a paid provider +
+  // A2P 10DLC business registration, not a coding task).
+  emailDeadlineReminders Boolean @default(true)
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
@@ -301,6 +307,8 @@ enum DealSide {
   BUYER
   SELLER
   DUAL
+  TENANT
+  LANDLORD
 }
 
 enum DealStatus {
@@ -321,7 +329,11 @@ model Deal {
   id                    String     @id @default(cuid())
   side                  DealSide
   status                DealStatus @default(ACTIVE)
-  propertyAddress       String
+  // Nullable (2026-08-20): a file/deal can exist before a property is found
+  // yet -- see the "Create a file" wizard's "Is there a property yet?" step.
+  // Every read site across the app was audited and made null-safe alongside
+  // this change, not just the column itself.
+  propertyAddress       String?
   mlsNumber             String?
   listPrice             Decimal?   @db.Decimal(12, 2)
   salePrice             Decimal?   @db.Decimal(12, 2)
@@ -438,6 +450,12 @@ model DealDeadline {
   dueDate     DateTime
   completedAt DateTime?
   createdAt   DateTime  @default(now())
+  // Stamped once a reminder email has been sent (regardless of delivery
+  // success -- same fire-and-forget philosophy every other email send in
+  // this app already has, no retry queue exists anywhere) so
+  // sendDueDeadlineReminders never re-sends the same reminder on a later
+  // page visit. Null means "not sent yet."
+  emailReminderSentAt DateTime?
 
   deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
   dealId String

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { Logo } from "@/components/ui/logo";
+import { dealDisplayName } from "@/app/(app)/deals/types";
 import { VisitorForm } from "./visitor-form";
 
 export default async function OpenHousePage({ params }: { params: Promise<{ id: string }> }) {
@@ -19,7 +20,7 @@ export default async function OpenHousePage({ params }: { params: Promise<{ id: 
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <Logo size="md" />
           <h1 className="text-lg font-semibold text-foreground">Welcome — sign in below</h1>
-          <p className="text-sm text-muted">{openHouse.deal.propertyAddress}</p>
+          <p className="text-sm text-muted">{dealDisplayName(openHouse.deal.propertyAddress)}</p>
         </div>
         <VisitorForm openHouseId={openHouse.id} />
       </div>

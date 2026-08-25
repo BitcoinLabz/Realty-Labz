@@ -19,6 +19,7 @@ export type ClientFormValues = {
   notes: string;
   source: string;
   stage: string;
+  emailDeadlineReminders: boolean;
 };
 
 export function ClientForm({
@@ -108,6 +109,17 @@ export function ClientForm({
         defaultValue={defaultValues?.notes}
         error={state.fieldErrors?.notes}
       />
+
+      <label className="flex items-start gap-2 text-sm text-foreground">
+        <input
+          type="checkbox"
+          name="emailDeadlineReminders"
+          value="true"
+          defaultChecked={defaultValues?.emailDeadlineReminders ?? true}
+          className="mt-1"
+        />
+        Email this client as contract deadlines approach
+      </label>
 
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 

@@ -3,6 +3,7 @@ import { isManager } from "@/lib/authorization";
 import { getUpcomingDeadlines } from "@/lib/finance-data";
 import { Sidebar } from "@/components/sidebar";
 import { autoLogDueRecurringTransactions } from "@/app/actions/recurring-transactions";
+import { sendDueDeadlineReminders } from "@/app/actions/deadline-reminders";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -14,6 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // visit" is how every other on-demand feature here already works.
   if (session?.user) {
     await autoLogDueRecurringTransactions(session.user.id);
+    await sendDueDeadlineReminders(session.user.id);
   }
 
   const upcomingDeadlines = session?.user ? await getUpcomingDeadlines(session.user.id) : [];

@@ -6,6 +6,7 @@ import { teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
 import { formatCurrency } from "@/lib/format";
 import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../deal-form";
+import { ContractAnalyzer } from "./contract-analyzer";
 import { DeadlineList } from "./deadline-list";
 import { DealDocuments } from "./deal-documents";
 import { DeleteDealButton } from "./delete-deal-button";
@@ -14,6 +15,8 @@ import { ReferralPartnerSection } from "./referral-partner-section";
 import { FormSubmissionList } from "../../forms/form-submission-list";
 import { SendFormWidget, type SendableTemplate } from "../../forms/[id]/send-form-widget";
 import { DetailTabs } from "@/components/ui/detail-tabs";
+import { isAiConfigured } from "@/lib/ai-contract-analysis";
+import { dealDisplayName } from "../types";
 import type { DealDeadlineDTO, OpenHouseDTO, ReferralPartnerDTO } from "../types";
 import type { DocumentDTO } from "../../forms/types";
 import type { FormSubmissionSummaryDTO } from "../../forms/templates/types";
@@ -96,7 +99,7 @@ export default async function DealDetailPage({
     id: deal.id,
     side: deal.side,
     status: deal.status,
-    propertyAddress: deal.propertyAddress,
+    propertyAddress: deal.propertyAddress ?? "",
     mlsNumber: deal.mlsNumber ?? "",
     listPrice: deal.listPrice ? String(deal.listPrice) : "",
     salePrice: deal.salePrice ? String(deal.salePrice) : "",
@@ -244,6 +247,19 @@ export default async function DealDetailPage({
       label: "Documents & Forms",
       content: (
         <>
+          {isAiConfigured() ? (
+            <section className="rounded-2xl border border-border bg-background p-8">
+              <h2 className="mb-1 text-base font-semibold text-foreground">
+                Read a contract for deadlines
+              </h2>
+              <p className="mb-6 text-sm text-muted">
+                Have an uploaded contract read for its key dates — you review everything before
+                anything is saved.
+              </p>
+              <ContractAnalyzer dealId={deal.id} documents={documentDtos} />
+            </section>
+          ) : null}
+
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
             <DealDocuments dealId={deal.id} clientId={deal.clientId} documents={documentDtos} />
@@ -307,7 +323,7 @@ export default async function DealDetailPage({
           ← Back to {deal.client ? deal.client.name : "Clients"}
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-          {deal.propertyAddress}
+          {dealDisplayName(deal.propertyAddress, deal.client?.name)}
         </h1>
         <p className="mt-1 text-sm text-muted">Manage this deal&apos;s details and deadlines.</p>
       </div>
@@ -319,7 +335,10 @@ export default async function DealDetailPage({
         <p className="mb-4 text-sm text-muted">
           Deleting a deal also removes its deadlines. Linked documents and clients are kept.
         </p>
-        <DeleteDealButton dealId={deal.id} propertyAddress={deal.propertyAddress} />
+        <DeleteDealButton
+          dealId={deal.id}
+          propertyAddress={dealDisplayName(deal.propertyAddress, deal.client?.name)}
+        />
       </section>
     </div>
   );

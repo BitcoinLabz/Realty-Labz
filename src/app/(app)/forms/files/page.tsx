@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { isManager, teamOrOwnFilter } from "@/lib/authorization";
@@ -32,10 +33,17 @@ export default async function FilesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="text-sm text-muted">
-        Every property across your clients, with the forms and signature requests attached to it.
-        To start a new one, add a deal from the client it belongs to.
-      </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-muted">
+          Every property across your clients, with the forms and signature requests attached to it.
+        </p>
+        <Link
+          href="/forms/files/new"
+          className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
+        >
+          + Create
+        </Link>
+      </div>
       <FilesList files={files} showAgentColumn={isManager(session!.user.role)} />
     </div>
   );

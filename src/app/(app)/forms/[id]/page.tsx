@@ -7,7 +7,7 @@ import { CLIENT_SOURCE_LABELS, CLIENT_STAGE_LABELS } from "@/lib/client-categori
 import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { DealForm } from "../../deals/deal-form";
-import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS } from "../../deals/types";
+import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName } from "../../deals/types";
 import { ClientDeadlineList } from "./client-deadline-list";
 import { ClientDocuments } from "./client-documents";
 import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
@@ -81,7 +81,7 @@ export default async function ClientDetailPage({
     createdAt: d.createdAt.toISOString(),
   }));
 
-  const dealOptions = deals.map((d) => ({ id: d.id, propertyAddress: d.propertyAddress }));
+  const dealOptions = deals.map((d) => ({ id: d.id, propertyAddress: dealDisplayName(d.propertyAddress) }));
 
   const formSubmissionDtos: FormSubmissionSummaryDTO[] = formSubmissions.map((s) => ({
     id: s.id,
@@ -103,6 +103,7 @@ export default async function ClientDetailPage({
     notes: client.notes ?? "",
     source: client.source ?? "",
     stage: client.stage,
+    emailDeadlineReminders: client.emailDeadlineReminders,
   };
 
   const tabs = [
@@ -152,7 +153,7 @@ export default async function ClientDetailPage({
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-foreground">
-                      {deal.propertyAddress}
+                      {dealDisplayName(deal.propertyAddress)}
                     </span>
                     <span className="text-sm text-muted">{DEAL_SIDE_LABELS[deal.side]}</span>
                   </div>

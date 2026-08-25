@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { dealSchema } from "@/lib/validation";
+import { createFileSchema, dealSchema } from "@/lib/validation";
 import { teamOrOwnFilter } from "@/lib/authorization";
 import type { FormState } from "@/app/actions/auth";
 
@@ -12,7 +12,7 @@ function parseDealForm(formData: FormData) {
   return dealSchema.safeParse({
     side: formData.get("side"),
     status: formData.get("status"),
-    propertyAddress: formData.get("propertyAddress"),
+    propertyAddress: formData.get("propertyAddress") || undefined,
     mlsNumber: formData.get("mlsNumber") || undefined,
     listPrice: formData.get("listPrice") || undefined,
     salePrice: formData.get("salePrice") || undefined,
@@ -129,6 +129,90 @@ export async function updateDealAction(
   revalidatePath(`/deals/${id}`);
   if (clientId) revalidatePath(`/forms/${clientId}`);
   return {};
+}
+
+// Resolves the wizard's client step -- either an existing client the user
+// owns, or a brand-new one created inline. Mirrors resolveReferralPartnerId
+// above: a discriminated { ok, ... } union the caller short-circuits on.
+async function resolveOrCreateClientId(
+  data: {
+    clientMode: "existing" | "new";
+    clientId?: string;
+    newClientName?: string;
+    newClientEmail?: string;
+    newClientPhone?: string;
+  },
+  userId: string,
+  emailDeadlineReminders: boolean,
+): Promise<{ ok: true; clientId: string } | { ok: false; error: string }> {
+  if (data.clientMode === "existing") {
+    // Clients aren't team-shared (see CLAUDE.md) -- plain userId check, same
+    // rule every other client-scoped action in this codebase follows.
+    const client = await prisma.client.findFirst({ where: { id: data.clientId, userId } });
+    if (!client) return { ok: false, error: "Client not found" };
+    return { ok: true, clientId: client.id };
+  }
+
+  const created = await prisma.client.create({
+    data: {
+      userId,
+      name: data.newClientName!,
+      email: data.newClientEmail || null,
+      phone: data.newClientPhone || null,
+      emailDeadlineReminders,
+    },
+  });
+  return { ok: true, clientId: created.id };
+}
+
+// The guided "Create a file" wizard (/forms/files/new) -- resolves the
+// client (existing pick or inline create) and creates the Deal in one
+// submit, rather than requiring a separate trip to a client's page first.
+export async function createFileAction(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You must be signed in" };
+
+  const parsed = createFileSchema.safeParse({
+    side: formData.get("side"),
+    propertyAddress: formData.get("propertyAddress") || undefined,
+    mlsNumber: formData.get("mlsNumber") || undefined,
+    clientMode: formData.get("clientMode"),
+    clientId: formData.get("clientId") || undefined,
+    newClientName: formData.get("newClientName") || undefined,
+    newClientEmail: formData.get("newClientEmail") || undefined,
+    newClientPhone: formData.get("newClientPhone") || undefined,
+  });
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      fieldErrors[String(issue.path[0])] = issue.message;
+    }
+    return { fieldErrors };
+  }
+
+  const resolvedClient = await resolveOrCreateClientId(
+    parsed.data,
+    session.user.id,
+    formData.get("emailDeadlineReminders") === "true",
+  );
+  if (!resolvedClient.ok) return { error: resolvedClient.error };
+
+  const deal = await prisma.deal.create({
+    data: {
+      side: parsed.data.side,
+      propertyAddress: parsed.data.propertyAddress || null,
+      mlsNumber: parsed.data.mlsNumber || null,
+      clientId: resolvedClient.clientId,
+      userId: session.user.id,
+    },
+  });
+
+  revalidatePath("/forms/files");
+  revalidatePath(`/forms/${resolvedClient.clientId}`);
+  redirect(`/deals/${deal.id}`);
 }
 
 export async function deleteDealAction(formData: FormData) {

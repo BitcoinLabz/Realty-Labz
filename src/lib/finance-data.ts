@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { buildAmortizationSchedule, scheduleAtDate } from "@/lib/loan-calculations";
 import { CATEGORY_LABELS } from "@/lib/transaction-categories";
+import { dealDisplayName } from "@/app/(app)/deals/types";
 
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -438,7 +439,7 @@ export async function getUpcomingDeadlines(userId: string, days = 7): Promise<Up
   return deadlines.map((d) => ({
     id: d.id,
     label: d.label,
-    propertyAddress: d.deal.propertyAddress,
+    propertyAddress: dealDisplayName(d.deal.propertyAddress),
     dealId: d.dealId,
     dueDate: d.dueDate.toISOString().slice(0, 10),
     isOverdue: d.dueDate < now,

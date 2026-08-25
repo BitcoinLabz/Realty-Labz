@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { calculateNetCommission, getHomeOfficeDeduction } from "@/lib/finance-data";
+import { dealDisplayName } from "@/app/(app)/deals/types";
 import { isRateLimited } from "@/lib/rate-limit";
 import {
   FinancialReport,
@@ -144,7 +145,7 @@ export async function GET(request: NextRequest) {
     });
     const dealExpenses = deal.expenses.reduce((sum, t) => sum + Number(t.amount), 0);
     return {
-      propertyAddress: deal.propertyAddress,
+      propertyAddress: dealDisplayName(deal.propertyAddress),
       closingDate: deal.closingDate ? deal.closingDate.toISOString().slice(0, 10) : `${year}-01-01`,
       grossCommission,
       netCommission,

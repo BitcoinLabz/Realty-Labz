@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { FileText, Mail } from "lucide-react";
-import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, type DealFileDTO } from "../../deals/types";
+import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName, type DealFileDTO } from "../../deals/types";
 
 const selectClass =
   "rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -23,7 +23,7 @@ export function FilesList({
     const query = search.trim().toLowerCase();
     return files.filter((f) => {
       if (query) {
-        const haystack = `${f.propertyAddress} ${f.clientName ?? ""}`.toLowerCase();
+        const haystack = `${f.propertyAddress ?? ""} ${f.clientName ?? ""}`.toLowerCase();
         if (!haystack.includes(query)) return false;
       }
       if (side && f.side !== side) return false;
@@ -105,7 +105,7 @@ export function FilesList({
             >
               <div className="flex min-w-0 flex-col">
                 <span className="truncate text-sm font-medium text-foreground">
-                  {f.propertyAddress}
+                  {dealDisplayName(f.propertyAddress, f.clientName)}
                 </span>
                 <span className="text-sm text-muted">
                   {f.clientName ?? "—"}

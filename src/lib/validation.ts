@@ -95,6 +95,12 @@ export const clientSchema = z.object({
   stage: z.enum(CLIENT_STAGES).default("NEW"),
 });
 
+// emailDeadlineReminders is a plain checkbox, not part of clientSchema --
+// read directly from FormData ("true"/absent), same convention as every
+// other boolean form field in this app (e.g. keepForRecords in
+// form-submissions.ts). A missing checkbox key means unchecked, so it can't
+// round-trip through z.coerce.boolean() the way a real boolean value could.
+
 export const createInviteSchema = z.object({
   role: z.enum(["AGENT", "TEAM_LEAD"]),
 });
@@ -107,9 +113,11 @@ export const joinTeamSchema = z.object({
 });
 
 export const dealSchema = z.object({
-  side: z.enum(["BUYER", "SELLER", "DUAL"]),
+  side: z.enum(["BUYER", "SELLER", "DUAL", "TENANT", "LANDLORD"]),
   status: z.enum(["ACTIVE", "UNDER_CONTRACT", "PENDING", "CLOSED", "FELL_THROUGH"]),
-  propertyAddress: z.string().trim().min(1, "Property address is required").max(300),
+  // Optional (2026-08-20): a file/deal can exist before a property is found
+  // yet -- see the Create a file wizard.
+  propertyAddress: z.string().trim().max(300).optional(),
   mlsNumber: z.string().trim().max(50).optional(),
   listPrice: z.coerce.number().nonnegative("Must be 0 or more").optional(),
   salePrice: z.coerce.number().nonnegative("Must be 0 or more").optional(),
@@ -124,6 +132,30 @@ export const dealSchema = z.object({
   clientId: z.string().optional(),
   referralPartnerId: z.string().optional(),
 });
+
+// The guided "Create a file" wizard (/forms/files/new) -- a lighter-weight
+// variant of dealSchema that also resolves the client (pick an existing one,
+// or create a new one inline) in the same submit, rather than requiring a
+// separate trip to a client's page first.
+export const createFileSchema = z
+  .object({
+    side: z.enum(["BUYER", "SELLER", "DUAL", "TENANT", "LANDLORD"]),
+    propertyAddress: z.string().trim().max(300).optional(),
+    mlsNumber: z.string().trim().max(50).optional(),
+    clientMode: z.enum(["existing", "new"]),
+    clientId: z.string().optional(),
+    newClientName: z.string().trim().max(100).optional(),
+    newClientEmail: z.email("Enter a valid email address").optional(),
+    newClientPhone: z.string().trim().max(30).optional(),
+  })
+  .refine((data) => data.clientMode !== "existing" || !!data.clientId, {
+    message: "Choose a client",
+    path: ["clientId"],
+  })
+  .refine((data) => data.clientMode !== "new" || !!data.newClientName, {
+    message: "Enter the new client's name",
+    path: ["newClientName"],
+  });
 
 export const dealDeadlineSchema = z.object({
   label: z.string().trim().min(1, "Label is required").max(200),

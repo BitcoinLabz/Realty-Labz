@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { isManager, roleLabel } from "@/lib/authorization";
 import { formatCurrency } from "@/lib/format";
 import { SummaryCard } from "@/components/ui/summary-card";
+import { dealDisplayName } from "../deals/types";
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Active",
@@ -150,7 +151,7 @@ export default async function TeamDashboardPage() {
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-medium text-foreground">
-                      {d.label} — {d.deal.propertyAddress}
+                      {d.label} — {dealDisplayName(d.deal.propertyAddress)}
                     </span>
                     <span className="text-sm text-muted">{d.deal.user.name}</span>
                   </div>
@@ -181,7 +182,7 @@ export default async function TeamDashboardPage() {
               >
                 <div className="flex flex-col">
                   <span className="text-sm font-medium text-foreground">
-                    {deal.propertyAddress}
+                    {dealDisplayName(deal.propertyAddress)}
                   </span>
                   <span className="text-sm text-muted">{deal.user.name}</span>
                 </div>

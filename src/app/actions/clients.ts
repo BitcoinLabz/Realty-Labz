@@ -35,7 +35,11 @@ export async function createClientAction(
   }
 
   await prisma.client.create({
-    data: { userId: session.user.id, ...parsed.data },
+    data: {
+      userId: session.user.id,
+      ...parsed.data,
+      emailDeadlineReminders: formData.get("emailDeadlineReminders") === "true",
+    },
   });
 
   revalidatePath("/forms");
@@ -63,7 +67,10 @@ export async function updateClientAction(
 
   const result = await prisma.client.updateMany({
     where: { id, userId: session.user.id },
-    data: parsed.data,
+    data: {
+      ...parsed.data,
+      emailDeadlineReminders: formData.get("emailDeadlineReminders") === "true",
+    },
   });
 
   if (result.count === 0) return { error: "Client not found" };

@@ -6,6 +6,7 @@ import { getMonthlyIncomeExpense } from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
+import { dealDisplayName } from "@/app/(app)/deals/types";
 import { TransactionForm } from "./transaction-form";
 import { TransactionList } from "./transaction-list";
 import { RecurringTemplates, type RecurringTemplateDTO } from "./recurring-templates";
@@ -45,7 +46,10 @@ export default async function FinancesTransactionsPage({
     getMonthlyIncomeExpense(session!.user.id, year, "ALL"),
   ]);
 
-  const dealOptions: DealOption[] = deals;
+  const dealOptions: DealOption[] = deals.map((d) => ({
+    id: d.id,
+    propertyAddress: dealDisplayName(d.propertyAddress),
+  }));
 
   const recurringDtos: RecurringTemplateDTO[] = recurringTemplates.map((t) => ({
     id: t.id,

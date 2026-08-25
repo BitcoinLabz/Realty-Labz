@@ -132,3 +132,29 @@ export async function sendDeclinedNotificationEmail(params: {
     html: `<p>${escapeHtml(params.signerName)} declined to sign <strong>${escapeHtml(params.templateName)}</strong>.</p>`,
   });
 }
+
+// Heads-up to a client that one of their contract deadlines is coming up.
+// Only sent when the client opted in (Client.emailDeadlineReminders) and has
+// a real email on file -- see sendDueDeadlineReminders in
+// src/app/actions/deadline-reminders.ts.
+export async function sendDeadlineReminderEmail(params: {
+  to: string;
+  clientName: string;
+  agentName: string;
+  deadlineLabel: string;
+  propertyLabel: string;
+  dueDate: string; // already formatted for display
+}) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: `Reminder: ${params.deadlineLabel} is due ${params.dueDate}`,
+    html: `
+      <p>Hi ${escapeHtml(params.clientName)},</p>
+      <p>A quick reminder that <strong>${escapeHtml(params.deadlineLabel)}</strong> for
+      ${escapeHtml(params.propertyLabel)} is due <strong>${escapeHtml(params.dueDate)}</strong>.</p>
+      <p>Reply to this email or reach out to ${escapeHtml(params.agentName)} with any questions.</p>
+    `,
+  });
+}
