@@ -13,12 +13,37 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // autoLogDueRecurringTransactions for why this lives here rather than on
   // a schedule: this app has no background jobs anywhere, so "on your next
   // visit" is how every other on-demand feature here already works.
+  //
+  // Each is wrapped separately and never rethrows. These are background
+  // chores, and this layout wraps EVERY authenticated page -- an error in
+  // one of them (a transient DB blip, or a migration not yet applied in
+  // production) must not be able to take the whole app down. Failing here
+  // means a reminder goes out late, which is recoverable; a blank site
+  // isn't. Errors are logged, not swallowed silently, so a real problem is
+  // still visible in the Vercel function logs.
   if (session?.user) {
-    await autoLogDueRecurringTransactions(session.user.id);
-    await sendDueDeadlineReminders(session.user.id);
+    try {
+      await autoLogDueRecurringTransactions(session.user.id);
+    } catch (err) {
+      console.error("[app-layout] autoLogDueRecurringTransactions failed", err);
+    }
+    try {
+      await sendDueDeadlineReminders(session.user.id);
+    } catch (err) {
+      console.error("[app-layout] sendDueDeadlineReminders failed", err);
+    }
   }
 
-  const upcomingDeadlines = session?.user ? await getUpcomingDeadlines(session.user.id) : [];
+  let upcomingDeadlines: Awaited<ReturnType<typeof getUpcomingDeadlines>> = [];
+  if (session?.user) {
+    try {
+      upcomingDeadlines = await getUpcomingDeadlines(session.user.id);
+    } catch (err) {
+      // Only feeds the sidebar notification bell -- an empty bell is a far
+      // better outcome than an unusable app.
+      console.error("[app-layout] getUpcomingDeadlines failed", err);
+    }
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-surface md:flex-row">
