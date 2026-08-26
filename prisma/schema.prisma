@@ -69,6 +69,7 @@ model User {
   sentInvites        TeamInvite[]
   deals              Deal[]
   documentTemplates  DocumentTemplate[]
+  deadlineTemplates  DeadlineTemplate[]
   assets             Asset[]
   loans              Loan[]
   formTemplates      FormTemplate[]
@@ -462,6 +463,47 @@ model DealDeadline {
 
   @@index([dealId])
   @@map("deal_deadlines")
+}
+
+// A reusable, named set of contingency deadlines an agent applies to a
+// transaction in one go (e.g. "Buyer purchase" = Inspection +10 days,
+// Financing +21, Appraisal +14, Closing +45). Offsets are stored as days
+// from an anchor date the agent supplies at apply time -- usually the
+// acceptance date -- rather than absolute dates, so one set serves every
+// transaction.
+//
+// Team-shared like DocumentTemplate/FormTemplate (see teamSharedFilter):
+// a deadline set is an office convention, not personal data. Only userId
+// lives on the row -- this codebase expresses team sharing through the query
+// filter, never a teamId column.
+model DeadlineTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  items DeadlineTemplateItem[]
+
+  @@index([userId])
+  @@map("deadline_templates")
+}
+
+model DeadlineTemplateItem {
+  id    String @id @default(cuid())
+  label String
+  // Days from the anchor date. Negative is meaningful and allowed -- e.g. -3
+  // for "final walkthrough, three days before closing".
+  offsetDays Int
+  order      Int
+
+  template   DeadlineTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  templateId String
+
+  @@index([templateId])
+  @@map("deadline_template_items")
 }
 
 // Brokerage-level shared document template (e.g. a standard purchase

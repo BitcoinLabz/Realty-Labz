@@ -236,3 +236,61 @@ export async function deleteDealAction(formData: FormData) {
     redirect("/clients");
   }
 }
+
+/**
+ * Starts a new transaction pre-filled from an existing one -- same client,
+ * side, and commission structure, ready for a new property.
+ *
+ * Copies fields explicitly rather than spreading the source row, which would
+ * carry id/createdAt/updatedAt across. Modelled on
+ * createFormTemplateFromLibraryAction.
+ *
+ * Deliberately does NOT copy deadlines, documents, or signature requests.
+ * Deadline dates are absolute and anchored to the old contract, so carrying
+ * them over would silently produce a file full of wrong dates -- exactly the
+ * mistake deadline sets exist to prevent. Apply a deadline set to the new
+ * transaction instead. Documents and signed contracts belong to the
+ * transaction they were executed for.
+ */
+export async function duplicateDealAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return;
+
+  const source = await prisma.deal.findFirst({
+    where: { id, ...teamOrOwnFilter(session.user) },
+  });
+  if (!source) return;
+
+  const copy = await prisma.deal.create({
+    data: {
+      // Always the acting user, even when a manager duplicates a teammate's
+      // transaction -- matches how new deals are created everywhere else.
+      userId: session.user.id,
+      side: source.side,
+      clientId: source.clientId,
+      referralPartnerId: source.referralPartnerId,
+      // The commission structure is the tedious part worth carrying over.
+      commissionRate: source.commissionRate,
+      commissionAmount: source.commissionAmount,
+      brokerageSplitPercent: source.brokerageSplitPercent,
+      referralFeeAmount: source.referralFeeAmount,
+      teamSplitAmount: source.teamSplitAmount,
+      otherDeductions: source.otherDeductions,
+      notes: source.notes,
+      // Reset everything specific to the old property/contract.
+      status: "ACTIVE",
+      propertyAddress: null,
+      mlsNumber: null,
+      listPrice: null,
+      salePrice: null,
+      closingDate: null,
+    },
+  });
+
+  revalidatePath("/transactions");
+  if (copy.clientId) revalidatePath(`/clients/${copy.clientId}`);
+  redirect(`/transactions/${copy.id}`);
+}

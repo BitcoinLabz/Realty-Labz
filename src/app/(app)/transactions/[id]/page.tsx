@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { Copy } from "lucide-react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
+import type { DeadlineTemplateDTO } from "../../forms/deadline-sets/types";
 import { formatCurrency } from "@/lib/format";
 import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../transaction-form";
@@ -16,6 +18,7 @@ import { FormSubmissionList } from "@/app/(app)/clients/form-submission-list";
 import { SendFormWidget, type SendableTemplate } from "@/app/(app)/clients/[id]/send-form-widget";
 import { DetailTabs } from "@/components/ui/detail-tabs";
 import { isAiConfigured } from "@/lib/ai-contract-analysis";
+import { duplicateDealAction } from "@/app/actions/deals";
 import { dealDisplayName } from "../types";
 import type { DealDeadlineDTO, OpenHouseDTO, ReferralPartnerDTO } from "../types";
 import type { DocumentDTO } from "@/app/(app)/clients/types";
@@ -29,7 +32,8 @@ export default async function DealDetailPage({
   const { id } = await params;
   const session = await auth();
 
-  const [deal, clients, referralPartners, formSubmissions, formTemplates] = await Promise.all([
+  const [deal, clients, referralPartners, formSubmissions, formTemplates, deadlineTemplateRows] =
+    await Promise.all([
     prisma.deal.findFirst({
       where: { id, ...teamOrOwnFilter(session!.user) },
       include: {
@@ -58,6 +62,11 @@ export default async function DealDetailPage({
       where: teamSharedFilter(session!.user),
       include: { signers: { orderBy: { order: "asc" } } },
       orderBy: { createdAt: "desc" },
+    }),
+    prisma.deadlineTemplate.findMany({
+      where: teamSharedFilter(session!.user),
+      include: { items: { orderBy: { order: "asc" } } },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -133,6 +142,13 @@ export default async function DealDetailPage({
     dueDate: d.dueDate.toISOString().slice(0, 10),
     completedAt: d.completedAt ? d.completedAt.toISOString() : null,
     reminderSentAt: d.emailReminderSentAt ? d.emailReminderSentAt.toISOString() : null,
+  }));
+
+  const deadlineTemplateDtos: DeadlineTemplateDTO[] = deadlineTemplateRows.map((t) => ({
+    id: t.id,
+    name: t.name,
+    creatorName: "",
+    items: t.items.map((i) => ({ label: i.label, offsetDays: i.offsetDays })),
   }));
 
   const openHouseDtos: OpenHouseDTO[] = deal.openHouses.map((oh) => ({
@@ -239,7 +255,11 @@ export default async function DealDetailPage({
               </a>
             ) : null}
           </div>
-          <DeadlineList dealId={deal.id} deadlines={deadlineDtos} />
+          <DeadlineList
+            dealId={deal.id}
+            deadlines={deadlineDtos}
+            deadlineTemplates={deadlineTemplateDtos}
+          />
         </section>
       ),
     },
@@ -330,6 +350,25 @@ export default async function DealDetailPage({
       </div>
 
       <DetailTabs tabs={tabs} />
+
+      <section className="rounded-2xl border border-border bg-background p-8">
+        <h2 className="mb-1 text-base font-semibold text-foreground">Start a similar transaction</h2>
+        <p className="mb-4 text-sm text-muted">
+          Creates a new transaction with the same client and commission setup, ready for a new
+          property. Deadlines and documents aren&apos;t copied — their dates belong to this
+          contract.
+        </p>
+        <form action={duplicateDealAction}>
+          <input type="hidden" name="id" value={deal.id} />
+          <button
+            type="submit"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-border/40"
+          >
+            <Copy size={15} />
+            Duplicate this transaction
+          </button>
+        </form>
+      </section>
 
       <section className="rounded-2xl border border-border bg-background p-8">
         <h2 className="mb-3 text-base font-semibold text-foreground">Danger zone</h2>

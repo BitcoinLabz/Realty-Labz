@@ -9,11 +9,16 @@ import { usePathname } from "next/navigation";
 const tabs = [
   { href: "/forms/templates", label: "Ready-to-send forms" },
   { href: "/forms/library", label: "Contract library" },
+  { href: "/forms/deadline-sets", label: "Deadline sets" },
 ];
 
 export default function FormsLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const active = pathname.startsWith("/forms/library") ? "/forms/library" : "/forms/templates";
+  const active = pathname.startsWith("/forms/library")
+    ? "/forms/library"
+    : pathname.startsWith("/forms/deadline-sets")
+      ? "/forms/deadline-sets"
+      : "/forms/templates";
 
   return (
     <div className="flex flex-col gap-8">
