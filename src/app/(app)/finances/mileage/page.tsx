@@ -2,7 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
-import { getMileageRate } from "@/lib/mileage-rate";
+import { formatMileageRate } from "@/lib/mileage-rate";
 import { getMileageMonthlySeries } from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
@@ -24,12 +24,11 @@ export default async function FinancesMileagePage({
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
 
-  const [mileageLogs, rate, monthlySeries] = await Promise.all([
+  const [mileageLogs, monthlySeries] = await Promise.all([
     prisma.mileageLog.findMany({
       where: { userId: session!.user.id, date: { gte: start, lt: end } },
       orderBy: { date: "desc" },
     }),
-    getMileageRate(start),
     getMileageMonthlySeries(session!.user.id, year),
   ]);
 
@@ -47,13 +46,23 @@ export default async function FinancesMileagePage({
   const mileageDeduction = dtos.filter((l) => l.isBusiness).reduce((sum, l) => sum + l.deduction, 0);
   const hasData = monthlySeries.some((p) => p.miles > 0);
 
+  // Derived from the trips actually shown rather than a single lookup: the
+  // IRS rate changed mid-2026, so one year can legitimately span two rates and
+  // claiming a single "rate for the year" would be wrong on a tax document.
+  const ratesUsed = [...new Set(dtos.filter((l) => l.isBusiness).map((l) => l.ratePerMile))].sort(
+    (a, b) => a - b,
+  );
+
   const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
 
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted">
-          {businessMiles.toLocaleString()} business miles · ${rate.toFixed(3)}/mi ({year})
+          {businessMiles.toLocaleString()} business miles in {year}
+          {ratesUsed.length > 0
+            ? ` · IRS rate ${ratesUsed.map(formatMileageRate).join(" and ")}`
+            : ""}
         </p>
         <YearSelect year={year} options={yearOptions} basePath="/finances/mileage" />
       </div>

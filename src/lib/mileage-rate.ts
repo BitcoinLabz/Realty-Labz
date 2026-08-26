@@ -1,38 +1,68 @@
-import { prisma } from "@/lib/db";
+// Pure mileage math and formatting -- NO database import, deliberately.
+//
+// mileage-list.tsx is a client component and imports formatMileageRate from
+// here; importing anything from a module that also constructs a PrismaClient
+// drags the whole server module graph into the browser bundle and fails the
+// build outright (this codebase has hit that exact trap before -- see the
+// CATEGORY_LABELS note in CLAUDE.md). The DB-backed lookup lives in
+// mileage-rate-db.ts instead.
 
-const STATE = "MI";
 
-// Pure math, deliberately separated from the DB-backed rate lookup above so
+
+// Pure math, deliberately separated from the DB-backed rate lookup below so
 // it's directly unit-testable: personal trips are never deductible, business
 // trips are miles x the rate that applied at the time of the trip.
 export function calculateMileageDeduction(miles: number, ratePerMile: number, isBusiness: boolean): number {
   return isBusiness ? miles * ratePerMile : 0;
 }
 
+export type MileageRateRow = {
+  effectiveFrom: Date;
+  ratePerMile: number;
+};
+
 /**
- * Looks up the applicable mileage rate for a trip date, falling back to the
- * most recent configured rate at or before that year (rates are set annually
- * and may not exist yet for a future year).
+ * Picks the rate that applied on a given trip date: the most recent one whose
+ * effectiveFrom is on or before that date.
+ *
+ * Pure and synchronous on purpose -- this is the part that decides real dollar
+ * amounts on a tax document, so it's unit-tested directly rather than only
+ * through a database.
+ *
+ * Comparison is on raw timestamps, never on locally-extracted year/month/day.
+ * Trip dates are stored as UTC midnight, and this codebase has already been
+ * bitten once by `new Date("2026-01-01").getFullYear()` returning 2025 west of
+ * UTC (see parseDateOnlyLocal in src/lib/recurring.ts) -- a boundary trip on
+ * the exact changeover date is precisely where that would go wrong.
+ *
+ * Returns null only when there are no rates at all.
  */
-export async function getMileageRate(tripDate: Date): Promise<number> {
-  const year = tripDate.getFullYear();
+export function selectRateForDate(rates: MileageRateRow[], tripDate: Date): number | null {
+  if (rates.length === 0) return null;
 
-  const exact = await prisma.mileageRate.findUnique({
-    where: { state_year: { state: STATE, year } },
-  });
-  if (exact) return Number(exact.ratePerMile);
+  const trip = tripDate.getTime();
+  let applicable: MileageRateRow | null = null;
+  let earliest: MileageRateRow = rates[0];
 
-  const priorOrEqual = await prisma.mileageRate.findFirst({
-    where: { state: STATE, year: { lte: year } },
-    orderBy: { year: "desc" },
-  });
-  if (priorOrEqual) return Number(priorOrEqual.ratePerMile);
+  for (const rate of rates) {
+    const from = rate.effectiveFrom.getTime();
+    if (from <= trip && (!applicable || from > applicable.effectiveFrom.getTime())) {
+      applicable = rate;
+    }
+    if (from < earliest.effectiveFrom.getTime()) earliest = rate;
+  }
 
-  const earliest = await prisma.mileageRate.findFirst({
-    where: { state: STATE },
-    orderBy: { year: "asc" },
-  });
-  if (earliest) return Number(earliest.ratePerMile);
+  // A trip predating every configured rate falls back to the earliest one --
+  // better than refusing to save a back-dated trip.
+  return (applicable ?? earliest).ratePerMile;
+}
 
-  throw new Error("No mileage rate configured for Michigan. Seed prisma/seed.ts first.");
+/**
+ * Formats a stored rate for display next to a trip, e.g. "$0.725/mi". Kept
+ * here so the mileage list, the PDF export, and anything added later all
+ * render the rate identically -- it's IRS documentation, so it should look
+ * the same everywhere it appears.
+ */
+export function formatMileageRate(ratePerMile: number): string {
+  return `$${ratePerMile.toFixed(3)}/mi`;
 }

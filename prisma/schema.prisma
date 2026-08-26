@@ -946,15 +946,20 @@ model RecurringTransactionTemplate {
   @@map("recurring_transaction_templates")
 }
 
-// Config table for state-specific mileage deduction rates, kept easy to
-// update annually and extend beyond Michigan (see CLAUDE.md architecture principles).
+// A mileage rate and the date it took effect. Keyed by effectiveFrom rather
+// than by year: the IRS changed the standard rate mid-year on 2026-07-01,
+// which a (state, year) key structurally cannot express. Lookup takes the
+// most recent rate on or before a trip's date (see selectRateForDate in
+// src/lib/mileage-rate.ts), so every trip is valued at the rate that actually
+// applied to it -- and the next change, mid-year or not, is a new row rather
+// than a code change.
 model MileageRate {
-  id          String  @id @default(cuid())
-  state       String
-  year        Int
-  ratePerMile Decimal @db.Decimal(5, 3)
+  id            String   @id @default(cuid())
+  state         String
+  effectiveFrom DateTime @db.Date
+  ratePerMile   Decimal  @db.Decimal(5, 3)
 
-  @@unique([state, year])
+  @@unique([state, effectiveFrom])
   @@map("mileage_rates")
 }
 

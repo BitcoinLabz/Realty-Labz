@@ -183,6 +183,13 @@ function formatDate(iso: string): string {
 
 export function FinancialReport({ data }: { data: FinancialReportData }) {
   const businessMiles = data.mileageTrips.reduce((sum, t) => sum + t.miles, 0);
+  // The IRS standard rate can change mid-year (it did on 2026-07-01), so a
+  // single year can legitimately contain trips at different rates. Called out
+  // explicitly under the subtotal so an accountant does not read the mixed
+  // per-trip RATE column as an error.
+  const mileageRatesUsed = [...new Set(data.mileageTrips.map((t) => t.ratePerMile))].sort(
+    (a, b) => a - b,
+  );
 
   return (
     <Document>
@@ -310,6 +317,15 @@ export function FinancialReport({ data }: { data: FinancialReportData }) {
               </Text>
               <Text style={styles.subtotalValue}>{formatCurrency(data.mileageDeduction)}</Text>
             </View>
+            {mileageRatesUsed.length > 1 ? (
+              <View style={styles.subtotalRow}>
+                <Text style={styles.emptyNote}>
+                  Note: the IRS standard rate changed during {data.year}. Each trip above is
+                  deducted at the rate in effect on its date (
+                  {mileageRatesUsed.map((r) => `$${r.toFixed(3)}`).join(", ")} per mile).
+                </Text>
+              </View>
+            ) : null}
           </>
         )}
 

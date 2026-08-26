@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { deleteMileageLogAction } from "@/app/actions/mileage";
 import { formatCurrency } from "@/lib/format";
+import { formatMileageRate } from "@/lib/mileage-rate";
 import { MileageForm } from "./mileage-form";
 import type { MileageLogDTO } from "./types";
 
@@ -51,6 +52,14 @@ export function MileageList({ logs }: { logs: MileageLogDTO[] }) {
                 {" · "}
                 {log.miles} mi
               </span>
+              {log.isBusiness ? (
+                // The rate that applied to THIS trip, shown per entry for IRS
+                // documentation: the standard rate changed mid-2026, so two
+                // trips in the same year can legitimately differ.
+                <span className="text-xs text-muted">
+                  IRS rate {formatMileageRate(log.ratePerMile)}
+                </span>
+              ) : null}
             </div>
             <div className="flex items-center gap-4">
               {log.isBusiness ? (

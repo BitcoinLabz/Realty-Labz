@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { mileageLogSchema } from "@/lib/validation";
-import { calculateMileageDeduction, getMileageRate } from "@/lib/mileage-rate";
+import { calculateMileageDeduction } from "@/lib/mileage-rate";
+import { getMileageRate } from "@/lib/mileage-rate-db";
 import type { FormState } from "@/app/actions/auth";
 
 function parseMileageForm(formData: FormData) {
