@@ -27,7 +27,12 @@ export function NotificationBell({ deadlines }: { deadlines: UpcomingDeadline[] 
       {isOpen ? (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} aria-hidden="true" />
-          <div className="absolute right-0 top-8 z-50 w-72 rounded-2xl border border-border bg-background p-3 shadow-lg">
+          {/* Anchored right on mobile (the bell sits at the right of a
+              full-width top bar), but left on desktop: there the bell is near
+              the right edge of a 256px sidebar, so a 288px panel anchored
+              right ran off the left of the viewport and got clipped. Opening
+              rightward puts it over the main content, which has room. */}
+          <div className="absolute right-0 top-8 z-50 w-72 rounded-2xl border border-border bg-background p-3 shadow-lg md:left-0 md:right-auto">
             <p className="mb-2 px-2 text-sm font-semibold text-foreground">Due dates &amp; reminders</p>
             {deadlines.length === 0 ? (
               <p className="px-2 py-2 text-sm text-muted">Nothing due in the next 7 days.</p>

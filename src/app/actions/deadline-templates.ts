@@ -187,8 +187,19 @@ export async function applyDeadlineTemplateAction(
   });
   if (!template) return { error: "Deadline set not found" };
 
-  const deadlines = buildDeadlinesFromTemplate(template.items, anchorDate);
-  if (deadlines.length === 0) return { error: "That deadline set has nothing in it yet" };
+  // The agent can adjust day counts (and drop rows) before applying -- a land
+  // purchase runs on different timelines than a standard resale. Those edits
+  // apply to THIS transaction only; the saved set is never touched. With no
+  // adjusted list submitted, fall back to the set exactly as saved.
+  const rawItems = formData.get("items");
+  const adjusted = parseItems(rawItems);
+  if (rawItems && !adjusted) {
+    return { error: "Something's off in the deadline rows — check them and try again." };
+  }
+  const itemsToApply = adjusted ?? template.items;
+
+  const deadlines = buildDeadlinesFromTemplate(itemsToApply, anchorDate);
+  if (deadlines.length === 0) return { error: "There are no deadlines to add" };
 
   await prisma.dealDeadline.createMany({
     data: deadlines.map((d) => ({ dealId, label: d.label, dueDate: d.dueDate })),

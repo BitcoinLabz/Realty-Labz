@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { CalendarClock, Send } from "lucide-react";
+import { CalendarClock, Send, X } from "lucide-react";
 import {
   createDeadlineAction,
   deleteDeadlineAction,
@@ -19,7 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import type { DealDeadlineDTO } from "../types";
-import type { DeadlineTemplateDTO } from "../../forms/deadline-sets/types";
+import type {
+  DeadlineTemplateDTO,
+  DeadlineTemplateItemDTO,
+} from "../../forms/deadline-sets/types";
 
 const initialState: FormState = {};
 
@@ -89,6 +92,13 @@ function AddDeadlineForm({ dealId }: { dealId: string }) {
 // Applies a saved deadline set, dating every item off one anchor date.
 // Previews the exact dates before committing, so a mistyped anchor is caught
 // here rather than after four wrong rows are written.
+// Applies a saved deadline set, dating every item off one anchor date.
+//
+// The rows are editable here before applying: a saved set holds the day counts
+// you use most, but a given contract can differ (land runs on different
+// timelines than a resale), and an agent shouldn't have to keep a second set
+// for every variation or fix the dates by hand afterwards. Edits are scoped to
+// this transaction -- the saved set is never modified.
 function ApplyDeadlineSet({
   dealId,
   templates,
@@ -99,11 +109,28 @@ function ApplyDeadlineSet({
   const [state, formAction, isPending] = useActionState(applyDeadlineTemplateAction, initialState);
   const [templateId, setTemplateId] = useState(templates[0]?.id ?? "");
   const [anchorDate, setAnchorDate] = useState("");
+  const [rows, setRows] = useState<DeadlineTemplateItemDTO[]>(templates[0]?.items ?? []);
 
-  const selected = templates.find((t) => t.id === templateId);
+  // Swapping sets reloads its rows, discarding any tweaks to the previous one.
+  function selectTemplate(id: string) {
+    setTemplateId(id);
+    setRows(templates.find((t) => t.id === id)?.items ?? []);
+  }
+
+  function updateRow(index: number, patch: Partial<DeadlineTemplateItemDTO>) {
+    setRows((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  }
+
   // Same pure helper the server uses, so the preview can't disagree with what
   // actually gets written.
-  const preview = selected ? buildDeadlinesFromTemplate(selected.items, anchorDate) : [];
+  const preview = buildDeadlinesFromTemplate(rows, anchorDate);
+  const selected = templates.find((t) => t.id === templateId);
+  const isTweaked =
+    !!selected &&
+    (rows.length !== selected.items.length ||
+      rows.some(
+        (r, i) => r.offsetDays !== selected.items[i]?.offsetDays || r.label !== selected.items[i]?.label,
+      ));
 
   return (
     <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-border p-4">
@@ -120,7 +147,7 @@ function ApplyDeadlineSet({
             label="Which set?"
             name="templateId"
             value={templateId}
-            onChange={(e) => setTemplateId(e.target.value)}
+            onChange={(e) => selectTemplate(e.target.value)}
             error={state.fieldErrors?.templateId}
           >
             {templates.map((t) => (
@@ -147,33 +174,81 @@ function ApplyDeadlineSet({
       </div>
 
       <p className="-mt-1 text-sm text-muted">
-        Usually the day the offer was accepted.
+        Usually the day the offer was accepted. Adjust any of the day counts below if this contract
+        runs differently — your saved set won&apos;t change.
       </p>
 
-      {preview.length > 0 ? (
-        <div className="flex flex-col gap-1 border-t border-border pt-3">
-          <span className="text-xs font-medium text-foreground">
-            This will add {preview.length} deadline{preview.length === 1 ? "" : "s"}:
-          </span>
-          {preview.map((d, i) => (
-            <span key={i} className="text-xs text-muted">
-              {d.label} —{" "}
-              {new Date(formatDeadlineDate(d.dueDate) + "T00:00:00").toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-                year: "numeric",
-              })}
-              {/* Contracts usually roll a weekend deadline to the next
-                  business day. Flagged, not auto-shifted -- some contracts
-                  genuinely do count calendar days. */}
-              {isWeekendUtc(d.dueDate) ? (
-                <span className="text-danger"> · weekend</span>
-              ) : null}
-            </span>
-          ))}
+      {rows.length > 0 ? (
+        <div className="flex flex-col gap-2 border-t border-border pt-3">
+          {rows.map((row, i) => {
+            const due = preview[i]?.dueDate;
+            return (
+              <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  type="text"
+                  value={row.label}
+                  onChange={(e) => updateRow(i, { label: e.target.value })}
+                  aria-label={`Deadline ${i + 1} name`}
+                  className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={row.offsetDays}
+                    onChange={(e) => updateRow(i, { offsetDays: Number(e.target.value) })}
+                    aria-label={`Deadline ${i + 1} days from start`}
+                    className="w-20 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+                  />
+                  <span className="whitespace-nowrap text-xs text-muted">days</span>
+                  <span className="min-w-32 whitespace-nowrap text-xs text-muted">
+                    {due
+                      ? new Date(formatDeadlineDate(due) + "T00:00:00").toLocaleDateString("en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : "—"}
+                    {/* Contracts usually roll a weekend deadline to the next
+                        business day. Flagged, not auto-shifted -- some
+                        contracts genuinely do count calendar days. */}
+                    {due && isWeekendUtc(due) ? (
+                      <span className="text-danger"> · weekend</span>
+                    ) : null}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRows((prev) => prev.filter((_, idx) => idx !== i))}
+                    aria-label={`Remove ${row.label || `deadline ${i + 1}`}`}
+                    className="text-muted hover:text-danger"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {isTweaked ? (
+            <p className="text-xs text-muted">
+              Adjusted for this transaction only — &quot;{selected!.name}&quot; stays as you saved
+              it.
+            </p>
+          ) : null}
         </div>
       ) : null}
+
+      {/* Rows submit as one blob, the same hidden-JSON pattern used by the
+          set editor and the contract analyzer. Blank labels are dropped so an
+          emptied row doesn't fail the whole submit. */}
+      <input
+        type="hidden"
+        name="items"
+        value={JSON.stringify(
+          rows
+            .filter((r) => r.label.trim())
+            .map((r) => ({ label: r.label.trim(), offsetDays: r.offsetDays })),
+        )}
+      />
 
       {state.success ? <p className="text-sm text-accent">{state.success}</p> : null}
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
