@@ -59,7 +59,7 @@ export function Sidebar({
   return (
     <>
       <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden">
-        <Logo size="sm" />
+        <Logo size="sm" href="/dashboard" />
         <div className="flex items-center gap-4">
           <NotificationBell deadlines={upcomingDeadlines} />
           <button
@@ -87,7 +87,7 @@ export function Sidebar({
         }`}
       >
         <div className="flex items-center justify-between px-6 py-5">
-          <Logo size="sm" />
+          <Logo size="sm" href="/dashboard" onClick={() => setIsOpen(false)} />
           <div className="flex items-center gap-4">
             <NotificationBell deadlines={upcomingDeadlines} />
             <button
