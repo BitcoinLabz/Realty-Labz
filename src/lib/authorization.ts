@@ -55,3 +55,56 @@ export function roleLabel(role: Role): string {
       return "agent";
   }
 }
+
+// Who may change WHO IS ON the team, as opposed to who can see the team's
+// work. That split is the whole difference between a Broker and a Team Lead
+// in this app: membership control, not deeper data access. A broker sees
+// exactly what a team lead sees.
+//
+// Roster-aware on purpose. Inside a real brokerage (one that has a broker or
+// an admin) a team lead has no membership control -- that's the point. But a
+// team lead who created their own team at signup has nobody above them, and
+// locking them out of their own roster would leave the team with no one who
+// can invite anybody, ever, with no way to recover.
+export function canManageMembership(
+  sessionUser: SessionUser,
+  members: { role: Role }[],
+): boolean {
+  if (!sessionUser.teamId) return false;
+  if (sessionUser.role === "BROKER" || sessionUser.role === "ADMIN") return true;
+  if (sessionUser.role === "TEAM_LEAD") {
+    return !members.some((m) => m.role === "BROKER" || m.role === "ADMIN");
+  }
+  return false;
+}
+// A team must always keep at least one person who can manage its membership,
+// or it locks itself out with no recovery path -- nobody left who can invite,
+// promote, or remove. Called before any removal or demotion.
+//
+// `members` is the team's full roster; `changingUserId` is the person about
+// to be removed or demoted, and `newRole` is what they'd become (null when
+// they're leaving the team entirely).
+//
+// Deliberately asks canManageMembership rather than re-listing which roles
+// count, so the two rules can never drift apart. Demoting the last broker to
+// team lead is fine, for instance -- that team lead inherits control, because
+// no broker or admin remains above them.
+export function wouldLeaveTeamUnmanaged(
+  members: { id: string; role: Role }[],
+  changingUserId: string,
+  newRole: Role | null,
+): boolean {
+  const remaining = members.filter((m) => m.id !== changingUserId);
+  if (newRole) remaining.push({ id: changingUserId, role: newRole });
+  return !remaining.some((m) =>
+    canManageMembership({ id: m.id, role: m.role, teamId: "team" }, remaining),
+  );
+}
+
+// "team" vs "brokerage" is a copy decision, not a data one -- there is
+// deliberately no Team.kind column (see CLAUDE.md: Team IS the tenant,
+// whatever its size). Derived from the roster, which every page that needs
+// this label already loads.
+export function teamLabel(members: { role: Role }[]): "brokerage" | "team" {
+  return members.some((m) => m.role === "BROKER") ? "brokerage" : "team";
+}

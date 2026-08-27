@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useActionState } from "react";
 import { loginAction, type FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -10,6 +11,16 @@ import { GoogleButton } from "@/components/ui/google-button";
 const initialState: FormState = {};
 
 export default function LoginPage() {
+  // useSearchParams needs a Suspense boundary in the App Router.
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
+  const callbackUrl = useSearchParams().get("callbackUrl");
   const [state, formAction, isPending] = useActionState(loginAction, initialState);
 
   return (
@@ -20,6 +31,7 @@ export default function LoginPage() {
       </div>
 
       <form action={formAction} className="flex flex-col gap-4">
+        {callbackUrl ? <input type="hidden" name="callbackUrl" value={callbackUrl} /> : null}
         <Field label="Email" name="email" type="email" autoComplete="email" required />
         <Field
           label="Password"

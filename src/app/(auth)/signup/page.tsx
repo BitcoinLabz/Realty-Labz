@@ -7,11 +7,34 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { GoogleButton } from "@/components/ui/google-button";
 
+type AccountType = "solo" | "team" | "brokerage";
+
+// Described by what the person actually is, not by what the database calls
+// them -- "brokerage" creates the same Team row a "team" does, the only real
+// difference being whether the creator can change who's on the roster.
+const ACCOUNT_TYPES: { value: AccountType; label: string; description: string }[] = [
+  {
+    value: "solo",
+    label: "Just me",
+    description: "An individual agent. You can join a team later.",
+  },
+  {
+    value: "team",
+    label: "My team",
+    description: "You lead a team and want to see everyone's transactions.",
+  },
+  {
+    value: "brokerage",
+    label: "My brokerage or office",
+    description: "You're the broker. You can add agents and manage who has access.",
+  },
+];
+
 const initialState: FormState = {};
 
 export default function SignupPage() {
   const [state, formAction, isPending] = useActionState(signupAction, initialState);
-  const [accountType, setAccountType] = useState<"solo" | "team">("solo");
+  const [accountType, setAccountType] = useState<AccountType>("solo");
 
   return (
     <div className="flex flex-col gap-6">
@@ -47,37 +70,36 @@ export default function SignupPage() {
         />
 
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium text-foreground">Account type</span>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setAccountType("solo")}
-              className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-                accountType === "solo"
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border text-foreground hover:bg-surface"
-              }`}
-            >
-              Just me
-            </button>
-            <button
-              type="button"
-              onClick={() => setAccountType("team")}
-              className={`rounded-xl border px-4 py-2.5 text-sm font-medium transition-colors ${
-                accountType === "team"
-                  ? "border-accent bg-accent/10 text-accent"
-                  : "border-border text-foreground hover:bg-surface"
-              }`}
-            >
-              Start a team
-            </button>
+          <span className="text-sm font-medium text-foreground">Who is this for?</span>
+          <div className="flex flex-col gap-2">
+            {ACCOUNT_TYPES.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setAccountType(option.value)}
+                className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+                  accountType === option.value
+                    ? "border-accent bg-accent/10"
+                    : "border-border hover:bg-surface"
+                }`}
+              >
+                <span
+                  className={`block text-sm font-medium ${
+                    accountType === option.value ? "text-accent" : "text-foreground"
+                  }`}
+                >
+                  {option.label}
+                </span>
+                <span className="mt-0.5 block text-sm text-muted">{option.description}</span>
+              </button>
+            ))}
           </div>
           <input type="hidden" name="accountType" value={accountType} />
         </div>
 
-        {accountType === "team" ? (
+        {accountType !== "solo" ? (
           <Field
-            label="Team / brokerage name"
+            label={accountType === "brokerage" ? "Brokerage name" : "Team name"}
             name="teamName"
             type="text"
             required
@@ -95,7 +117,7 @@ export default function SignupPage() {
       <div className="flex flex-col gap-2">
         <GoogleButton label="Sign up with Google" />
         <p className="text-center text-xs text-muted">
-          Creates a solo account — use the form above to start a team instead.
+          Creates a solo account — use the form above for a team or brokerage instead.
         </p>
       </div>
 

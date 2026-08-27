@@ -57,8 +57,12 @@ export default async function DealDetailPage({
         },
       },
     }),
+    // userId, not teamOrOwnFilter: a manager sees the team's TRANSACTIONS,
+    // never its clients. This picker was the one place that leaked teammate
+    // client names, and it contradicted /transactions/new, which already
+    // scoped the same dropdown correctly.
     prisma.client.findMany({
-      where: teamOrOwnFilter(session!.user),
+      where: { userId: session!.user.id },
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),

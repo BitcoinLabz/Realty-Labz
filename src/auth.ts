@@ -4,7 +4,11 @@ import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+// How long a signed-in session may keep a stale role or teamId before it is
+// re-read from the database. See the jwt callback below for why this exists.
+const SESSION_REFRESH_MS = 5 * 60 * 1000;
+
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
@@ -71,12 +75,56 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       user.teamId = dbUser.teamId;
       return true;
     },
-    jwt: async ({ token, user }) => {
+    jwt: async ({ token, user, trigger, session: update }) => {
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.teamId = user.teamId;
+        token.refreshedAt = Date.now();
+        return token;
       }
+
+      // unstable_update() from a server action lands here -- used after
+      // joining a team so the Team nav appears immediately instead of
+      // whenever the throttled refresh below next runs.
+      if (trigger === "update" && update) {
+        const patch = update as { user?: { role?: typeof token.role; teamId?: string | null } };
+        if (patch.user?.role) token.role = patch.user.role;
+        if (patch.user?.teamId !== undefined) token.teamId = patch.user.teamId;
+        token.refreshedAt = Date.now();
+        return token;
+      }
+
+      // role and teamId used to be written once at sign-in and never again,
+      // and this app's JWTs last 30 days. That meant removing an agent from
+      // a brokerage -- or demoting a team lead -- did nothing at all until
+      // they happened to sign out and back in, for up to a month.
+      //
+      // Re-reading on every request would put a database round-trip in front
+      // of every single page. Once every REFRESH_MS bounds the staleness to
+      // minutes instead of weeks at roughly one indexed primary-key lookup
+      // per user per interval. The write persists via proxy.ts, which -- as
+      // a proxy rather than a server component -- can actually set cookies.
+      if (token.id && Date.now() - (token.refreshedAt ?? 0) > SESSION_REFRESH_MS) {
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: token.id },
+            select: { role: true, teamId: true },
+          });
+          // A genuinely missing row means the account is gone: end the
+          // session rather than honouring a token for a deleted user.
+          if (!dbUser) return null;
+          token.role = dbUser.role;
+          token.teamId = dbUser.teamId;
+          token.refreshedAt = Date.now();
+        } catch (err) {
+          // A transient database problem must not sign the whole app out.
+          // Keeping the existing token costs at most one more interval of
+          // staleness; failing closed here would be an outage.
+          console.error("[auth] session refresh failed, keeping existing token", err);
+        }
+      }
+
       return token;
     },
     session: async ({ session, token }) => {

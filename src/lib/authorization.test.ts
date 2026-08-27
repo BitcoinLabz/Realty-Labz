@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  canManageMembership,
   canManageSharedResources,
   isManager,
   roleLabel,
+  teamLabel,
   teamOrOwnFilter,
   teamSharedFilter,
+  wouldLeaveTeamUnmanaged,
 } from "./authorization";
 
 describe("isManager", () => {
@@ -104,5 +107,101 @@ describe("roleLabel", () => {
     expect(roleLabel("TEAM_LEAD")).toBe("team lead");
     expect(roleLabel("ADMIN")).toBe("admin");
     expect(roleLabel("BROKER")).toBe("broker");
+  });
+});
+// The line between "can see the team's work" (isManager) and "can change who
+// is on the team" (this). Getting these backwards would let any team lead
+// remove agents from a brokerage.
+describe("canManageMembership", () => {
+  const brokerage = [
+    { role: "BROKER" as const },
+    { role: "TEAM_LEAD" as const },
+    { role: "AGENT" as const },
+  ];
+
+  it("is true for a broker or admin", () => {
+    expect(canManageMembership({ id: "u1", role: "BROKER", teamId: "t1" }, brokerage)).toBe(true);
+    expect(canManageMembership({ id: "u1", role: "ADMIN", teamId: "t1" }, brokerage)).toBe(true);
+  });
+
+  it("is false for a team lead inside a brokerage — full visibility, no roster control", () => {
+    expect(canManageMembership({ id: "u1", role: "TEAM_LEAD", teamId: "t1" }, brokerage)).toBe(
+      false,
+    );
+  });
+
+  it("is true for a team lead who owns their own team — nobody above them", () => {
+    const ownTeam = [{ role: "TEAM_LEAD" as const }, { role: "AGENT" as const }];
+    expect(canManageMembership({ id: "u1", role: "TEAM_LEAD", teamId: "t1" }, ownTeam)).toBe(true);
+  });
+
+  it("is false for an agent", () => {
+    expect(canManageMembership({ id: "u1", role: "AGENT", teamId: "t1" }, brokerage)).toBe(false);
+  });
+
+  it("is false without a team — there's no membership to manage", () => {
+    expect(canManageMembership({ id: "u1", role: "BROKER", teamId: null }, brokerage)).toBe(false);
+  });
+});
+
+// Without this guard a team can lock itself out: remove the last person who
+// can manage the roster and nobody is left who can invite, promote, or remove.
+describe("wouldLeaveTeamUnmanaged", () => {
+  it("blocks removing the only person who can manage the roster", () => {
+    const roster = [
+      { id: "broker", role: "BROKER" as const },
+      { id: "agent", role: "AGENT" as const },
+    ];
+    expect(wouldLeaveTeamUnmanaged(roster, "broker", null)).toBe(true);
+  });
+
+  it("blocks demoting that person to agent", () => {
+    const roster = [
+      { id: "broker", role: "BROKER" as const },
+      { id: "agent", role: "AGENT" as const },
+    ];
+    expect(wouldLeaveTeamUnmanaged(roster, "broker", "AGENT")).toBe(true);
+  });
+
+  it("allows demoting the last broker to team lead — that lead inherits control", () => {
+    const roster = [
+      { id: "broker", role: "BROKER" as const },
+      { id: "agent", role: "AGENT" as const },
+    ];
+    expect(wouldLeaveTeamUnmanaged(roster, "broker", "TEAM_LEAD")).toBe(false);
+  });
+
+  it("allows removing the broker when an admin remains", () => {
+    const roster = [
+      { id: "broker", role: "BROKER" as const },
+      { id: "admin", role: "ADMIN" as const },
+    ];
+    expect(wouldLeaveTeamUnmanaged(roster, "broker", null)).toBe(false);
+  });
+
+  it("allows removing an agent", () => {
+    const roster = [
+      { id: "broker", role: "BROKER" as const },
+      { id: "agent", role: "AGENT" as const },
+    ];
+    expect(wouldLeaveTeamUnmanaged(roster, "agent", null)).toBe(false);
+  });
+
+  it("blocks removing a solo team lead who owns the team", () => {
+    const roster = [
+      { id: "lead", role: "TEAM_LEAD" as const },
+      { id: "agent", role: "AGENT" as const },
+    ];
+    expect(wouldLeaveTeamUnmanaged(roster, "lead", null)).toBe(true);
+  });
+});
+
+describe("teamLabel", () => {
+  it("says brokerage when someone holds the broker role", () => {
+    expect(teamLabel([{ role: "BROKER" }, { role: "AGENT" }])).toBe("brokerage");
+  });
+
+  it("says team otherwise", () => {
+    expect(teamLabel([{ role: "TEAM_LEAD" }, { role: "AGENT" }])).toBe("team");
   });
 });

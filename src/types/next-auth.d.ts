@@ -20,6 +20,9 @@ declare module "@auth/core/types" {
 
 declare module "@auth/core/jwt" {
   interface JWT {
+    // Millisecond timestamp of the last database re-read of role/teamId.
+    // See the jwt callback in src/auth.ts.
+    refreshedAt?: number;
     id: string;
     role: Role;
     teamId: string | null;

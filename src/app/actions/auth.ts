@@ -53,10 +53,20 @@ export async function signupAction(
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  if (accountType === "team") {
+  // "team" and "brokerage" both create a Team (the tenant), differing only
+  // in the creator's role -- and that role is the whole difference: a BROKER
+  // can change who is on the roster, a TEAM_LEAD can only see its work.
+  // See canManageMembership in src/lib/authorization.ts.
+  if (accountType === "team" || accountType === "brokerage") {
     const team = await prisma.team.create({ data: { name: teamName! } });
     await prisma.user.create({
-      data: { name, email, passwordHash, role: "TEAM_LEAD", teamId: team.id },
+      data: {
+        name,
+        email,
+        passwordHash,
+        role: accountType === "brokerage" ? "BROKER" : "TEAM_LEAD",
+        teamId: team.id,
+      },
     });
   } else {
     await prisma.user.create({
@@ -66,6 +76,19 @@ export async function signupAction(
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
   return {};
+}
+
+// Where to send someone after a successful login. proxy.ts already appends
+// ?callbackUrl= when it bounces an unauthenticated request, and /join/[id]
+// uses it so an existing agent lands back on the invite instead of the
+// dashboard -- but a redirect target that comes in over the wire has to be
+// treated as hostile. Only same-site absolute paths are honoured: anything
+// scheme-relative ("//evil.com") or absolute ("https://evil.com") falls back
+// to the dashboard rather than handing an attacker a redirect off-site.
+function safeRedirectTo(value: FormDataEntryValue | null): string {
+  if (typeof value !== "string") return "/dashboard";
+  if (!value.startsWith("/") || value.startsWith("//")) return "/dashboard";
+  return value;
 }
 
 export async function loginAction(
@@ -90,7 +113,7 @@ export async function loginAction(
     await signIn("credentials", {
       email: parsed.data.email,
       password: parsed.data.password,
-      redirectTo: "/dashboard",
+      redirectTo: safeRedirectTo(formData.get("callbackUrl")),
     });
   } catch (err) {
     if (err instanceof AuthError) {

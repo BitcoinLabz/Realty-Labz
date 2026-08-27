@@ -5,11 +5,12 @@ export const signupSchema = z
     name: z.string().trim().min(1, "Name is required").max(100),
     email: z.email("Enter a valid email address").trim().toLowerCase(),
     password: z.string().min(8, "Password must be at least 8 characters"),
-    accountType: z.enum(["solo", "team"]),
+    accountType: z.enum(["solo", "team", "brokerage"]),
     teamName: z.string().trim().max(100).optional(),
   })
-  .refine((data) => data.accountType !== "team" || (data.teamName && data.teamName.length > 0), {
-    message: "Team name is required",
+  // Both "team" and "brokerage" create a Team row, so both need a name for it.
+  .refine((data) => data.accountType === "solo" || (data.teamName && data.teamName.length > 0), {
+    message: "Name is required",
     path: ["teamName"],
   });
 
@@ -101,8 +102,17 @@ export const clientSchema = z.object({
 // form-submissions.ts). A missing checkbox key means unchecked, so it can't
 // round-trip through z.coerce.boolean() the way a real boolean value could.
 
+// BROKER is deliberately absent: one broker per office keeps ownership
+// unambiguous, and a second principal gets ADMIN, which carries the same
+// powers. ADMIN itself is additionally gated to broker inviters in
+// createInviteAction -- the schema is the outer bound, not the whole check.
 export const createInviteSchema = z.object({
-  role: z.enum(["AGENT", "TEAM_LEAD"]),
+  role: z.enum(["AGENT", "TEAM_LEAD", "ADMIN"]),
+});
+
+export const changeMemberRoleSchema = z.object({
+  userId: z.string().min(1, "Missing member"),
+  role: z.enum(["AGENT", "TEAM_LEAD", "ADMIN"]),
 });
 
 export const joinTeamSchema = z.object({

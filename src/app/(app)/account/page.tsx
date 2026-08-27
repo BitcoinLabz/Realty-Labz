@@ -1,7 +1,7 @@
 import { KeyRound, User, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { isManager, roleLabel } from "@/lib/authorization";
+import { canManageMembership, roleLabel, teamLabel } from "@/lib/authorization";
 import { Card } from "@/components/ui/card";
 import { DetailTabs } from "@/components/ui/detail-tabs";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,6 +9,7 @@ import { ProfileForm } from "./profile-form";
 import { PasswordForm } from "./password-form";
 import { InviteForm } from "./invite-form";
 import { InviteList, type PendingInvite } from "./invite-list";
+import { MemberRow } from "./member-row";
 
 export default async function AccountPage() {
   const session = await auth();
@@ -19,9 +20,10 @@ export default async function AccountPage() {
 
   if (!user) return null;
 
-  const canManageTeam = user.team && isManager(user.role);
+  // Any teammate sees the roster; only some can change it.
+  const onATeam = !!user.team;
 
-  const [teammates, invites] = canManageTeam
+  const [teammates, invites] = onATeam
     ? await Promise.all([
         prisma.user.findMany({
           where: { teamId: user.teamId! },
@@ -34,6 +36,13 @@ export default async function AccountPage() {
         }),
       ])
     : [null, null];
+
+  const members = teammates ?? [];
+  const orgWord = teamLabel(members);
+  const canManage = canManageMembership(
+    { id: user.id, role: user.role, teamId: user.teamId },
+    members,
+  );
 
   const pendingInvites: PendingInvite[] =
     invites?.map((i) => ({
@@ -57,16 +66,13 @@ export default async function AccountPage() {
           <Card title="Account type">
             <p className="text-sm text-muted">
               {user.team
-                ? `You're on the ${user.team.name} team as ${roleLabel(user.role)}.`
+                ? `You're part of ${user.team.name} as ${roleLabel(user.role)}.`
                 : "You have a solo account — everything here is just yours."}
             </p>
             {!user.team ? (
               <p className="mt-2 text-sm text-muted">
-                Want to bring teammates on and share transactions with them? Get in touch from the{" "}
-                <a href="/support" className="font-medium text-accent hover:opacity-80">
-                  support page
-                </a>{" "}
-                and we&apos;ll switch your account over.
+                Joining a team or brokerage? Ask them for their invite link and open it while
+                you&apos;re signed in — everything you&apos;ve already added comes with you.
               </p>
             ) : null}
           </Card>
@@ -92,43 +98,55 @@ export default async function AccountPage() {
     },
   ];
 
-  if (canManageTeam) {
+  if (onATeam) {
     tabs.push({
       id: "team",
-      label: "Your team",
+      label: orgWord === "brokerage" ? "Your brokerage" : "Your team",
       content: (
         <>
-          <Card title="Teammates" icon={Users}>
+          <Card
+            title="People"
+            icon={Users}
+            description={
+              canManage
+                ? `Everyone in your ${orgWord}. Changing someone to Team lead or Admin lets them see everyone's transactions.`
+                : `Everyone in your ${orgWord}.`
+            }
+          >
             <div className="flex flex-col gap-2">
-              {teammates!.map((teammate) => (
-                <div
+              {members.map((teammate) => (
+                <MemberRow
                   key={teammate.id}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3"
-                >
-                  <div className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-medium text-foreground">
-                      {teammate.name}
-                    </span>
-                    <span className="truncate text-sm text-muted">{teammate.email}</span>
-                  </div>
-                  <span className="shrink-0 text-sm text-muted">{roleLabel(teammate.role)}</span>
-                </div>
+                  member={teammate}
+                  isYou={teammate.id === user.id}
+                  canManage={canManage}
+                  orgWord={orgWord}
+                />
               ))}
             </div>
+            <p className="mt-4 text-sm text-muted">
+              Managers see everyone&apos;s transactions — properties, dates, commission and
+              documents. Nobody, at any role, can see another person&apos;s clients, income and
+              expenses, mileage or anything under Finances.
+            </p>
           </Card>
 
-          <Card
-            title="Invite a teammate"
-            description="Generate a private sign-up link, then send it to them however you like."
-          >
-            <div className="max-w-md">
-              <InviteForm />
-            </div>
-          </Card>
+          {canManage ? (
+            <>
+              <Card
+                title={`Add someone to your ${orgWord}`}
+                description="Generate a private link, then send it however you like. It works whether they're new to Realty Labz or already have an account."
+              >
+                <div className="max-w-md">
+                  <InviteForm canInviteAdmin={user.role === "BROKER"} />
+                </div>
+              </Card>
 
-          <Card title="Invites waiting to be used">
-            <InviteList invites={pendingInvites} />
-          </Card>
+              <Card title="Invites waiting to be used">
+                <InviteList invites={pendingInvites} />
+              </Card>
+            </>
+          ) : null}
         </>
       ),
     });
