@@ -3,6 +3,8 @@ import {
   addDaysUtc,
   buildDeadlinesFromTemplate,
   formatDeadlineDate,
+  isWeekendUtc,
+  nextBusinessDayUtc,
   parseAnchorDateUtc,
 } from "./deadline-templates";
 
@@ -121,5 +123,35 @@ describe("buildDeadlinesFromTemplate", () => {
       "2026-03-01",
     );
     expect(built.map((d) => d.label)).toEqual(["Later", "Sooner"]);
+  });
+});
+
+describe("weekend handling", () => {
+  // 2026-03-07 is a Saturday, 2026-03-08 a Sunday, 2026-03-09 a Monday.
+  it("recognises Saturday and Sunday", () => {
+    expect(isWeekendUtc(utc(2026, 3, 7))).toBe(true);
+    expect(isWeekendUtc(utc(2026, 3, 8))).toBe(true);
+  });
+
+  it("does not flag a weekday", () => {
+    expect(isWeekendUtc(utc(2026, 3, 6))).toBe(false);
+    expect(isWeekendUtc(utc(2026, 3, 9))).toBe(false);
+  });
+
+  it("rolls Saturday forward to Monday", () => {
+    expect(formatDeadlineDate(nextBusinessDayUtc(utc(2026, 3, 7)))).toBe("2026-03-09");
+  });
+
+  it("rolls Sunday forward to Monday", () => {
+    expect(formatDeadlineDate(nextBusinessDayUtc(utc(2026, 3, 8)))).toBe("2026-03-09");
+  });
+
+  it("leaves a weekday untouched", () => {
+    expect(formatDeadlineDate(nextBusinessDayUtc(utc(2026, 3, 6)))).toBe("2026-03-06");
+  });
+
+  it("rolls correctly across a month boundary", () => {
+    // 2026-02-28 is a Saturday; Monday is in March.
+    expect(formatDeadlineDate(nextBusinessDayUtc(utc(2026, 2, 28)))).toBe("2026-03-02");
   });
 });

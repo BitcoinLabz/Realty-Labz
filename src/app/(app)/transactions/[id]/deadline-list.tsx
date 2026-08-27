@@ -9,7 +9,11 @@ import {
 } from "@/app/actions/deal-deadlines";
 import { sendDeadlineReminderNowAction } from "@/app/actions/deadline-reminders";
 import { applyDeadlineTemplateAction } from "@/app/actions/deadline-templates";
-import { buildDeadlinesFromTemplate, formatDeadlineDate } from "@/lib/deadline-templates";
+import {
+  buildDeadlinesFromTemplate,
+  formatDeadlineDate,
+  isWeekendUtc,
+} from "@/lib/deadline-templates";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -155,10 +159,17 @@ function ApplyDeadlineSet({
             <span key={i} className="text-xs text-muted">
               {d.label} —{" "}
               {new Date(formatDeadlineDate(d.dueDate) + "T00:00:00").toLocaleDateString("en-US", {
+                weekday: "short",
                 month: "short",
                 day: "numeric",
                 year: "numeric",
               })}
+              {/* Contracts usually roll a weekend deadline to the next
+                  business day. Flagged, not auto-shifted -- some contracts
+                  genuinely do count calendar days. */}
+              {isWeekendUtc(d.dueDate) ? (
+                <span className="text-danger"> · weekend</span>
+              ) : null}
             </span>
           ))}
         </div>

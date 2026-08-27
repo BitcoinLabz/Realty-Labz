@@ -2,6 +2,11 @@ import { prisma } from "@/lib/db";
 import { buildAmortizationSchedule, scheduleAtDate } from "@/lib/loan-calculations";
 import { CATEGORY_LABELS } from "@/lib/transaction-categories";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
+import { calculateNetCommission } from "@/lib/commission";
+
+// Re-exported so existing server-side importers keep working; the definitions
+// live in the prisma-free commission module so client components can use them.
+export { calculateCommissionAmount, calculateNetCommission } from "@/lib/commission";
 
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -166,28 +171,6 @@ export async function getPipelineValue(userId: string): Promise<{ value: number;
   }, 0);
 
   return { value, count: deals.length };
-}
-
-// Pure math, deliberately separated from any DB access so it's directly
-// unit-testable: net commission = gross commission minus the brokerage's cut
-// (a %) minus any flat-dollar referral fee / team split / other deduction.
-export function calculateNetCommission(
-  grossCommission: number,
-  splits: {
-    brokerageSplitPercent?: number | null;
-    referralFeeAmount?: number | null;
-    teamSplitAmount?: number | null;
-    otherDeductions?: number | null;
-  },
-): number {
-  const brokerageCut = grossCommission * ((splits.brokerageSplitPercent ?? 0) / 100);
-  return (
-    grossCommission -
-    brokerageCut -
-    (splits.referralFeeAmount ?? 0) -
-    (splits.teamSplitAmount ?? 0) -
-    (splits.otherDeductions ?? 0)
-  );
 }
 
 // "Deals closed this year" + net commission rollup for the individual

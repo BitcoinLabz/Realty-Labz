@@ -98,3 +98,20 @@ export function buildDeadlinesFromTemplate(
 export function formatDeadlineDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
+
+/**
+ * True for a Saturday or Sunday, judged in UTC to match how these dates are
+ * stored and compared everywhere else in the deadline pipeline.
+ */
+export function isWeekendUtc(date: Date): boolean {
+  const day = date.getUTCDay();
+  return day === 0 || day === 6;
+}
+
+/** Rolls a weekend date forward to the following Monday; weekdays unchanged. */
+export function nextBusinessDayUtc(date: Date): Date {
+  const day = date.getUTCDay();
+  if (day === 6) return addDaysUtc(date, 2); // Saturday -> Monday
+  if (day === 0) return addDaysUtc(date, 1); // Sunday -> Monday
+  return date;
+}

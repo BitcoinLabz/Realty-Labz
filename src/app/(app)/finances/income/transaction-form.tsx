@@ -69,7 +69,10 @@ export function TransactionForm({
   const [scope, setScope] = useState<TransactionScope>(defaultValues?.scope ?? "BUSINESS");
   const [type, setType] = useState<TransactionType>(defaultValues?.type ?? "EXPENSE");
   const formRef = useRef<HTMLFormElement>(null);
-  const showDealPicker = !isRecurring && scope === "BUSINESS" && type === "EXPENSE" && deals.length > 0;
+  // Income links too, not just expenses: a closed transaction's commission is
+  // income that belongs to that transaction. Recurring templates have no
+  // transaction concept at all, so the picker still hides for those.
+  const showDealPicker = !isRecurring && scope === "BUSINESS" && deals.length > 0;
 
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
 
@@ -208,12 +211,12 @@ export function TransactionForm({
 
       {showDealPicker ? (
         <Select
-          label="Deal (optional)"
+          label="Part of a transaction? (optional)"
           name="dealId"
           defaultValue={defaultValues?.dealId ?? ""}
           error={state.fieldErrors?.dealId}
         >
-          <option value="">No deal</option>
+          <option value="">Not tied to one</option>
           {deals.map((d) => (
             <option key={d.id} value={d.id}>
               {d.propertyAddress}

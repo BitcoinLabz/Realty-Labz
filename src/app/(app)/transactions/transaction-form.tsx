@@ -1,11 +1,13 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { createDealAction, updateDealAction } from "@/app/actions/deals";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
+import { formatCurrency } from "@/lib/format";
+import { calculateCommissionAmount } from "@/lib/commission";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClientOption } from "@/app/(app)/clients/types";
 import { DEAL_SIDE_LABELS, type DealDTO, type DealSide, type ReferralPartnerOption } from "./types";
@@ -49,6 +51,20 @@ export function DealForm({
   const action = isEdit ? updateDealAction : createDealAction;
   const [state, formAction, isPending] = useActionState(action, initialState);
   const formRef = useRef<HTMLFormElement>(null);
+
+  // Only tracked to power the commission suggestion below -- the inputs
+  // themselves stay uncontrolled, so this never competes with defaultValue.
+  const [listPrice, setListPrice] = useState(defaultValues?.listPrice ?? "");
+  const [salePrice, setSalePrice] = useState(defaultValues?.salePrice ?? "");
+  const [commissionRate, setCommissionRate] = useState(defaultValues?.commissionRate ?? "");
+
+  // Sale price once known, otherwise list price -- the same precedence
+  // getPipelineValue uses.
+  const priceForCommission = salePrice || listPrice;
+  const suggestedCommission = calculateCommissionAmount(
+    priceForCommission ? Number(priceForCommission) : null,
+    commissionRate ? Number(commissionRate) : null,
+  );
 
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
 
@@ -120,6 +136,7 @@ export function DealForm({
           step="0.01"
           min="0"
           defaultValue={defaultValues?.listPrice}
+          onChange={(e) => setListPrice(e.target.value)}
           error={state.fieldErrors?.listPrice}
         />
         <Field
@@ -129,6 +146,7 @@ export function DealForm({
           step="0.01"
           min="0"
           defaultValue={defaultValues?.salePrice}
+          onChange={(e) => setSalePrice(e.target.value)}
           error={state.fieldErrors?.salePrice}
         />
       </div>
@@ -142,6 +160,7 @@ export function DealForm({
           min="0"
           max="100"
           defaultValue={defaultValues?.commissionRate}
+          onChange={(e) => setCommissionRate(e.target.value)}
           error={state.fieldErrors?.commissionRate}
         />
         <Field
@@ -154,6 +173,35 @@ export function DealForm({
           error={state.fieldErrors?.commissionAmount}
         />
       </div>
+
+      {/* Suggests, never overwrites. An agent on a flat fee or a negotiated
+          number sees a suggestion they can ignore -- silently auto-filling
+          would be wrong for them and would fight anyone who typed a real
+          figure. Writing through formRef keeps every field uncontrolled, so
+          this can't collide with the reset-on-create / remount-on-save logic
+          above. */}
+      {suggestedCommission !== null ? (
+        <div className="-mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
+          <span>
+            {commissionRate}% of {formatCurrency(Number(priceForCommission))} ={" "}
+            <span className="font-medium text-foreground">
+              {formatCurrency(suggestedCommission)}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const input = formRef.current?.elements.namedItem("commissionAmount");
+              if (input instanceof HTMLInputElement) {
+                input.value = String(suggestedCommission);
+              }
+            }}
+            className="font-medium text-accent hover:opacity-80"
+          >
+            Use this
+          </button>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
         <p className="text-sm font-medium text-foreground">Commission split (optional)</p>

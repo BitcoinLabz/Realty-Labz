@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Copy } from "lucide-react";
+import { BadgeDollarSign, Copy } from "lucide-react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -19,6 +19,7 @@ import { SendFormWidget, type SendableTemplate } from "@/app/(app)/clients/[id]/
 import { DetailTabs } from "@/components/ui/detail-tabs";
 import { isAiConfigured } from "@/lib/ai-contract-analysis";
 import { duplicateDealAction } from "@/app/actions/deals";
+import { logCommissionAsIncomeAction } from "@/app/actions/transactions";
 import { dealDisplayName } from "../types";
 import type { DealDeadlineDTO, OpenHouseDTO, ReferralPartnerDTO } from "../types";
 import type { DocumentDTO } from "@/app/(app)/clients/types";
@@ -32,7 +33,7 @@ export default async function DealDetailPage({
   const { id } = await params;
   const session = await auth();
 
-  const [deal, clients, referralPartners, formSubmissions, formTemplates, deadlineTemplateRows] =
+  const [deal, clients, referralPartners, formSubmissions, formTemplates, deadlineTemplateRows, loggedCommission] =
     await Promise.all([
     prisma.deal.findFirst({
       where: { id, ...teamOrOwnFilter(session!.user) },
@@ -67,6 +68,12 @@ export default async function DealDetailPage({
       where: teamSharedFilter(session!.user),
       include: { items: { orderBy: { order: "asc" } } },
       orderBy: { name: "asc" },
+    }),
+    // The deal include above filters expenses to type EXPENSE, so it cannot
+    // see a linked commission-income row -- this is that check.
+    prisma.transaction.findFirst({
+      where: { userId: session!.user.id, dealId: id, type: "INCOME" },
+      select: { id: true },
     }),
   ]);
 
@@ -215,6 +222,37 @@ export default async function DealDetailPage({
                   </span>
                 </div>
               </div>
+
+              {deal.status === "CLOSED" && netCommission > 0 ? (
+                <div className="mt-6 border-t border-border pt-6">
+                  {loggedCommission ? (
+                    <p className="text-sm text-muted">
+                      Commission logged as income.{" "}
+                      <Link
+                        href="/finances/income"
+                        className="font-medium text-accent hover:opacity-80"
+                      >
+                        View in Income &amp; expenses
+                      </Link>
+                    </p>
+                  ) : (
+                    <form action={logCommissionAsIncomeAction}>
+                      <input type="hidden" name="dealId" value={deal.id} />
+                      <p className="mb-3 text-sm text-muted">
+                        Adds {formatCurrency(netCommission)} to your income ledger so it counts
+                        toward your tax reporting.
+                      </p>
+                      <button
+                        type="submit"
+                        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90"
+                      >
+                        <BadgeDollarSign size={15} />
+                        Log this commission as income
+                      </button>
+                    </form>
+                  )}
+                </div>
+              ) : null}
 
               {deal.expenses.length > 0 ? (
                 <div className="mt-6 flex flex-col gap-2 border-t border-border pt-6">

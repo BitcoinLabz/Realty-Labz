@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { transactionSchema } from "@/lib/validation";
+import { calculateNetCommission } from "@/lib/finance-data";
+import { dealDisplayName } from "@/app/(app)/transactions/types";
 import type { FormState } from "@/app/actions/auth";
 import { createRecurringTransactionAction } from "@/app/actions/recurring-transactions";
 
@@ -18,15 +20,17 @@ function parseTransactionForm(formData: FormData) {
     amount: formData.get("amount"),
     description: formData.get("description") || undefined,
     date: formData.get("date"),
-    dealId: scope === "BUSINESS" && type === "EXPENSE" ? formData.get("dealId") || undefined : undefined,
+    // Any BUSINESS row can link to a transaction, income included -- a closed
+    // deal's commission is the clearest case of income belonging to one.
+    dealId: scope === "BUSINESS" ? formData.get("dealId") || undefined : undefined,
   });
 }
 
 // Unlike Document.dealId (which uses teamOrOwnFilter, since a manager
 // organizes team paperwork), a Transaction is a strictly personal ledger
 // entry (see the "never team-shared" comment atop finance-data.ts) -- you
-// only ever link YOUR OWN expense to YOUR OWN deal, so this checks plain
-// ownership, not team-wide visibility.
+// only ever link YOUR OWN income or expense to YOUR OWN transaction, so this
+// checks plain ownership, not team-wide visibility.
 async function resolveDealId(
   dealId: string | undefined,
   userId: string,
@@ -165,4 +169,75 @@ export async function deleteTransactionAction(formData: FormData) {
   revalidatePath("/finances/income");
   revalidatePath("/dashboard");
   if (existing?.dealId) revalidatePath(`/transactions/${existing.dealId}`);
+}
+
+/**
+ * Logs a closed transaction's net commission as a business income entry,
+ * linked back to that transaction.
+ *
+ * Exists because closing a deal used to be three disconnected acts -- mark it
+ * Closed, do the math, remember to go type the income in -- and forgetting the
+ * third left the tax report quietly short with nothing to flag it.
+ *
+ * Plain (formData) => void, matching duplicateDealAction and the other
+ * button-driven actions on the transaction page.
+ */
+export async function logCommissionAsIncomeAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+
+  const dealId = formData.get("dealId");
+  if (typeof dealId !== "string" || !dealId) return;
+
+  // Plain userId, not teamOrOwnFilter: a ledger entry is strictly personal
+  // (see resolveDealId's comment above), so you only ever log YOUR commission
+  // against YOUR transaction -- a manager viewing a teammate's transaction
+  // must not create a row in their own books.
+  const deal = await prisma.deal.findFirst({
+    where: { id: dealId, userId: session.user.id },
+  });
+  if (!deal || deal.status !== "CLOSED") return;
+
+  // Idempotency: an indexed relational check rather than the CSV importer's
+  // fuzzy date+amount+description heuristic. This one survives the agent
+  // later editing the amount, and there's no unique constraint to lean on.
+  const existing = await prisma.transaction.findFirst({
+    where: { userId: session.user.id, dealId, type: "INCOME" },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  const gross = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
+  const net = calculateNetCommission(gross, {
+    brokerageSplitPercent: deal.brokerageSplitPercent ? Number(deal.brokerageSplitPercent) : null,
+    referralFeeAmount: deal.referralFeeAmount ? Number(deal.referralFeeAmount) : null,
+    teamSplitAmount: deal.teamSplitAmount ? Number(deal.teamSplitAmount) : null,
+    otherDeductions: deal.otherDeductions ? Number(deal.otherDeductions) : null,
+  });
+
+  // calculateNetCommission is neither clamped nor rounded, and an amount must
+  // be positive -- splits can legitimately exceed the gross. Nothing to log in
+  // that case; the page hides the button for it too.
+  const amount = Math.round(net * 100) / 100;
+  if (amount <= 0) return;
+
+  await prisma.transaction.create({
+    data: {
+      userId: session.user.id,
+      type: "INCOME",
+      scope: "BUSINESS",
+      // Null for every INCOME row -- the category enum is expense-only, and
+      // the breakdown/budget code all assumes category implies expense.
+      category: null,
+      amount,
+      description: `Commission — ${dealDisplayName(deal.propertyAddress)}`,
+      date: deal.closingDate ?? new Date(),
+      dealId,
+    },
+  });
+
+  revalidatePath("/finances");
+  revalidatePath("/finances/income");
+  revalidatePath("/dashboard");
+  revalidatePath(`/transactions/${dealId}`);
 }
