@@ -114,3 +114,54 @@ export async function submitOpenHouseVisitorAction(
 
   return {};
 }
+
+/**
+ * Turns an open-house sign-in into a real Client record.
+ *
+ * The whole point of an open house is lead capture, but until now those
+ * sign-ins sat in a read-only list -- to actually follow up you had to
+ * retype the name, email and phone into the Clients page. This is that
+ * retyping, removed.
+ *
+ * Created under the acting user (not the deal's owner) with source
+ * OPEN_HOUSE and stage NEW, so it lands at the top of the pipeline where a
+ * fresh lead belongs. Any feedback they left is carried into the notes --
+ * "loved the kitchen, worried about the roof" is exactly the context you
+ * want on hand when you call them two days later.
+ */
+export async function addVisitorAsClientAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+
+  const visitorId = formData.get("visitorId");
+  const dealId = formData.get("dealId");
+  if (typeof visitorId !== "string" || typeof dealId !== "string") return;
+
+  const deal = await assertDealAccess(dealId, session.user);
+  if (!deal) return;
+
+  // Cross-checked all the way up to the deal we just verified access to --
+  // a visitor id alone would let any agent pull a sign-in from someone
+  // else's open house (the IDOR shape fixed elsewhere in this codebase).
+  const visitor = await prisma.openHouseVisitor.findFirst({
+    where: { id: visitorId, openHouse: { dealId } },
+  });
+  if (!visitor) return;
+
+  await prisma.client.create({
+    data: {
+      userId: session.user.id,
+      name: visitor.name,
+      email: visitor.email,
+      phone: visitor.phone,
+      source: "OPEN_HOUSE",
+      stage: "NEW",
+      notes: visitor.feedback
+        ? `From the open house: "${visitor.feedback}"`
+        : "Signed in at an open house.",
+    },
+  });
+
+  revalidatePath(`/transactions/${dealId}`);
+  revalidatePath("/clients");
+}

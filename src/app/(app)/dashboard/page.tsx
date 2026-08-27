@@ -9,6 +9,7 @@ import {
   getMonthlyIncomeExpense,
   getNetWorthSeries,
   getPipelineValue,
+  getAttentionItems,
   getUpcomingDeadlines,
 } from "@/lib/finance-data";
 import { CalendarClock, PiggyBank, TrendingUp } from "lucide-react";
@@ -20,6 +21,7 @@ import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
 import { NetWorthChart } from "@/components/charts/net-worth-chart";
 import { RecurringReminders } from "@/app/(app)/finances/recurring-reminders";
+import { AttentionList } from "./attention-list";
 import { SetupChecklist, type SetupStep } from "./setup-checklist";
 
 export default async function DashboardPage() {
@@ -45,6 +47,7 @@ export default async function DashboardPage() {
     netWorthSeries,
     dueRecurring,
     monthlySeries,
+    attentionItems,
     dealCount,
     ledgerCount,
     taxSettings,
@@ -74,6 +77,7 @@ export default async function DashboardPage() {
     getNetWorthSeries(session!.user.id),
     getDueRecurringTemplates(session!.user.id),
     getMonthlyIncomeExpense(session!.user.id, currentYear, "ALL"),
+    getAttentionItems(session!.user.id),
     // Only needed for the setup checklist -- cheap counts, and they let the
     // whole thing be computed rather than stored on the User row.
     prisma.deal.count({ where: { userId: session!.user.id } }),
@@ -140,6 +144,8 @@ export default async function DashboardPage() {
       />
 
       <SetupChecklist steps={setupSteps} />
+
+      <AttentionList items={attentionItems} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link href="/finances" className="block transition-transform hover:-translate-y-0.5">

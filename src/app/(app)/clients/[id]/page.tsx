@@ -165,8 +165,8 @@ export default async function ClientDetailPage({
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-1 text-base font-semibold text-foreground">Client portal</h2>
             <p className="mb-6 text-sm text-muted">
-              Give {client.name} their own private link to see their deal status and documents,
-              without needing an account.
+              Give {client.name} their own private link to check where their properties stand
+              and download their documents. No account, no password — and only they can see it.
             </p>
             <SendPortalAccessButton clientId={client.id} hasEmail={!!client.email} />
           </section>

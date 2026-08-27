@@ -1,7 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { createOpenHouseAction, deleteOpenHouseAction } from "@/app/actions/open-houses";
+import { UserPlus } from "lucide-react";
+import {
+  addVisitorAsClientAction,
+  createOpenHouseAction,
+  deleteOpenHouseAction,
+} from "@/app/actions/open-houses";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -115,10 +121,10 @@ export function OpenHouseSection({
               </div>
 
               {oh.visitors.length > 0 ? (
-                <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
+                <div className="mt-3 flex flex-col divide-y divide-border border-t border-border">
                   {oh.visitors.map((v) => (
-                    <div key={v.id} className="text-sm">
-                      <div className="flex items-center justify-between">
+                    <div key={v.id} className="py-3 text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <span className="font-medium text-foreground">{v.name}</span>
                         {v.interested !== null ? (
                           <span className={v.interested ? "text-accent" : "text-muted"}>
@@ -130,6 +136,28 @@ export function OpenHouseSection({
                         {[v.email, v.phone].filter(Boolean).join(" · ") || "No contact info"}
                       </span>
                       {v.feedback ? <p className="mt-1 text-muted">&ldquo;{v.feedback}&rdquo;</p> : null}
+                      <div className="mt-1.5">
+                        {v.existingClientId ? (
+                          <Link
+                            href={`/clients/${v.existingClientId}`}
+                            className="text-sm font-medium text-muted hover:text-foreground"
+                          >
+                            Already a client →
+                          </Link>
+                        ) : (
+                          <form action={addVisitorAsClientAction}>
+                            <input type="hidden" name="visitorId" value={v.id} />
+                            <input type="hidden" name="dealId" value={dealId} />
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-1 text-sm font-medium text-accent hover:opacity-80"
+                            >
+                              <UserPlus size={14} />
+                              Add as a client
+                            </button>
+                          </form>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

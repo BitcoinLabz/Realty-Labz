@@ -98,6 +98,10 @@ export type OpenHouseVisitorDTO = {
   interested: boolean | null;
   feedback: string | null;
   createdAt: string;
+  // Set when this person is already in the agent's Clients list (matched on
+  // email, or on name when they left no email) -- lets the UI link to them
+  // instead of offering a button that would create a duplicate.
+  existingClientId: string | null;
 };
 
 export type ReferralPartnerOption = {

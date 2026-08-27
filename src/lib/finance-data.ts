@@ -440,3 +440,86 @@ export async function getUpcomingDeadlines(userId: string, days = 7): Promise<Up
     isOverdue: d.dueDate < now,
   }));
 }
+
+export type AttentionItem = {
+  id: string;
+  kind: "overdue" | "missingDocs" | "awaitingSignature";
+  title: string;
+  detail: string;
+  href: string;
+};
+
+/**
+ * The "what needs you today" triage list on the dashboard.
+ *
+ * All three signals already existed in the database, but finding them meant
+ * visiting three different pages and knowing to look. Ordered by urgency:
+ * overdue dates first (a missed contract date has consequences), then active
+ * transactions with no paperwork at all, then signature requests that have
+ * gone quiet.
+ *
+ * Scoped by plain userId like everything else in this file -- this is the
+ * agent's own work queue, not a team-visibility surface.
+ */
+export async function getAttentionItems(userId: string): Promise<AttentionItem[]> {
+  const now = new Date();
+  const staleAfter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  const [overdue, missingDocs, awaitingSignature] = await Promise.all([
+    prisma.dealDeadline.findMany({
+      where: { completedAt: null, dueDate: { lt: now }, deal: { userId } },
+      include: { deal: { select: { propertyAddress: true } } },
+      orderBy: { dueDate: "asc" },
+    }),
+    prisma.deal.findMany({
+      where: {
+        userId,
+        status: { in: ["UNDER_CONTRACT", "PENDING"] },
+        documents: { none: {} },
+      },
+      select: { id: true, propertyAddress: true, status: true },
+      orderBy: { updatedAt: "desc" },
+    }),
+    prisma.formSubmission.findMany({
+      where: {
+        userId,
+        status: { in: ["PENDING", "IN_PROGRESS"] },
+        createdAt: { lt: staleAfter },
+      },
+      include: {
+        formTemplate: { select: { name: true } },
+        client: { select: { name: true } },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+
+  const daysAgo = (date: Date) =>
+    Math.max(1, Math.round((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000)));
+
+  return [
+    ...overdue.map((d) => ({
+      id: `overdue-${d.id}`,
+      kind: "overdue" as const,
+      title: d.label,
+      detail: `${dealDisplayName(d.deal.propertyAddress)} · was due ${daysAgo(d.dueDate)} day${
+        daysAgo(d.dueDate) === 1 ? "" : "s"
+      } ago`,
+      href: `/transactions/${d.dealId}`,
+    })),
+    ...missingDocs.map((deal) => ({
+      id: `docs-${deal.id}`,
+      kind: "missingDocs" as const,
+      title: "No paperwork uploaded yet",
+      detail: `${dealDisplayName(deal.propertyAddress)} · under contract`,
+      href: `/transactions/${deal.id}`,
+    })),
+    ...awaitingSignature.map((s) => ({
+      id: `sign-${s.id}`,
+      kind: "awaitingSignature" as const,
+      title: `${s.formTemplate.name} still unsigned`,
+      detail: `${s.client?.name ?? "Sent"} · ${daysAgo(s.createdAt)} days ago`,
+      href: s.clientId ? `/clients/${s.clientId}` : "/forms/templates",
+    })),
+  ];
+}

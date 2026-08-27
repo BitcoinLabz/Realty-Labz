@@ -33,7 +33,16 @@ export default async function DealDetailPage({
   const { id } = await params;
   const session = await auth();
 
-  const [deal, clients, referralPartners, formSubmissions, formTemplates, deadlineTemplateRows, loggedCommission] =
+  const [
+    deal,
+    clients,
+    referralPartners,
+    formSubmissions,
+    formTemplates,
+    deadlineTemplateRows,
+    loggedCommission,
+    ownClients,
+  ] =
     await Promise.all([
     prisma.deal.findFirst({
       where: { id, ...teamOrOwnFilter(session!.user) },
@@ -74,6 +83,15 @@ export default async function DealDetailPage({
     prisma.transaction.findFirst({
       where: { userId: session!.user.id, dealId: id, type: "INCOME" },
       select: { id: true },
+    }),
+    // Just enough to tell whether an open-house sign-in is already in this
+    // agent's Clients list. Scoped to their OWN clients, not the team's --
+    // the convert button creates the record under the acting user, so
+    // matching against a teammate's roster would hide a button that would
+    // in fact have created a legitimately new client.
+    prisma.client.findMany({
+      where: { userId: session!.user.id },
+      select: { id: true, name: true, email: true },
     }),
   ]);
 
@@ -158,6 +176,22 @@ export default async function DealDetailPage({
     items: t.items.map((i) => ({ label: i.label, offsetDays: i.offsetDays })),
   }));
 
+  // Matched on email first (the reliable key), falling back to name for the
+  // walk-ins who don't leave one. Deliberately a heuristic, same shape as
+  // the CSV importer's duplicate detection -- the cost of a false match is
+  // one hidden button, not lost data.
+  const clientsByEmail = new Map(
+    ownClients.filter((c) => c.email).map((c) => [c.email!.trim().toLowerCase(), c.id]),
+  );
+  const clientsByName = new Map(ownClients.map((c) => [c.name.trim().toLowerCase(), c.id]));
+
+  function findExistingClientId(visitor: { name: string; email: string | null }) {
+    if (visitor.email) {
+      return clientsByEmail.get(visitor.email.trim().toLowerCase()) ?? null;
+    }
+    return clientsByName.get(visitor.name.trim().toLowerCase()) ?? null;
+  }
+
   const openHouseDtos: OpenHouseDTO[] = deal.openHouses.map((oh) => ({
     id: oh.id,
     date: oh.date.toISOString().slice(0, 10),
@@ -172,6 +206,7 @@ export default async function DealDetailPage({
       interested: v.interested,
       feedback: v.feedback,
       createdAt: v.createdAt.toISOString(),
+      existingClientId: findExistingClientId(v),
     })),
   }));
 
