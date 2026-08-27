@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/format";
-import { calculateCommissionAmount } from "@/lib/commission";
+import { calculateCommissionAmount, calculateNetCommission } from "@/lib/commission";
 import { Textarea } from "@/components/ui/textarea";
 import type { ClientOption } from "@/app/(app)/clients/types";
 import { DEAL_SIDE_LABELS, type DealDTO, type DealSide, type ReferralPartnerOption } from "./types";
@@ -25,10 +25,10 @@ export type DealFormValues = {
   commissionRate: string;
   commissionAmount: string;
   brokerageSplitPercent: string;
-  referralFeeAmount: string;
+  referralFeePercent: string;
   referralPartnerId: string;
-  teamSplitAmount: string;
-  otherDeductions: string;
+  teamSplitPercent: string;
+  otherDeductionsPercent: string;
   closingDate: string;
   notes: string;
   clientId: string;
@@ -57,6 +57,11 @@ export function DealForm({
   const [listPrice, setListPrice] = useState(defaultValues?.listPrice ?? "");
   const [salePrice, setSalePrice] = useState(defaultValues?.salePrice ?? "");
   const [commissionRate, setCommissionRate] = useState(defaultValues?.commissionRate ?? "");
+  const [commissionAmount, setCommissionAmount] = useState(defaultValues?.commissionAmount ?? "");
+  const [brokerageSplit, setBrokerageSplit] = useState(defaultValues?.brokerageSplitPercent ?? "");
+  const [referralFee, setReferralFee] = useState(defaultValues?.referralFeePercent ?? "");
+  const [teamSplit, setTeamSplit] = useState(defaultValues?.teamSplitPercent ?? "");
+  const [otherDeductions, setOtherDeductions] = useState(defaultValues?.otherDeductionsPercent ?? "");
 
   // Sale price once known, otherwise list price -- the same precedence
   // getPipelineValue uses.
@@ -65,6 +70,23 @@ export function DealForm({
     priceForCommission ? Number(priceForCommission) : null,
     commissionRate ? Number(commissionRate) : null,
   );
+
+  // Live "what you actually keep". Splits used to mix a percentage with three
+  // dollar fields, so entering 20 meaning 20% quietly subtracted $20 -- the
+  // wrong number looked plausible and nothing on screen contradicted it.
+  const grossForNet = commissionAmount ? Number(commissionAmount) : 0;
+  const splitPercentTotal =
+    (Number(brokerageSplit) || 0) +
+    (Number(referralFee) || 0) +
+    (Number(teamSplit) || 0) +
+    (Number(otherDeductions) || 0);
+  const showNetPreview = grossForNet > 0 && splitPercentTotal > 0;
+  const netPreview = calculateNetCommission(grossForNet, {
+    brokerageSplitPercent: Number(brokerageSplit) || 0,
+    referralFeePercent: Number(referralFee) || 0,
+    teamSplitPercent: Number(teamSplit) || 0,
+    otherDeductionsPercent: Number(otherDeductions) || 0,
+  });
 
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
 
@@ -206,8 +228,7 @@ export function DealForm({
       <div className="flex flex-col gap-4 rounded-xl border border-border p-4">
         <p className="text-sm font-medium text-foreground">Commission split (optional)</p>
         <p className="-mt-2 text-sm text-muted">
-          Net commission = commission amount, minus the brokerage&apos;s cut, minus any referral fee,
-          team split, or other deduction.
+          Each one is a percentage of the commission. Enter 40 for a 40% brokerage split.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
@@ -219,16 +240,20 @@ export function DealForm({
             max="100"
             placeholder="e.g. 30"
             defaultValue={defaultValues?.brokerageSplitPercent}
+            onChange={(e) => setBrokerageSplit(e.target.value)}
             error={state.fieldErrors?.brokerageSplitPercent}
           />
           <Field
-            label="Referral fee (optional)"
-            name="referralFeeAmount"
+            label="Referral fee % (optional)"
+            name="referralFeePercent"
             type="number"
             step="0.01"
             min="0"
-            defaultValue={defaultValues?.referralFeeAmount}
-            error={state.fieldErrors?.referralFeeAmount}
+            max="100"
+            placeholder="e.g. 25"
+            defaultValue={defaultValues?.referralFeePercent}
+            onChange={(e) => setReferralFee(e.target.value)}
+            error={state.fieldErrors?.referralFeePercent}
           />
         </div>
         {referralPartners && referralPartners.length > 0 ? (
@@ -248,24 +273,56 @@ export function DealForm({
         ) : null}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
-            label="Team split (optional)"
-            name="teamSplitAmount"
+            label="Team split % (optional)"
+            name="teamSplitPercent"
             type="number"
             step="0.01"
             min="0"
-            defaultValue={defaultValues?.teamSplitAmount}
-            error={state.fieldErrors?.teamSplitAmount}
+            max="100"
+            placeholder="e.g. 10"
+            defaultValue={defaultValues?.teamSplitPercent}
+            onChange={(e) => setTeamSplit(e.target.value)}
+            error={state.fieldErrors?.teamSplitPercent}
           />
           <Field
-            label="Other deductions (optional)"
-            name="otherDeductions"
+            label="Other deductions % (optional)"
+            name="otherDeductionsPercent"
             type="number"
             step="0.01"
             min="0"
-            defaultValue={defaultValues?.otherDeductions}
-            error={state.fieldErrors?.otherDeductions}
+            max="100"
+            placeholder="e.g. 5"
+            defaultValue={defaultValues?.otherDeductionsPercent}
+            onChange={(e) => setOtherDeductions(e.target.value)}
+            error={state.fieldErrors?.otherDeductionsPercent}
           />
         </div>
+
+        {showNetPreview ? (
+          <div className="border-t border-border pt-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted">
+                They take {splitPercentTotal}% of {formatCurrency(grossForNet)}
+              </span>
+              <span className="text-muted">
+                −{formatCurrency(grossForNet - netPreview)}
+              </span>
+            </div>
+            <div className="mt-1 flex items-center justify-between">
+              <span className="font-medium text-foreground">You keep</span>
+              <span
+                className={`font-semibold ${netPreview >= 0 ? "text-accent" : "text-danger"}`}
+              >
+                {formatCurrency(netPreview)}
+              </span>
+            </div>
+            {splitPercentTotal > 100 ? (
+              <p className="mt-2 text-xs text-danger">
+                That&apos;s more than the whole commission — check these numbers.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <Field

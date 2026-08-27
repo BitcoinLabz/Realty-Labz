@@ -189,9 +189,9 @@ export async function getClosedDealsSummary(
     select: {
       commissionAmount: true,
       brokerageSplitPercent: true,
-      referralFeeAmount: true,
-      teamSplitAmount: true,
-      otherDeductions: true,
+      referralFeePercent: true,
+      teamSplitPercent: true,
+      otherDeductionsPercent: true,
     },
   });
 
@@ -200,9 +200,9 @@ export async function getClosedDealsSummary(
       sum +
       calculateNetCommission(d.commissionAmount ? Number(d.commissionAmount) : 0, {
         brokerageSplitPercent: d.brokerageSplitPercent ? Number(d.brokerageSplitPercent) : null,
-        referralFeeAmount: d.referralFeeAmount ? Number(d.referralFeeAmount) : null,
-        teamSplitAmount: d.teamSplitAmount ? Number(d.teamSplitAmount) : null,
-        otherDeductions: d.otherDeductions ? Number(d.otherDeductions) : null,
+        referralFeePercent: d.referralFeePercent ? Number(d.referralFeePercent) : null,
+        teamSplitPercent: d.teamSplitPercent ? Number(d.teamSplitPercent) : null,
+        otherDeductionsPercent: d.otherDeductionsPercent ? Number(d.otherDeductionsPercent) : null,
       }),
     0,
   );
@@ -220,7 +220,12 @@ export async function getReferralPartnerTotals(
 ): Promise<{ id: string; name: string; email: string | null; phone: string | null; totalOwed: number }[]> {
   const partners = await prisma.referralPartner.findMany({
     where: { userId },
-    include: { deals: { where: { status: "CLOSED" }, select: { referralFeeAmount: true } } },
+    include: {
+      deals: {
+        where: { status: "CLOSED" },
+        select: { referralFeePercent: true, commissionAmount: true },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -229,7 +234,14 @@ export async function getReferralPartnerTotals(
     name: p.name,
     email: p.email,
     phone: p.phone,
-    totalOwed: p.deals.reduce((sum, d) => sum + (d.referralFeeAmount ? Number(d.referralFeeAmount) : 0), 0),
+    // The referral fee is stored as a percentage of the commission, so the
+    // dollars owed have to be computed from each deal.s gross rather than
+    // summed directly.
+    totalOwed: p.deals.reduce((sum, d) => {
+      const gross = d.commissionAmount ? Number(d.commissionAmount) : 0;
+      const percent = d.referralFeePercent ? Number(d.referralFeePercent) : 0;
+      return sum + gross * (percent / 100);
+    }, 0),
   }));
 }
 

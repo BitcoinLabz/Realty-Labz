@@ -139,9 +139,9 @@ export async function GET(request: NextRequest) {
     const grossCommission = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
     const netCommission = calculateNetCommission(grossCommission, {
       brokerageSplitPercent: deal.brokerageSplitPercent ? Number(deal.brokerageSplitPercent) : null,
-      referralFeeAmount: deal.referralFeeAmount ? Number(deal.referralFeeAmount) : null,
-      teamSplitAmount: deal.teamSplitAmount ? Number(deal.teamSplitAmount) : null,
-      otherDeductions: deal.otherDeductions ? Number(deal.otherDeductions) : null,
+      referralFeePercent: deal.referralFeePercent ? Number(deal.referralFeePercent) : null,
+      teamSplitPercent: deal.teamSplitPercent ? Number(deal.teamSplitPercent) : null,
+      otherDeductionsPercent: deal.otherDeductionsPercent ? Number(deal.otherDeductionsPercent) : null,
     });
     const dealExpenses = deal.expenses.reduce((sum, t) => sum + Number(t.amount), 0);
     return {

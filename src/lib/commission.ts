@@ -28,8 +28,12 @@ export function calculateCommissionAmount(
 }
 
 /**
- * Net commission = gross, minus the brokerage's cut (a %), minus any
- * flat-dollar referral fee / team split / other deduction.
+ * Net commission = gross, minus every split taken as a percentage of it.
+ *
+ * All four splits are percentages (2026-08-26). They used to be a mix -- a
+ * brokerage percentage against three flat dollar figures -- which meant the
+ * dollar ones silently went stale whenever the sale price or commission
+ * changed.
  *
  * Deliberately neither clamped nor rounded: splits can legitimately exceed the
  * gross, and callers need to see that rather than have it silently floored at
@@ -40,17 +44,16 @@ export function calculateNetCommission(
   grossCommission: number,
   splits: {
     brokerageSplitPercent?: number | null;
-    referralFeeAmount?: number | null;
-    teamSplitAmount?: number | null;
-    otherDeductions?: number | null;
+    referralFeePercent?: number | null;
+    teamSplitPercent?: number | null;
+    otherDeductionsPercent?: number | null;
   },
 ): number {
-  const brokerageCut = grossCommission * ((splits.brokerageSplitPercent ?? 0) / 100);
-  return (
-    grossCommission -
-    brokerageCut -
-    (splits.referralFeeAmount ?? 0) -
-    (splits.teamSplitAmount ?? 0) -
-    (splits.otherDeductions ?? 0)
-  );
+  const totalPercent =
+    (splits.brokerageSplitPercent ?? 0) +
+    (splits.referralFeePercent ?? 0) +
+    (splits.teamSplitPercent ?? 0) +
+    (splits.otherDeductionsPercent ?? 0);
+
+  return grossCommission - grossCommission * (totalPercent / 100);
 }

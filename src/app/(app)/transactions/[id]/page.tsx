@@ -122,10 +122,10 @@ export default async function DealDetailPage({
     commissionRate: deal.commissionRate ? String(deal.commissionRate) : "",
     commissionAmount: deal.commissionAmount ? String(deal.commissionAmount) : "",
     brokerageSplitPercent: deal.brokerageSplitPercent ? String(deal.brokerageSplitPercent) : "",
-    referralFeeAmount: deal.referralFeeAmount ? String(deal.referralFeeAmount) : "",
+    referralFeePercent: deal.referralFeePercent ? String(deal.referralFeePercent) : "",
     referralPartnerId: deal.referralPartnerId ?? "",
-    teamSplitAmount: deal.teamSplitAmount ? String(deal.teamSplitAmount) : "",
-    otherDeductions: deal.otherDeductions ? String(deal.otherDeductions) : "",
+    teamSplitPercent: deal.teamSplitPercent ? String(deal.teamSplitPercent) : "",
+    otherDeductionsPercent: deal.otherDeductionsPercent ? String(deal.otherDeductionsPercent) : "",
     closingDate: deal.closingDate ? deal.closingDate.toISOString().slice(0, 10) : "",
     notes: deal.notes ?? "",
     clientId: deal.clientId ?? "",
@@ -134,14 +134,14 @@ export default async function DealDetailPage({
   const grossCommission = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
   const netCommission = calculateNetCommission(grossCommission, {
     brokerageSplitPercent: deal.brokerageSplitPercent ? Number(deal.brokerageSplitPercent) : null,
-    referralFeeAmount: deal.referralFeeAmount ? Number(deal.referralFeeAmount) : null,
-    teamSplitAmount: deal.teamSplitAmount ? Number(deal.teamSplitAmount) : null,
-    otherDeductions: deal.otherDeductions ? Number(deal.otherDeductions) : null,
+    referralFeePercent: deal.referralFeePercent ? Number(deal.referralFeePercent) : null,
+    teamSplitPercent: deal.teamSplitPercent ? Number(deal.teamSplitPercent) : null,
+    otherDeductionsPercent: deal.otherDeductionsPercent ? Number(deal.otherDeductionsPercent) : null,
   });
   const dealExpenseTotal = deal.expenses.reduce((sum, t) => sum + Number(t.amount), 0);
   const dealProfit = netCommission - dealExpenseTotal;
   const hasCommissionSplits =
-    deal.brokerageSplitPercent || deal.referralFeeAmount || deal.teamSplitAmount || deal.otherDeductions;
+    deal.brokerageSplitPercent || deal.referralFeePercent || deal.teamSplitPercent || deal.otherDeductionsPercent;
 
   const deadlineDtos: DealDeadlineDTO[] = deal.deadlines.map((d) => ({
     id: d.id,

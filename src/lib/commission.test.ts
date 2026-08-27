@@ -2,30 +2,61 @@ import { describe, expect, it } from "vitest";
 import { calculateCommissionAmount, calculateNetCommission } from "./commission";
 
 describe("calculateNetCommission", () => {
-  it("applies brokerage split, referral fee, team split, and other deductions together", () => {
-    // $10,000 gross, 30% brokerage split ($3,000), $500 referral, $300 team
-    // split, $0 other -> 10000 - 3000 - 500 - 300 = 6200
+  // The exact case that exposed the old mixed-units bug: 40% brokerage plus
+  // 20% team on a $12,000 commission. When team split was a dollar field the
+  // 20 was subtracted as $20, giving a plausible-looking $7,180 instead of
+  // $4,800 -- wrong by $2,380 with nothing on screen to contradict it.
+  it("treats every split as a percentage of the gross", () => {
+    const net = calculateNetCommission(12000, {
+      brokerageSplitPercent: 40,
+      teamSplitPercent: 20,
+    });
+    expect(net).toBe(4800);
+  });
+
+  it("applies all four splits together", () => {
+    // 30 + 5 + 3 + 2 = 40% of $10,000 -> keeps $6,000
     const net = calculateNetCommission(10000, {
       brokerageSplitPercent: 30,
-      referralFeeAmount: 500,
-      teamSplitAmount: 300,
-      otherDeductions: 0,
+      referralFeePercent: 5,
+      teamSplitPercent: 3,
+      otherDeductionsPercent: 2,
     });
-    expect(net).toBe(6200);
+    expect(net).toBe(6000);
   });
 
   it("defaults every missing split field to 0", () => {
     expect(calculateNetCommission(5000, {})).toBe(5000);
   });
 
-  it("handles a 0% brokerage split (agent keeps everything before other deductions)", () => {
+  it("treats null the same as absent", () => {
     const net = calculateNetCommission(8000, {
       brokerageSplitPercent: 0,
-      referralFeeAmount: 200,
-      teamSplitAmount: null,
-      otherDeductions: null,
+      referralFeePercent: 10,
+      teamSplitPercent: null,
+      otherDeductionsPercent: null,
     });
-    expect(net).toBe(7800);
+    expect(net).toBe(7200);
+  });
+
+  it("keeps the whole commission when every split is zero", () => {
+    const net = calculateNetCommission(9000, {
+      brokerageSplitPercent: 0,
+      referralFeePercent: 0,
+      teamSplitPercent: 0,
+      otherDeductionsPercent: 0,
+    });
+    expect(net).toBe(9000);
+  });
+
+  // Not clamped on purpose -- the form surfaces this as a warning rather than
+  // hiding it behind a silent floor at zero.
+  it("goes negative when the splits exceed 100%", () => {
+    const net = calculateNetCommission(10000, {
+      brokerageSplitPercent: 80,
+      teamSplitPercent: 30,
+    });
+    expect(net).toBe(-1000);
   });
 });
 

@@ -210,9 +210,9 @@ export async function logCommissionAsIncomeAction(formData: FormData) {
   const gross = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
   const net = calculateNetCommission(gross, {
     brokerageSplitPercent: deal.brokerageSplitPercent ? Number(deal.brokerageSplitPercent) : null,
-    referralFeeAmount: deal.referralFeeAmount ? Number(deal.referralFeeAmount) : null,
-    teamSplitAmount: deal.teamSplitAmount ? Number(deal.teamSplitAmount) : null,
-    otherDeductions: deal.otherDeductions ? Number(deal.otherDeductions) : null,
+    referralFeePercent: deal.referralFeePercent ? Number(deal.referralFeePercent) : null,
+    teamSplitPercent: deal.teamSplitPercent ? Number(deal.teamSplitPercent) : null,
+    otherDeductionsPercent: deal.otherDeductionsPercent ? Number(deal.otherDeductionsPercent) : null,
   });
 
   // calculateNetCommission is neither clamped nor rounded, and an amount must
