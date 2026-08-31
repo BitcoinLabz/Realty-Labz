@@ -92,3 +92,37 @@ export async function changePasswordAction(
 
   return {};
 }
+
+/**
+ * What this agent lets their brokerage's managers see from Finances.
+ *
+ * Reads the checkboxes as present/absent rather than "true"/"false", which
+ * is how an unchecked HTML checkbox actually submits -- it sends nothing at
+ * all. Anything not ticked therefore turns sharing OFF, which is the safe
+ * direction for a form whose whole job is a privacy setting.
+ */
+export async function updateFinanceSharingAction(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You must be signed in" };
+
+  // Nothing to share with if you're not on a team. Guarded server-side so
+  // the flags can't be set from a stale page after leaving.
+  if (!session.user.teamId) {
+    return { error: "You're not part of a team" };
+  }
+
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: {
+      shareBusinessFinances: formData.get("shareBusinessFinances") === "on",
+      shareMileage: formData.get("shareMileage") === "on",
+    },
+  });
+
+  revalidatePath("/account");
+  revalidatePath("/team");
+  return { success: "Saved." };
+}

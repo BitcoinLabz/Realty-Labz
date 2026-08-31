@@ -218,7 +218,15 @@ async function detachFromTeam(userId: string, teamId: string) {
       : []),
     prisma.user.updateMany({
       where: { id: userId, teamId },
-      data: { teamId: null, role: "AGENT", teamJoinedAt: null },
+      // Sharing preferences reset too: opting in at one brokerage must not
+      // silently carry over to the next one they join.
+      data: {
+        teamId: null,
+        role: "AGENT",
+        teamJoinedAt: null,
+        shareBusinessFinances: false,
+        shareMileage: false,
+      },
     }),
     // Any unused invite they created is now orphaned authority -- someone who
     // just lost the right to add people shouldn't have live links that still

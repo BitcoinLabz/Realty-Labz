@@ -91,6 +91,21 @@ model User {
   // team before this shipped; that case falls back to "all closed deals".
   teamJoinedAt DateTime?
 
+  // What this agent has chosen to let their brokerage's managers see from
+  // the Finances section (2026-08-27). Both default to false: nothing under
+  // Finances has ever been team-visible, and turning that on by default
+  // would silently expose data people added under a different promise.
+  //
+  // Deliberately scoped to BUSINESS data only. Personal investments
+  // (Asset), Loans, and PERSONAL-scoped transactions have no toggle and are
+  // never queryable by a manager -- see the Architecture Principles note in
+  // CLAUDE.md. A broker has no business seeing an agent's mortgage.
+  //
+  // Reset on departure (see detachFromTeam) so opting in at one brokerage
+  // doesn't silently carry over to the next one.
+  shareBusinessFinances Boolean @default(false)
+  shareMileage          Boolean @default(false)
+
   clients            Client[]
   transactions       Transaction[]
   mileageLogs        MileageLog[]

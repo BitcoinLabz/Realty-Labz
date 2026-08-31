@@ -523,3 +523,102 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
     })),
   ];
 }
+
+export type SharedFinanceSummary = {
+  userId: string;
+  name: string | null;
+  // Null when that particular thing isn't shared -- distinct from 0, which
+  // means "shared, and it's zero".
+  businessIncome: number | null;
+  businessExpenses: number | null;
+  businessNet: number | null;
+  mileageDeduction: number | null;
+  mileageMiles: number | null;
+};
+
+/**
+ * What a brokerage's managers can see of their agents' finances -- which is
+ * only ever what each agent has explicitly switched on.
+ *
+ * Three properties this function is responsible for, all of them load-bearing:
+ *
+ *  1. It filters on the sharing flags in the QUERY, not after. An agent who
+ *     hasn't opted in is never fetched, so there's no shape where their
+ *     numbers exist in memory and a rendering mistake could leak them.
+ *  2. It only ever reads scope: "BUSINESS". Personal income and expenses have
+ *     no toggle and are not reachable from here at all.
+ *  3. There is no Asset or Loan query anywhere in it. Personal investments and
+ *     debt are not shareable by any setting -- see CLAUDE.md.
+ *
+ * Returns an empty array for a manager whose team has nobody sharing, which
+ * is what lets /team render nothing at all rather than an empty section.
+ */
+export async function getSharedTeamFinances(
+  teamId: string,
+  year: number,
+): Promise<SharedFinanceSummary[]> {
+  const start = new Date(Date.UTC(year, 0, 1));
+  const end = new Date(Date.UTC(year + 1, 0, 1));
+
+  const sharers = await prisma.user.findMany({
+    where: {
+      teamId,
+      OR: [{ shareBusinessFinances: true }, { shareMileage: true }],
+    },
+    select: { id: true, name: true, shareBusinessFinances: true, shareMileage: true },
+    orderBy: { name: "asc" },
+  });
+
+  if (sharers.length === 0) return [];
+
+  return Promise.all(
+    sharers.map(async (agent) => {
+      const [income, expenses, mileage] = await Promise.all([
+        agent.shareBusinessFinances
+          ? prisma.transaction.aggregate({
+              _sum: { amount: true },
+              where: {
+                userId: agent.id,
+                scope: "BUSINESS",
+                type: "INCOME",
+                date: { gte: start, lt: end },
+              },
+            })
+          : null,
+        agent.shareBusinessFinances
+          ? prisma.transaction.aggregate({
+              _sum: { amount: true },
+              where: {
+                userId: agent.id,
+                scope: "BUSINESS",
+                type: "EXPENSE",
+                date: { gte: start, lt: end },
+              },
+            })
+          : null,
+        agent.shareMileage
+          ? prisma.mileageLog.aggregate({
+              _sum: { deduction: true, miles: true },
+              where: { userId: agent.id, isBusiness: true, date: { gte: start, lt: end } },
+            })
+          : null,
+      ]);
+
+      const businessIncome = income ? Number(income._sum.amount ?? 0) : null;
+      const businessExpenses = expenses ? Number(expenses._sum.amount ?? 0) : null;
+
+      return {
+        userId: agent.id,
+        name: agent.name,
+        businessIncome,
+        businessExpenses,
+        businessNet:
+          businessIncome !== null && businessExpenses !== null
+            ? businessIncome - businessExpenses
+            : null,
+        mileageDeduction: mileage ? Number(mileage._sum.deduction ?? 0) : null,
+        mileageMiles: mileage ? Number(mileage._sum.miles ?? 0) : null,
+      };
+    }),
+  );
+}

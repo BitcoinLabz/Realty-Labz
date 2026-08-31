@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { isManager, roleLabel } from "@/lib/authorization";
 import { formatCurrency } from "@/lib/format";
+import { getSharedTeamFinances } from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 
@@ -29,7 +30,8 @@ export default async function TeamDashboardPage() {
   const now = new Date();
   const soon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [teammates, deals, upcomingDeadlines, missingDocDeals, archivedDeals] = await Promise.all([
+  const [teammates, deals, upcomingDeadlines, missingDocDeals, archivedDeals, sharedFinances] =
+    await Promise.all([
     prisma.user.findMany({
       where: { teamId },
       orderBy: { createdAt: "asc" },
@@ -73,6 +75,10 @@ export default async function TeamDashboardPage() {
       },
       orderBy: { closingDate: "desc" },
     }),
+    // Only ever returns agents who switched sharing on themselves -- the
+    // filtering happens in the query, so a non-sharer's numbers never exist
+    // here to be leaked by a rendering mistake. See getSharedTeamFinances.
+    getSharedTeamFinances(teamId, currentYear),
   ]);
 
   const statsByAgent = new Map(
@@ -210,6 +216,45 @@ export default async function TeamDashboardPage() {
           </div>
         )}
       </section>
+
+      {/* Absent entirely when nobody has opted in, rather than an empty
+          section nudging a broker to go ask. Sharing is the agent's call. */}
+      {sharedFinances.length > 0 ? (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="text-base font-semibold text-foreground">Shared finances</h2>
+          <p className="mb-6 mt-1 text-sm text-muted">
+            Totals for {currentYear}, from agents who chose to share them. Business only — nobody
+            can share their personal investments, loans or clients with you.
+          </p>
+          <div className="flex flex-col gap-2">
+            {sharedFinances.map((agent) => (
+              <div
+                key={agent.userId}
+                className="flex flex-col gap-2 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              >
+                <span className="truncate text-sm font-medium text-foreground">{agent.name}</span>
+                <div className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-1 text-sm text-muted">
+                  {agent.businessNet !== null ? (
+                    <>
+                      <span>{formatCurrency(agent.businessIncome ?? 0)} in</span>
+                      <span>{formatCurrency(agent.businessExpenses ?? 0)} out</span>
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(agent.businessNet)} net
+                      </span>
+                    </>
+                  ) : null}
+                  {agent.mileageDeduction !== null ? (
+                    <span>
+                      {Math.round(agent.mileageMiles ?? 0).toLocaleString()} mi ·{" "}
+                      {formatCurrency(agent.mileageDeduction)}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {/* Only rendered when there's something in it -- a brokerage that has
           never had anyone leave shouldn't carry an empty compliance section. */}

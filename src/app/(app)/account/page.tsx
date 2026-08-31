@@ -1,4 +1,4 @@
-import { KeyRound, User, Users } from "lucide-react";
+import { Eye, KeyRound, User, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -15,6 +15,7 @@ import { PasswordForm } from "./password-form";
 import { InviteForm } from "./invite-form";
 import { InviteByLicenseForm } from "./invite-by-license-form";
 import { LeaveTeamForm } from "./leave-team-form";
+import { FinanceSharingForm } from "./finance-sharing-form";
 import { InviteList, type PendingInvite } from "./invite-list";
 import { MemberRow } from "./member-row";
 
@@ -141,9 +142,23 @@ export default async function AccountPage() {
             </div>
             <p className="mt-4 text-sm text-muted">
               Managers see everyone&apos;s transactions — properties, dates, commission and
-              documents. Nobody, at any role, can see another person&apos;s clients, income and
-              expenses, mileage or anything under Finances.
+              documents. Nothing under Finances is shared unless you choose to share it, and
+              clients are never shared.
             </p>
+          </Card>
+
+          <Card
+            title="What your brokerage can see"
+            icon={Eye}
+            description="Off by default. Nothing here is shared until you turn it on, and you can turn it back off at any time."
+          >
+            <div className="max-w-lg">
+              <FinanceSharingForm
+                orgWord={orgWord}
+                shareBusinessFinances={user.shareBusinessFinances}
+                shareMileage={user.shareMileage}
+              />
+            </div>
           </Card>
 
           {canManage ? (
