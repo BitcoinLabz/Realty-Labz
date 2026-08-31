@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { createFileSchema, dealSchema } from "@/lib/validation";
-import { teamOrOwnFilter } from "@/lib/authorization";
+import { ownerOnlyFilter } from "@/lib/authorization";
 import type { FormState } from "@/app/actions/auth";
 
 function parseDealForm(formData: FormData) {
@@ -61,7 +61,7 @@ export async function createDealAction(
 
   if (clientId) {
     const client = await prisma.client.findFirst({
-      where: { id: clientId, ...teamOrOwnFilter(session.user) },
+      where: { id: clientId, ...ownerOnlyFilter(session.user) },
     });
     if (!client) return { error: "Client not found" };
   }
@@ -106,7 +106,7 @@ export async function updateDealAction(
 
   if (clientId) {
     const client = await prisma.client.findFirst({
-      where: { id: clientId, ...teamOrOwnFilter(session.user) },
+      where: { id: clientId, ...ownerOnlyFilter(session.user) },
     });
     if (!client) return { error: "Client not found" };
   }
@@ -115,7 +115,7 @@ export async function updateDealAction(
   if (!resolvedPartner.ok) return { error: resolvedPartner.error };
 
   const result = await prisma.deal.updateMany({
-    where: { id, ...teamOrOwnFilter(session.user) },
+    where: { id, ...ownerOnlyFilter(session.user) },
     data: {
       ...rest,
       closingDate: closingDate ? new Date(closingDate) : null,
@@ -223,11 +223,11 @@ export async function deleteDealAction(formData: FormData) {
   if (typeof id !== "string" || !id) return;
 
   const deal = await prisma.deal.findFirst({
-    where: { id, ...teamOrOwnFilter(session.user) },
+    where: { id, ...ownerOnlyFilter(session.user) },
     select: { clientId: true },
   });
 
-  await prisma.deal.deleteMany({ where: { id, ...teamOrOwnFilter(session.user) } });
+  await prisma.deal.deleteMany({ where: { id, ...ownerOnlyFilter(session.user) } });
 
   if (deal?.clientId) {
     revalidatePath(`/clients/${deal.clientId}`);
@@ -260,7 +260,7 @@ export async function duplicateDealAction(formData: FormData) {
   if (typeof id !== "string" || !id) return;
 
   const source = await prisma.deal.findFirst({
-    where: { id, ...teamOrOwnFilter(session.user) },
+    where: { id, ...ownerOnlyFilter(session.user) },
   });
   if (!source) return;
 

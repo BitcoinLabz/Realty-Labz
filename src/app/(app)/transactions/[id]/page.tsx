@@ -12,6 +12,7 @@ import { ContractAnalyzer } from "./contract-analyzer";
 import { DeadlineList } from "./deadline-list";
 import { DealDocuments } from "./deal-documents";
 import { DeleteDealButton } from "./delete-deal-button";
+import { ReadOnlyDealView } from "./read-only-view";
 import { OpenHouseSection } from "./open-house-section";
 import { ReferralPartnerSection } from "./referral-partner-section";
 import { FormSubmissionList } from "@/app/(app)/clients/form-submission-list";
@@ -50,6 +51,7 @@ export default async function DealDetailPage({
         deadlines: { orderBy: { dueDate: "asc" } },
         documents: { orderBy: { createdAt: "desc" } },
         client: { select: { id: true, name: true, email: true } },
+        user: { select: { name: true } },
         expenses: { where: { type: "EXPENSE" }, orderBy: { date: "desc" } },
         openHouses: {
           orderBy: { date: "desc" },
@@ -100,6 +102,41 @@ export default async function DealDetailPage({
   ]);
 
   if (!deal) notFound();
+
+  // A manager reached this through teamOrOwnFilter -- they can see the team's
+  // transactions because a broker is accountable for files closed under their
+  // license. Supervision means reading a file, not editing it, so anyone who
+  // doesn't own this one gets the read-and-download view instead.
+  //
+  // This is presentation. The boundary itself lives in the server actions,
+  // every one of which is scoped by ownerOnlyFilter.
+  if (deal.userId !== session!.user.id) {
+    return (
+      <ReadOnlyDealView
+        agentName={deal.user.name}
+        propertyAddress={deal.propertyAddress}
+        clientName={deal.client?.name ?? null}
+        side={deal.side}
+        status={deal.status}
+        mlsNumber={deal.mlsNumber}
+        listPrice={deal.listPrice ? Number(deal.listPrice) : null}
+        salePrice={deal.salePrice ? Number(deal.salePrice) : null}
+        closingDate={deal.closingDate ? deal.closingDate.toISOString() : null}
+        grossCommission={deal.commissionAmount ? Number(deal.commissionAmount) : 0}
+        deadlines={deal.deadlines.map((d) => ({
+          id: d.id,
+          label: d.label,
+          dueDate: d.dueDate.toISOString(),
+          completedAt: d.completedAt ? d.completedAt.toISOString() : null,
+        }))}
+        documents={deal.documents.map((d) => ({
+          id: d.id,
+          fileName: d.fileName,
+          createdAt: d.createdAt.toISOString(),
+        }))}
+      />
+    );
+  }
 
   const referralPartnerDtos: ReferralPartnerDTO[] = referralPartners;
 

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter } from "@/lib/authorization";
+import { ownerOnlyFilter } from "@/lib/authorization";
 import { sendDeadlineReminderEmail } from "@/lib/email";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import type { FormState } from "@/app/actions/auth";
@@ -90,7 +90,7 @@ export async function sendDeadlineReminderNowAction(
   // no ownership of its own, the same cross-tenant guard deal-deadlines.ts
   // already uses.
   const deal = await prisma.deal.findFirst({
-    where: { id: dealId, ...teamOrOwnFilter(session.user) },
+    where: { id: dealId, ...ownerOnlyFilter(session.user) },
     select: { id: true },
   });
   if (!deal) return { error: "Transaction not found" };

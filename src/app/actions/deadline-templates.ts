@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { canManageSharedResources, teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
+import {
+  canManageSharedResources,
+  ownerOnlyFilter,
+  teamSharedFilter,
+} from "@/lib/authorization";
 import { buildDeadlinesFromTemplate, parseAnchorDateUtc } from "@/lib/deadline-templates";
 import type { FormState } from "@/app/actions/auth";
 
@@ -174,9 +178,9 @@ export async function applyDeadlineTemplateAction(
   }
 
   // Same guard as createDeadlineAction: the transaction is checked under
-  // teamOrOwnFilter before anything is written to it.
+  // ownerOnlyFilter before anything is written to it.
   const deal = await prisma.deal.findFirst({
-    where: { id: dealId, ...teamOrOwnFilter(session.user) },
+    where: { id: dealId, ...ownerOnlyFilter(session.user) },
     select: { id: true },
   });
   if (!deal) return { error: "Transaction not found" };

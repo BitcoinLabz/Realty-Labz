@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { dealDeadlineSchema } from "@/lib/validation";
-import { teamOrOwnFilter } from "@/lib/authorization";
+import { ownerOnlyFilter } from "@/lib/authorization";
 import type { FormState } from "@/app/actions/auth";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -13,7 +13,7 @@ async function assertDealAccess(
   sessionUser: { id: string; role: Role; teamId: string | null },
 ) {
   return prisma.deal.findFirst({
-    where: { id: dealId, ...teamOrOwnFilter(sessionUser) },
+    where: { id: dealId, ...ownerOnlyFilter(sessionUser) },
   });
 }
 

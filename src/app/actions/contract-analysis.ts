@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter } from "@/lib/authorization";
+import { ownerOnlyFilter } from "@/lib/authorization";
 import { readDocumentFile } from "@/lib/document-storage";
 import {
   analyzeContractPdf,
@@ -39,7 +39,7 @@ export async function analyzeContractAction(
   // deal analyze a document belonging to a different tenant, since a
   // Document id carries no ownership information of its own. Same compound
   // -where guard as deal-deadlines.ts.
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...teamOrOwnFilter(session.user) } });
+  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...ownerOnlyFilter(session.user) } });
   if (!deal) return { error: "Deal not found" };
 
   const document = await prisma.document.findFirst({ where: { id: documentId, dealId } });
@@ -77,7 +77,7 @@ export async function applyContractAnalysisAction(
   const dealId = formData.get("dealId");
   if (typeof dealId !== "string" || !dealId) return { error: "Missing deal" };
 
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...teamOrOwnFilter(session.user) } });
+  const deal = await prisma.deal.findFirst({ where: { id: dealId, ...ownerOnlyFilter(session.user) } });
   if (!deal) return { error: "Deal not found" };
 
   const propertyAddress = formData.get("propertyAddress");
@@ -121,7 +121,7 @@ export async function applyContractAnalysisAction(
 
   if (Object.keys(dealUpdates).length > 0) {
     await prisma.deal.updateMany({
-      where: { id: dealId, ...teamOrOwnFilter(session.user) },
+      where: { id: dealId, ...ownerOnlyFilter(session.user) },
       data: dealUpdates,
     });
   }

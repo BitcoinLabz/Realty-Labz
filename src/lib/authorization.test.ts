@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   canManageMembership,
   canManageSharedResources,
+  documentReadFilter,
+  ownerOnlyFilter,
   isManager,
   roleLabel,
   teamLabel,
@@ -203,5 +205,57 @@ describe("teamLabel", () => {
 
   it("says team otherwise", () => {
     expect(teamLabel([{ role: "TEAM_LEAD" }, { role: "AGENT" }])).toBe("team");
+  });
+});
+
+// The read/write split. teamOrOwnFilter widens for a manager; ownerOnlyFilter
+// never does. Getting these confused would let a broker delete an agent's
+// transaction, which is what this pair exists to prevent.
+describe("ownerOnlyFilter", () => {
+  it("is the caller's own records, even for a broker", () => {
+    expect(ownerOnlyFilter({ id: "u1", role: "BROKER", teamId: "t1" })).toEqual({ userId: "u1" });
+    expect(ownerOnlyFilter({ id: "u1", role: "ADMIN", teamId: "t1" })).toEqual({ userId: "u1" });
+    expect(ownerOnlyFilter({ id: "u1", role: "TEAM_LEAD", teamId: "t1" })).toEqual({
+      userId: "u1",
+    });
+  });
+
+  it("matches teamOrOwnFilter for an agent — nothing changes for them", () => {
+    const agent = { id: "u1", role: "AGENT" as const, teamId: "t1" };
+    expect(ownerOnlyFilter(agent)).toEqual(teamOrOwnFilter(agent));
+  });
+
+  it("differs from teamOrOwnFilter for a manager — that's the whole point", () => {
+    const broker = { id: "u1", role: "BROKER" as const, teamId: "t1" };
+    expect(ownerOnlyFilter(broker)).not.toEqual(teamOrOwnFilter(broker));
+  });
+});
+
+// Widens downloads through the DEAL only, so a broker can pull transaction
+// paperwork without reaching an agent's client files or unfiled uploads.
+describe("documentReadFilter", () => {
+  it("lets a manager reach a teammate's document via its transaction", () => {
+    expect(documentReadFilter({ id: "u1", role: "BROKER", teamId: "t1" })).toEqual({
+      OR: [{ userId: "u1" }, { deal: { user: { teamId: "t1" } } }],
+    });
+  });
+
+  it("never widens past the deal — there is no bare client or unfiled clause", () => {
+    const filter = documentReadFilter({ id: "u1", role: "BROKER", teamId: "t1" });
+    const serialised = JSON.stringify(filter);
+    expect(serialised).not.toContain("clientId");
+    expect(filter.OR).toHaveLength(2);
+  });
+
+  it("stays own-records-only for an agent", () => {
+    expect(documentReadFilter({ id: "u1", role: "AGENT", teamId: "t1" })).toEqual({
+      OR: [{ userId: "u1" }, { deal: { userId: "u1" } }],
+    });
+  });
+
+  it("stays own-records-only for a manager with no team", () => {
+    expect(documentReadFilter({ id: "u1", role: "BROKER", teamId: null })).toEqual({
+      OR: [{ userId: "u1" }, { deal: { userId: "u1" } }],
+    });
   });
 });

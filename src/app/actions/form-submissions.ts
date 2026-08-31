@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
+import { ownerOnlyFilter, teamSharedFilter } from "@/lib/authorization";
 import {
   sendCompletedDocumentEmail,
   sendDeclinedNotificationEmail,
@@ -98,7 +98,7 @@ export async function sendFormSubmissionAction(
   }
   let deal: Deal | null = null;
   if (dealId) {
-    deal = await prisma.deal.findFirst({ where: { id: dealId, ...teamOrOwnFilter(session.user) } });
+    deal = await prisma.deal.findFirst({ where: { id: dealId, ...ownerOnlyFilter(session.user) } });
     if (!deal) return { error: "Deal not found" };
   }
 

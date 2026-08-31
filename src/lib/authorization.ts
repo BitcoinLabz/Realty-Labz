@@ -108,3 +108,41 @@ export function wouldLeaveTeamUnmanaged(
 export function teamLabel(members: { role: Role }[]): "brokerage" | "team" {
   return members.some((m) => m.role === "BROKER") ? "brokerage" : "team";
 }
+
+/**
+ * Write scope. The counterpart to teamOrOwnFilter, which is now READ scope.
+ *
+ * A manager can see every transaction on their team because a broker is
+ * accountable for files closed under their license -- but supervision means
+ * reading a file, not editing or deleting one. Until 2026-08-31 the same
+ * filter did both, so a broker could silently delete an agent's transaction,
+ * its deadlines, or its open houses.
+ *
+ * Named rather than inlined as `{ userId }` so a grep for ownerOnlyFilter
+ * lists every place that decision was made on purpose, instead of hiding
+ * among the hundreds of unrelated userId lookups.
+ *
+ * For an AGENT this is identical to teamOrOwnFilter, so nothing about their
+ * own work changes -- only a manager's reach does.
+ */
+export function ownerOnlyFilter(sessionUser: SessionUser) {
+  return { userId: sessionUser.id };
+}
+
+/**
+ * Which documents a user may download.
+ *
+ * Your own, always. Plus -- for a manager -- anything attached to a
+ * transaction they can see, so a broker can actually pull the contracts and
+ * paperwork they're accountable for.
+ *
+ * Deliberately routed through the DEAL. A Document with only a clientId, or
+ * no link at all, stays owner-only: clients are never team-visible (see
+ * CLAUDE.md), and a broker has no claim on an agent's client file or their
+ * unfiled uploads. Transaction paperwork is the whole of what widens here.
+ */
+export function documentReadFilter(sessionUser: SessionUser) {
+  return {
+    OR: [{ userId: sessionUser.id }, { deal: teamOrOwnFilter(sessionUser) }],
+  };
+}

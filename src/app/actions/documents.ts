@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter } from "@/lib/authorization";
+import { ownerOnlyFilter } from "@/lib/authorization";
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
@@ -28,14 +28,14 @@ async function resolveClientId(
 
 async function resolveDealId(
   dealId: FormDataEntryValue | null,
-  sessionUser: Parameters<typeof teamOrOwnFilter>[0],
+  sessionUser: Parameters<typeof ownerOnlyFilter>[0],
 ): Promise<{ ok: true; dealId: string | null } | { ok: false; error: string }> {
   if (typeof dealId !== "string" || dealId === "") {
     return { ok: true, dealId: null };
   }
 
   const deal = await prisma.deal.findFirst({
-    where: { id: dealId, ...teamOrOwnFilter(sessionUser) },
+    where: { id: dealId, ...ownerOnlyFilter(sessionUser) },
   });
   if (!deal) return { ok: false, error: "Deal not found" };
 

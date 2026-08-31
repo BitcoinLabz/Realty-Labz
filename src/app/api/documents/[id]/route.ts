@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { readDocumentFile } from "@/lib/document-storage";
+import { documentReadFilter } from "@/lib/authorization";
 
 export async function GET(
   _request: Request,
@@ -13,8 +14,12 @@ export async function GET(
   }
 
   const { id } = await params;
+  // Your own documents, plus -- for a manager -- anything attached to a
+  // transaction they can see, so a broker can pull the contracts they're
+  // accountable for. Client-only and unfiled documents stay owner-only; see
+  // documentReadFilter for why that line is drawn through the deal.
   const doc = await prisma.document.findFirst({
-    where: { id, userId: session.user.id },
+    where: { id, ...documentReadFilter(session.user) },
   });
   if (!doc) {
     return new NextResponse("Not found", { status: 404 });
