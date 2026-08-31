@@ -1,10 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { redirect } from "next/navigation";
+import { auth, unstable_update } from "@/auth";
 import { prisma } from "@/lib/db";
 import { canManageMembership, wouldLeaveTeamUnmanaged } from "@/lib/authorization";
 import { changeMemberRoleSchema } from "@/lib/validation";
+import { selectDealsToArchive } from "@/lib/team-archive";
 import type { FormState } from "@/app/actions/auth";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -117,21 +119,114 @@ export async function removeMemberAction(
   const guard = await guardMembershipChange(formData.get("userId"), null);
   if (!guard.ok) return { error: guard.error };
 
-  await prisma.user.updateMany({
-    where: { id: guard.target.id, teamId: guard.teamId },
-    data: { teamId: null, role: "AGENT" },
-  });
-
-  // Any unused invite they created is now orphaned authority -- someone who
-  // just lost the right to add people shouldn't have live links that still
-  // do it.
-  await prisma.teamInvite.deleteMany({
-    where: { teamId: guard.teamId, createdBy: guard.target.id, usedAt: null },
-  });
+  await detachFromTeam(guard.target.id, guard.teamId);
 
   revalidatePath("/account");
   revalidatePath("/team");
   return { success: `${guard.target.name ?? "They"} have been removed. Their own data is untouched.` };
+}
+
+/**
+ * An agent leaving of their own accord.
+ *
+ * Deliberately needs nobody's approval. An agent who moves brokerages
+ * shouldn't have to ask their old broker's permission to unhook their own
+ * account, and their clients and finances were never the brokerage's to
+ * begin with. The brokerage keeps what it's legally required to keep --
+ * see detachFromTeam.
+ *
+ * The one thing it can't do is orphan a team: the last person who can manage
+ * the roster can't walk out and leave nobody able to invite or remove.
+ */
+export async function leaveTeamAction(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You must be signed in" };
+
+  const teamId = session.user.teamId;
+  if (!teamId) return { error: "You're not part of a team" };
+
+  // Typed back by the user, same shape as every other destructive
+  // confirmation in this app -- leaving costs a brokerage its visibility and
+  // shouldn't be one stray click.
+  if (formData.get("confirm") !== "LEAVE") {
+    return { error: "Type LEAVE to confirm." };
+  }
+
+  const members = await prisma.user.findMany({
+    where: { teamId },
+    select: { id: true, role: true },
+  });
+
+  if (wouldLeaveTeamUnmanaged(members, session.user.id, null)) {
+    return {
+      error:
+        "You're the only person who can manage this team. Promote someone to admin first, or ask support to close the team.",
+    };
+  }
+
+  await detachFromTeam(session.user.id, teamId);
+
+  try {
+    await unstable_update({ user: { teamId: null, role: "AGENT" } });
+  } catch (err) {
+    console.error("[leave-team] session update failed; will refresh on its own", err);
+  }
+
+  revalidatePath("/account");
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
+}
+
+/**
+ * Detaches a user from a team, whichever direction it came from, and leaves
+ * the brokerage with the records it's required to keep.
+ *
+ * Michigan brokers have record-retention obligations, so a departure must
+ * not vaporise the transaction history that closed under them. But nothing
+ * is copied and nothing moves: `userId` is untouched, so the agent keeps
+ * full ownership of every deal. The brokerage gets a read-only reference via
+ * `archivedTeamId`, which only /team's archive section ever queries.
+ *
+ * Which deals qualify is decided by the pure, separately tested
+ * selectDealsToArchive -- closed under this brokerage, never the active ones
+ * that follow the agent to their next office.
+ */
+async function detachFromTeam(userId: string, teamId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { teamJoinedAt: true },
+  });
+
+  const deals = await prisma.deal.findMany({
+    where: { userId },
+    select: { id: true, status: true, closingDate: true },
+  });
+
+  const toArchive = selectDealsToArchive(deals, user?.teamJoinedAt ?? null);
+
+  await prisma.$transaction([
+    ...(toArchive.length > 0
+      ? [
+          prisma.deal.updateMany({
+            where: { id: { in: toArchive }, userId },
+            data: { archivedTeamId: teamId },
+          }),
+        ]
+      : []),
+    prisma.user.updateMany({
+      where: { id: userId, teamId },
+      data: { teamId: null, role: "AGENT", teamJoinedAt: null },
+    }),
+    // Any unused invite they created is now orphaned authority -- someone who
+    // just lost the right to add people shouldn't have live links that still
+    // do it.
+    prisma.teamInvite.deleteMany({
+      where: { teamId, createdBy: userId, usedAt: null },
+    }),
+  ]);
 }
 
 function roleArticle(role: Role): string {

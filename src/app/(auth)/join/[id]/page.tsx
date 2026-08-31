@@ -18,6 +18,15 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
     auth(),
   ]);
 
+  // Whether to show the "add your license" field inline. Asked here rather
+  // than sending them to Settings, where they'd lose the invite.
+  const viewer = session?.user
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { licenseNumber: true },
+      })
+    : null;
+
   if (!invite || invite.usedAt || invite.expiresAt < new Date()) {
     return (
       <div>
@@ -99,7 +108,12 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
           </p>
         </div>
 
-        <AcceptInviteForm inviteId={invite.id} teamName={teamName} />
+        <AcceptInviteForm
+          inviteId={invite.id}
+          teamName={teamName}
+          requiresBrokerageNumber={!!invite.team.brokerageNumber}
+          needsLicenseNumber={!viewer?.licenseNumber}
+        />
       </div>
     );
   }
@@ -113,7 +127,11 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
           Create your account to join the {orgWord}.
         </p>
       </div>
-      <JoinForm inviteId={invite.id} />
+      <JoinForm
+        inviteId={invite.id}
+        teamName={teamName}
+        requiresBrokerageNumber={!!invite.team.brokerageNumber}
+      />
       <p className="text-center text-sm text-muted">
         Already have a Realty Labz account?{" "}
         <Link

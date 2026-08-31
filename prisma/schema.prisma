@@ -27,13 +27,23 @@ enum Role {
 }
 
 model Team {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  // The brokerage's own license number (2026-08-27). Typed by an agent when
+  // they accept an invite, as a confirmation that they're joining the office
+  // they meant to. Deliberately NOT a password: a brokerage license number
+  // is public on Michigan's LARA lookup, so it stops the accidental join
+  // (a forwarded link, the wrong person clicking) but grants nothing on its
+  // own -- the security is still that a manager generated an unguessable
+  // invite. Null for teams created before this, which keep working exactly
+  // as they did: no number set means no field shown and no check run.
+  brokerageNumber String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  users   User[]
-  invites TeamInvite[]
+  users         User[]
+  invites       TeamInvite[]
+  archivedDeals Deal[]       @relation("ArchivedDeals")
 
   @@map("teams")
 }
@@ -61,6 +71,25 @@ model User {
   // real bracket calculation; see the "estimate, not tax advice" disclaimer
   // in the UI.
   estimatedIncomeTaxRatePercent Decimal? @db.Decimal(5, 2)
+
+  // Michigan real estate salesperson license number (2026-08-27). Nullable
+  // in the database on purpose -- every account that existed before this was
+  // added has none, so NOT NULL would fail the migration outright. Required
+  // by the signup form for new accounts; everyone else adds it in Account
+  // settings.
+  //
+  // Unique so a broker can invite by license number without ambiguity. We
+  // can't verify a number actually belongs to the person typing it, so first
+  // to register wins -- a deliberate tradeoff, since invite-by-number can't
+  // work without it.
+  licenseNumber String? @unique
+
+  // When this user joined their current team. Used to decide which of their
+  // closed deals a brokerage retains when they leave (see
+  // src/lib/team-archive.ts) -- a deal that closed at a previous brokerage
+  // shouldn't be misattributed to this one. Null for anyone already on a
+  // team before this shipped; that case falls back to "all closed deals".
+  teamJoinedAt DateTime?
 
   clients            Client[]
   transactions       Transaction[]
@@ -109,21 +138,21 @@ enum ClientStage {
 }
 
 model Client {
-  id        String        @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  notes     String?
-  source    ClientSource?
-  stage     ClientStage   @default(NEW)
+  id                     String        @id @default(cuid())
+  name                   String
+  email                  String?
+  phone                  String?
+  notes                  String?
+  source                 ClientSource?
+  stage                  ClientStage   @default(NEW)
   // Email is the only real notification channel this app has (Resend is
   // already configured) -- a plain opt-in/out rather than a channel picker,
   // which would imply options (text/SMS) that don't actually exist yet (see
   // CLAUDE.md's explicit SMS-out-of-scope note: needs a paid provider +
   // A2P 10DLC business registration, not a coding task).
-  emailDeadlineReminders Boolean @default(true)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  emailDeadlineReminders Boolean       @default(true)
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -327,19 +356,19 @@ enum DealStatus {
 // separate teamId — team-wide visibility for managers is a query-time join
 // through user.teamId (see src/lib/authorization.ts).
 model Deal {
-  id                    String     @id @default(cuid())
-  side                  DealSide
-  status                DealStatus @default(ACTIVE)
+  id                     String     @id @default(cuid())
+  side                   DealSide
+  status                 DealStatus @default(ACTIVE)
   // Nullable (2026-08-20): a file/deal can exist before a property is found
   // yet -- see the "Create a file" wizard's "Is there a property yet?" step.
   // Every read site across the app was audited and made null-safe alongside
   // this change, not just the column itself.
-  propertyAddress       String?
-  mlsNumber             String?
-  listPrice             Decimal?   @db.Decimal(12, 2)
-  salePrice             Decimal?   @db.Decimal(12, 2)
-  commissionRate        Decimal?   @db.Decimal(5, 2)
-  commissionAmount      Decimal?   @db.Decimal(12, 2)
+  propertyAddress        String?
+  mlsNumber              String?
+  listPrice              Decimal?   @db.Decimal(12, 2)
+  salePrice              Decimal?   @db.Decimal(12, 2)
+  commissionRate         Decimal?   @db.Decimal(5, 2)
+  commissionAmount       Decimal?   @db.Decimal(12, 2)
   // Commission-split breakdown. All four are PERCENTAGES of commissionAmount
   // (2026-08-26 -- referral fee, team split, and other deductions used to be
   // flat dollar figures; the migration converted existing rows to their
@@ -347,14 +376,14 @@ model Deal {
   // a split stays correct when the sale price or commission changes, instead
   // of a stored dollar figure quietly going stale. See calculateNetCommission
   // in src/lib/commission.ts for the computation.
-  brokerageSplitPercent  Decimal?  @db.Decimal(5, 2)
-  referralFeePercent     Decimal?  @db.Decimal(5, 2)
-  teamSplitPercent       Decimal?  @db.Decimal(5, 2)
-  otherDeductionsPercent Decimal?  @db.Decimal(5, 2)
-  closingDate           DateTime?
-  notes                 String?
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
+  brokerageSplitPercent  Decimal?   @db.Decimal(5, 2)
+  referralFeePercent     Decimal?   @db.Decimal(5, 2)
+  teamSplitPercent       Decimal?   @db.Decimal(5, 2)
+  otherDeductionsPercent Decimal?   @db.Decimal(5, 2)
+  closingDate            DateTime?
+  notes                  String?
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -368,6 +397,16 @@ model Deal {
   referralPartner   ReferralPartner? @relation(fields: [referralPartnerId], references: [id], onDelete: SetNull)
   referralPartnerId String?
 
+  // Retained by a brokerage after the agent leaves (2026-08-27). Stamped on
+  // departure for deals that CLOSED under that brokerage, so a broker keeps
+  // the transaction records Michigan requires them to hold without the
+  // agent losing anything -- userId is untouched, nothing is copied, and
+  // the deal stays fully theirs. Read-only for the brokerage by
+  // construction: only /team's archive section queries this column, and no
+  // edit or delete path does.
+  archivedTeam   Team?   @relation("ArchivedDeals", fields: [archivedTeamId], references: [id], onDelete: SetNull)
+  archivedTeamId String?
+
   deadlines       DealDeadline[]
   documents       Document[]
   formSubmissions FormSubmission[]
@@ -377,6 +416,7 @@ model Deal {
   @@index([userId])
   @@index([clientId])
   @@index([referralPartnerId])
+  @@index([archivedTeamId])
   @@map("deals")
 }
 
@@ -447,11 +487,11 @@ model OpenHouseVisitor {
 // else an agent adds) — deliberately not fixed fields on Deal, so Phase 3's
 // automatic deadline detection can create arbitrary deadlines here too.
 model DealDeadline {
-  id          String    @id @default(cuid())
-  label       String
-  dueDate     DateTime
-  completedAt DateTime?
-  createdAt   DateTime  @default(now())
+  id                  String    @id @default(cuid())
+  label               String
+  dueDate             DateTime
+  completedAt         DateTime?
+  createdAt           DateTime  @default(now())
   // Stamped once a reminder email has been sent (regardless of delivery
   // success -- same fire-and-forget philosophy every other email send in
   // this app already has, no retry queue exists anywhere) so
@@ -493,8 +533,8 @@ model DeadlineTemplate {
 }
 
 model DeadlineTemplateItem {
-  id    String @id @default(cuid())
-  label String
+  id         String @id @default(cuid())
+  label      String
   // Days from the anchor date. Negative is meaningful and allowed -- e.g. -3
   // for "final walkthrough, three days before closing".
   offsetDays Int

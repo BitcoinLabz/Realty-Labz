@@ -29,7 +29,7 @@ export default async function TeamDashboardPage() {
   const now = new Date();
   const soon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
-  const [teammates, deals, upcomingDeadlines, missingDocDeals] = await Promise.all([
+  const [teammates, deals, upcomingDeadlines, missingDocDeals, archivedDeals] = await Promise.all([
     prisma.user.findMany({
       where: { teamId },
       orderBy: { createdAt: "asc" },
@@ -56,6 +56,22 @@ export default async function TeamDashboardPage() {
       },
       include: { user: true },
       orderBy: { createdAt: "desc" },
+    }),
+    // Records retained for agents who have since left. Read-only by
+    // construction: this is the only query in the app that reads
+    // archivedTeamId, and no edit or delete path touches it. The deals still
+    // belong to the agent -- userId is untouched -- so nothing here is the
+    // brokerage's to change.
+    prisma.deal.findMany({
+      where: { archivedTeamId: teamId },
+      select: {
+        id: true,
+        propertyAddress: true,
+        closingDate: true,
+        commissionAmount: true,
+        user: { select: { name: true } },
+      },
+      orderBy: { closingDate: "desc" },
     }),
   ]);
 
@@ -194,6 +210,45 @@ export default async function TeamDashboardPage() {
           </div>
         )}
       </section>
+
+      {/* Only rendered when there's something in it -- a brokerage that has
+          never had anyone leave shouldn't carry an empty compliance section. */}
+      {archivedDeals.length > 0 ? (
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <h2 className="text-base font-semibold text-foreground">Former agents</h2>
+          <p className="mb-6 mt-1 text-sm text-muted">
+            Transactions that closed under your brokerage before the agent left. Kept for your
+            records — these belong to the agent, so they&apos;re read-only here.
+          </p>
+          <div className="flex flex-col gap-2">
+            {archivedDeals.map((deal) => (
+              <div
+                key={deal.id}
+                className="flex flex-col gap-1 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+              >
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-sm font-medium text-foreground">
+                    {dealDisplayName(deal.propertyAddress)}
+                  </span>
+                  <span className="text-sm text-muted">
+                    {deal.user.name}
+                    {deal.closingDate
+                      ? ` · Closed ${deal.closingDate.toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}`
+                      : ""}
+                  </span>
+                </div>
+                <span className="shrink-0 text-sm text-muted">
+                  {deal.commissionAmount ? formatCurrency(Number(deal.commissionAmount)) : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

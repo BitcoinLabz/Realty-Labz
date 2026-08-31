@@ -1,6 +1,6 @@
 import { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const variantClasses: Record<Variant, string> = {
   primary:
@@ -8,6 +8,9 @@ const variantClasses: Record<Variant, string> = {
   secondary:
     "bg-surface text-foreground border border-border hover:bg-border/40 disabled:opacity-50",
   ghost: "text-foreground hover:bg-surface disabled:opacity-50",
+  // For the confirming step of a destructive action, once the user has
+  // already opted into it -- not for the link that opens the confirmation.
+  danger: "bg-danger text-white hover:opacity-90 disabled:opacity-50",
 };
 
 export function Button({

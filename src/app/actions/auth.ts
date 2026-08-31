@@ -34,6 +34,8 @@ export async function signupAction(
     password: formData.get("password"),
     accountType: formData.get("accountType"),
     teamName: formData.get("teamName") || undefined,
+    licenseNumber: formData.get("licenseNumber"),
+    brokerageNumber: formData.get("brokerageNumber") || undefined,
   });
 
   if (!parsed.success) {
@@ -44,11 +46,38 @@ export async function signupAction(
     return { fieldErrors };
   }
 
-  const { name, email, password, accountType, teamName } = parsed.data;
+  const { name, email, password, accountType, teamName, licenseNumber, brokerageNumber } =
+    parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { fieldErrors: { email: "An account with this email already exists" } };
+  }
+
+  // Checked up front so the message names the field, rather than surfacing a
+  // raw unique-constraint failure from the insert below. We can't verify a
+  // license belongs to whoever typed it, so first to register wins -- a
+  // deliberate tradeoff (invite-by-number needs uniqueness), which is why
+  // the copy points at a real way out instead of just refusing.
+  const licenseTaken = await prisma.user.findUnique({ where: { licenseNumber } });
+  if (licenseTaken) {
+    return {
+      fieldErrors: {
+        licenseNumber:
+          "That license number is already on another account. If it's yours, get in touch from the support page.",
+      },
+    };
+  }
+
+  if (brokerageNumber) {
+    const brokerageTaken = await prisma.team.findUnique({ where: { brokerageNumber } });
+    if (brokerageTaken) {
+      return {
+        fieldErrors: {
+          brokerageNumber: "A brokerage with that license number is already set up.",
+        },
+      };
+    }
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
@@ -58,19 +87,24 @@ export async function signupAction(
   // can change who is on the roster, a TEAM_LEAD can only see its work.
   // See canManageMembership in src/lib/authorization.ts.
   if (accountType === "team" || accountType === "brokerage") {
-    const team = await prisma.team.create({ data: { name: teamName! } });
+    const team = await prisma.team.create({
+      data: { name: teamName!, brokerageNumber: brokerageNumber ?? null },
+    });
     await prisma.user.create({
       data: {
         name,
         email,
         passwordHash,
+        licenseNumber,
         role: accountType === "brokerage" ? "BROKER" : "TEAM_LEAD",
         teamId: team.id,
+        // They created it, so they've been here since it existed.
+        teamJoinedAt: new Date(),
       },
     });
   } else {
     await prisma.user.create({
-      data: { name, email, passwordHash, role: "AGENT" },
+      data: { name, email, passwordHash, licenseNumber, role: "AGENT" },
     });
   }
 

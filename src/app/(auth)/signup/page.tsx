@@ -107,6 +107,26 @@ export default function SignupPage() {
           />
         ) : null}
 
+        <Field
+          label="Your real estate license number"
+          name="licenseNumber"
+          type="text"
+          required
+          error={state.fieldErrors?.licenseNumber}
+          hint="Your own salesperson license — it's how a brokerage finds you to send an invite."
+        />
+
+        {accountType === "brokerage" ? (
+          <Field
+            label="Brokerage license number"
+            name="brokerageNumber"
+            type="text"
+            required
+            error={state.fieldErrors?.brokerageNumber}
+            hint="Your agents type this when accepting an invite, to confirm they're joining the right office."
+          />
+        ) : null}
+
         {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 
         <Button type="submit" disabled={isPending} className="w-full">

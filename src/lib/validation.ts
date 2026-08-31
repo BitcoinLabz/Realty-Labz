@@ -1,5 +1,19 @@
 import { z } from "zod";
 
+// Michigan real estate license numbers are 10 digits, but this stays loose
+// on format: the app is Michigan-first, not Michigan-only (see CLAUDE.md),
+// and rejecting a valid out-of-state number would be a worse failure than
+// accepting a typo. Trimmed and uppercased so "  6501234567 " and
+// "6501234567" can't become two different accounts under the unique index.
+const licenseNumber = z
+  .string()
+  .trim()
+  .toUpperCase()
+  .min(4, "Enter your license number")
+  .max(32, "That looks too long to be a license number");
+
+export const licenseNumberSchema = z.object({ licenseNumber });
+
 export const signupSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(100),
@@ -7,11 +21,19 @@ export const signupSchema = z
     password: z.string().min(8, "Password must be at least 8 characters"),
     accountType: z.enum(["solo", "team", "brokerage"]),
     teamName: z.string().trim().max(100).optional(),
+    licenseNumber,
+    // Brokerage accounts only -- this is the number an agent types back to
+    // confirm which office an invite belongs to.
+    brokerageNumber: z.string().trim().toUpperCase().max(32).optional(),
   })
   // Both "team" and "brokerage" create a Team row, so both need a name for it.
   .refine((data) => data.accountType === "solo" || (data.teamName && data.teamName.length > 0), {
     message: "Name is required",
     path: ["teamName"],
+  })
+  .refine((data) => data.accountType !== "brokerage" || !!data.brokerageNumber, {
+    message: "Enter your brokerage license number",
+    path: ["brokerageNumber"],
   });
 
 export const loginSchema = z.object({
@@ -21,6 +43,10 @@ export const loginSchema = z.object({
 
 export const profileSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
+  // Optional here, unlike at signup: this is where accounts that predate
+  // license numbers fill theirs in, and an empty string has to stay valid
+  // so nobody gets trapped behind a field they mistyped.
+  licenseNumber: licenseNumber.optional().or(z.literal("")),
 });
 
 export const passwordChangeSchema = z
@@ -120,6 +146,24 @@ export const joinTeamSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
   email: z.email("Enter a valid email address").trim().toLowerCase(),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  licenseNumber,
+  // Checked against the invite's own team, and only when that team actually
+  // has a number set -- see acceptInviteAction.
+  brokerageNumber: z.string().trim().toUpperCase().max(32).optional(),
+});
+
+// An agent who already has an account accepting an invite. licenseNumber is
+// optional because most people already have one on file by then; the join
+// screen only asks when it's missing.
+export const acceptInviteSchema = z.object({
+  inviteId: z.string().min(1, "Missing invite"),
+  licenseNumber: licenseNumber.optional().or(z.literal("")),
+  brokerageNumber: z.string().trim().toUpperCase().max(32).optional(),
+});
+
+export const inviteByLicenseSchema = z.object({
+  licenseNumber,
+  role: z.enum(["AGENT", "TEAM_LEAD", "ADMIN"]),
 });
 
 export const dealSchema = z.object({

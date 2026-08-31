@@ -167,3 +167,34 @@ export async function sendDeadlineReminderEmail(params: {
     `,
   });
 }
+
+export async function sendTeamInviteEmail(params: {
+  to: string;
+  recipientName: string;
+  teamName: string;
+  senderName: string;
+  roleLabel: string;
+  inviteUrl: string;
+  // Shown so the recipient can confirm the office before clicking, and
+  // because they'll be asked to type it back on the join screen.
+  brokerageNumber: string | null;
+}) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: `${params.senderName} invited you to join ${params.teamName} on Realty Labz`,
+    html: `
+      <p>Hi ${escapeHtml(params.recipientName)},</p>
+      <p>${escapeHtml(params.senderName)} has invited you to join <strong>${escapeHtml(params.teamName)}</strong> on Realty Labz as ${escapeHtml(params.roleLabel)}.</p>
+      ${
+        params.brokerageNumber
+          ? `<p>You'll be asked to confirm their license number: <strong>${escapeHtml(params.brokerageNumber)}</strong></p>`
+          : ""
+      }
+      <p><a href="${params.inviteUrl}">Review this invitation</a></p>
+      <p>Joining brings your existing transactions with you. ${escapeHtml(params.teamName)} will be able to see those — but never your clients, your income and expenses, your mileage, or anything under Finances.</p>
+      <p style="color:#86868b;font-size:13px;">If you weren't expecting this, you can ignore this email — nothing changes unless you accept. This link expires in 7 days.</p>
+    `,
+  });
+}

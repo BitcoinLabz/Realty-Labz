@@ -14,14 +14,41 @@ export async function updateProfileAction(
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
 
-  const parsed = profileSchema.safeParse({ name: formData.get("name") });
+  const parsed = profileSchema.safeParse({
+    name: formData.get("name"),
+    licenseNumber: formData.get("licenseNumber") ?? "",
+  });
   if (!parsed.success) {
-    return { fieldErrors: { name: parsed.error.issues[0]?.message ?? "Invalid name" } };
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      fieldErrors[String(issue.path[0])] = issue.message;
+    }
+    return { fieldErrors };
+  }
+
+  // Empty string means "leave it blank", not "store an empty license" -- the
+  // column is unique, and a second empty string would collide where a second
+  // NULL doesn't.
+  const licenseNumber = parsed.data.licenseNumber || null;
+
+  if (licenseNumber) {
+    const taken = await prisma.user.findFirst({
+      where: { licenseNumber, id: { not: session.user.id } },
+      select: { id: true },
+    });
+    if (taken) {
+      return {
+        fieldErrors: {
+          licenseNumber:
+            "That license number is already on another account. If it's yours, get in touch from the support page.",
+        },
+      };
+    }
   }
 
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { name: parsed.data.name },
+    data: { name: parsed.data.name, licenseNumber },
   });
 
   revalidatePath("/account");

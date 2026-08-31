@@ -1,13 +1,20 @@
 import { KeyRound, User, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { canManageMembership, roleLabel, teamLabel } from "@/lib/authorization";
+import {
+  canManageMembership,
+  roleLabel,
+  teamLabel,
+  wouldLeaveTeamUnmanaged,
+} from "@/lib/authorization";
 import { Card } from "@/components/ui/card";
 import { DetailTabs } from "@/components/ui/detail-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 import { ProfileForm } from "./profile-form";
 import { PasswordForm } from "./password-form";
 import { InviteForm } from "./invite-form";
+import { InviteByLicenseForm } from "./invite-by-license-form";
+import { LeaveTeamForm } from "./leave-team-form";
 import { InviteList, type PendingInvite } from "./invite-list";
 import { MemberRow } from "./member-row";
 
@@ -44,6 +51,10 @@ export default async function AccountPage() {
     members,
   );
 
+  // Same rule the server enforces in leaveTeamAction, asked here so the UI
+  // and the action can't disagree about who is allowed to walk out.
+  const canLeave = onATeam && !wouldLeaveTeamUnmanaged(members, user.id, null);
+
   const pendingInvites: PendingInvite[] =
     invites?.map((i) => ({
       id: i.id,
@@ -59,7 +70,11 @@ export default async function AccountPage() {
         <>
           <Card title="Your name & email" icon={User}>
             <div className="max-w-sm">
-              <ProfileForm name={user.name ?? ""} email={user.email} />
+              <ProfileForm
+                name={user.name ?? ""}
+                email={user.email}
+                licenseNumber={user.licenseNumber ?? ""}
+              />
             </div>
           </Card>
 
@@ -134,7 +149,16 @@ export default async function AccountPage() {
           {canManage ? (
             <>
               <Card
-                title={`Add someone to your ${orgWord}`}
+                title="Invite by license number"
+                description="If they already use Realty Labz, this emails the invitation straight to them — no link to copy or chase."
+              >
+                <div className="max-w-md">
+                  <InviteByLicenseForm canInviteAdmin={user.role === "BROKER"} />
+                </div>
+              </Card>
+
+              <Card
+                title="Or share a link"
                 description="Generate a private link, then send it however you like. It works whether they're new to Realty Labz or already have an account."
               >
                 <div className="max-w-md">
@@ -147,6 +171,26 @@ export default async function AccountPage() {
               </Card>
             </>
           ) : null}
+
+          {/* Hidden rather than shown-and-refused: the server blocks the last
+              manager from leaving, and offering a button that always fails is
+              worse than not offering it. The explanation stands in for it. */}
+          {canLeave ? (
+            <Card
+              title="Leaving"
+              description="If you move on, your account and everything on it goes with you."
+            >
+              <LeaveTeamForm orgWord={orgWord} teamName={user.team!.name} />
+            </Card>
+          ) : (
+            <Card title="Leaving">
+              <p className="text-sm text-muted">
+                You&apos;re the only person who can manage this {orgWord}, so you can&apos;t leave
+                it — there&apos;d be nobody left to invite or remove anyone. Promote someone to
+                admin first.
+              </p>
+            </Card>
+          )}
         </>
       ),
     });

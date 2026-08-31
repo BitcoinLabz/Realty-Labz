@@ -8,7 +8,15 @@ import { Field } from "@/components/ui/field";
 
 const initialState: FormState = {};
 
-export function ProfileForm({ name, email }: { name: string; email: string }) {
+export function ProfileForm({
+  name,
+  email,
+  licenseNumber,
+}: {
+  name: string;
+  email: string;
+  licenseNumber: string;
+}) {
   const [state, formAction, isPending] = useActionState(updateProfileAction, initialState);
 
   return (
@@ -22,6 +30,18 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
         error={state.fieldErrors?.name}
       />
       <Field label="Email" name="email" type="email" defaultValue={email} disabled />
+      <Field
+        label="Real estate license number"
+        name="licenseNumber"
+        type="text"
+        defaultValue={licenseNumber}
+        error={state.fieldErrors?.licenseNumber}
+        hint={
+          licenseNumber
+            ? "Your own salesperson license."
+            : "Add this so a brokerage can find you to send an invite. New accounts enter it at signup."
+        }
+      />
       <div>
         <Button type="submit" disabled={isPending}>
           {isPending ? "Saving…" : "Save changes"}
