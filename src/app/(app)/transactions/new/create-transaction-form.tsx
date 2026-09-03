@@ -144,7 +144,7 @@ export function CreateFileForm({ clients }: { clients: ClientOption[] }) {
 
       <div>
         <Button type="submit" disabled={isPending}>
-          {isPending ? "Creating…" : "Create file"}
+          {isPending ? "Creating…" : "Create transaction"}
         </Button>
       </div>
     </form>

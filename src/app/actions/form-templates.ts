@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { canManageSharedResources, teamSharedFilter } from "@/lib/authorization";
+import {
+  canManageSharedResources,
+  ownerOnlyFilter,
+  teamSharedFilter,
+} from "@/lib/authorization";
 import {
   MAX_FILE_SIZE_BYTES,
   copyDocumentFile,
@@ -357,4 +361,52 @@ export async function detectTemplateFieldsAction(
   }
 
   return { detected, success: `Found ${detected.length} fields in the PDF.` };
+}
+
+/**
+ * Turns a PDF already uploaded to a transaction into a sendable template.
+ *
+ * This is the path for a contract that arrived rather than one you keep on
+ * the shelf -- a buyer's executed purchase agreement, a counter-offer, an
+ * addendum. Before this, a fresh upload could only ever be stored and
+ * downloaded; making it signable meant going to Forms, uploading the same
+ * file a second time, and building a template from scratch.
+ *
+ * Owner-only (ownerOnlyFilter): a broker can read and download an agent's
+ * paperwork but doesn't send things out on their file. The copy is
+ * deliberate -- the template gets its own storage object so deleting the
+ * transaction's document later can't pull the file out from under a
+ * submission that's already been sent.
+ */
+export async function createFormTemplateFromDocumentAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+
+  const documentId = formData.get("documentId");
+  if (typeof documentId !== "string" || !documentId) return;
+
+  // Cross-checked through the deal, not by document id alone -- the same
+  // verify-the-parent-then-the-child guard used everywhere else here.
+  const doc = await prisma.document.findFirst({
+    where: { id: documentId, ...ownerOnlyFilter(session.user) },
+  });
+  if (!doc || doc.mimeType !== "application/pdf") return;
+
+  const storageKey = await copyDocumentFile(doc.storageKey, session.user.id, doc.mimeType);
+
+  const template = await prisma.formTemplate.create({
+    data: {
+      userId: session.user.id,
+      name: doc.fileName.replace(/\.pdf$/i, ""),
+      fileName: doc.fileName,
+      storageKey,
+      mimeType: doc.mimeType,
+      size: doc.size,
+      signers: { create: { order: 1, label: "Signer 1" } },
+    },
+  });
+
+  revalidatePath("/forms/templates");
+  if (doc.dealId) revalidatePath(`/transactions/${doc.dealId}`);
+  redirect(`/forms/templates/${template.id}`);
 }

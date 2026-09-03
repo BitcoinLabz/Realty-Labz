@@ -19,11 +19,11 @@ export default async function NewFilePage() {
           href="/transactions"
           className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
         >
-          ← Back to Files
+          ← Back to Transactions
         </Link>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Create a file</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">New transaction</h1>
         <p className="mt-1 text-sm text-muted">
-          A few details to set up a new property file — you can fill in the rest later.
+          A few details to get started — you can fill in the rest later.
         </p>
       </div>
 
