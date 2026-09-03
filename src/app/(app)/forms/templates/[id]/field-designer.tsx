@@ -1,7 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { saveFormFieldsAction } from "@/app/actions/form-templates";
+import {
+  detectTemplateFieldsAction,
+  saveFormFieldsAction,
+  type DetectFieldsState,
+} from "@/app/actions/form-templates";
+import type { DetectedField } from "@/lib/pdf-form-fields";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { PdfPageCanvas, usePdfDocument } from "@/components/pdf-page-canvas";
@@ -64,6 +69,7 @@ function colorForSigner(signers: TemplateSignerDTO[], signerId: string) {
 }
 
 const initialState: FormState = {};
+const initialDetectState: DetectFieldsState = {};
 
 export function FieldDesigner({
   templateId,
@@ -91,6 +97,53 @@ export function FieldDesigner({
   );
 
   const [state, formAction, isPending] = useActionState(saveFormFieldsAction, initialState);
+  const [detectState, detectAction, isDetecting] = useActionState(
+    detectTemplateFieldsAction,
+    initialDetectState,
+  );
+  const [importSummary, setImportSummary] = useState<string | null>(null);
+  const importedRef = useRef<DetectedField[] | null>(null);
+
+  const signerName = signers.find((s) => s.id === selectedSignerId)?.label ?? "";
+
+  // Merges a detection result into the working field list exactly once per
+  // result. Keyed on object identity rather than a boolean, so a second
+  // Import click on a different result still lands while re-renders in
+  // between don't duplicate the fields.
+  useEffect(() => {
+    const detected = detectState.detected;
+    if (!detected || importedRef.current === detected) return;
+    importedRef.current = detected;
+
+    if (!selectedSignerId) {
+      setImportSummary(null);
+      return;
+    }
+
+    setFields((prev) => {
+      const imported: DesignerField[] = detected.map((f, i) => ({
+        key: `imported-${Date.now()}-${i}`,
+        page: f.page,
+        x: f.x,
+        y: f.y,
+        width: f.width,
+        height: f.height,
+        type: f.type as FieldType,
+        label: f.label,
+        required: true,
+        order: prev.length + i,
+        // The PDF says where a box is and roughly what it holds, but never
+        // WHO fills it -- there's nothing in the format for that. Everything
+        // lands on the currently selected signer for the agent to reassign.
+        signerId: selectedSignerId,
+        autoFillSource: null,
+      }));
+      return [...prev, ...imported];
+    });
+    setImportSummary(
+      `Added ${detected.length} ${detected.length === 1 ? "field" : "fields"}. Check each one's signer and type before saving.`,
+    );
+  }, [detectState.detected, selectedSignerId]);
 
   useEffect(() => {
     if (signers[0] && !signers.some((s) => s.id === selectedSignerId)) {
@@ -358,6 +411,22 @@ export function FieldDesigner({
             </div>
           )}
         </section>
+
+        <form action={detectAction} className="flex flex-col gap-2">
+          <input type="hidden" name="templateId" value={templateId} />
+          <Button type="submit" variant="secondary" disabled={isDetecting} className="w-full">
+            {isDetecting ? "Reading the PDF…" : "Import the PDF's own fields"}
+          </Button>
+          <p className="text-sm text-muted">
+            If this is a fillable form, its boxes are already in the file — this places them for
+            you. They&apos;ll come in assigned to {signerName || "the first signer"}; change any
+            of them below.
+          </p>
+          {detectState.error ? (
+            <p className="text-sm text-danger">{detectState.error}</p>
+          ) : null}
+          {importSummary ? <p className="text-sm text-accent">{importSummary}</p> : null}
+        </form>
 
         <form action={formAction}>
           <input type="hidden" name="templateId" value={templateId} />

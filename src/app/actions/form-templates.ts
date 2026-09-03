@@ -9,8 +9,10 @@ import {
   MAX_FILE_SIZE_BYTES,
   copyDocumentFile,
   deleteDocumentFile,
+  readDocumentFile,
   saveDocumentFile,
 } from "@/lib/document-storage";
+import { extractAcroFormFields, type DetectedField } from "@/lib/pdf-form-fields";
 import type { FormState } from "@/app/actions/auth";
 
 // Only PDFs — unlike DocumentTemplate (which also allows Word docs/images),
@@ -309,4 +311,50 @@ export async function saveFormFieldsAction(
 
   revalidatePath(`/forms/templates/${templateId}`);
   return {};
+}
+
+export type DetectFieldsState = FormState & { detected?: DetectedField[] };
+
+/**
+ * Reads the fields the uploaded PDF already carries, so an agent doesn't
+ * hand-place boxes a fillable form already describes.
+ *
+ * Deliberately on demand rather than at upload time: it costs a storage read
+ * and most templates only need it once, so paying for it on every designer
+ * page load would be waste. Nothing is written here -- the detected fields
+ * land in the designer's local state where the agent assigns signers and
+ * adjusts types before saving, same as fields they drew by hand.
+ */
+export async function detectTemplateFieldsAction(
+  _prevState: DetectFieldsState,
+  formData: FormData,
+): Promise<DetectFieldsState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You must be signed in" };
+
+  const templateId = formData.get("templateId");
+  if (typeof templateId !== "string" || !templateId) return { error: "Missing template" };
+
+  const template = await assertTemplateManageAccess(templateId, session.user);
+  if (!template) return { error: "Template not found" };
+  if (!(await assertNotYetSent(templateId))) {
+    return { error: "This template has already been sent, so its fields can't change." };
+  }
+
+  let buffer: Buffer;
+  try {
+    buffer = await readDocumentFile(template.storageKey);
+  } catch {
+    return { error: "Couldn't read the PDF. Try re-uploading it." };
+  }
+
+  const detected = await extractAcroFormFields(buffer);
+  if (detected.length === 0) {
+    return {
+      error:
+        "This PDF has no fillable fields — it's flattened, scanned, or printed. Draw the fields on the page instead.",
+    };
+  }
+
+  return { detected, success: `Found ${detected.length} fields in the PDF.` };
 }
