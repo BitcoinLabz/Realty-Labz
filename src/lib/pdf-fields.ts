@@ -28,3 +28,28 @@ export function fieldRectToPdfPoints(rect: FieldRect, pageWidth: number, pageHei
 export function fontSizeForFieldHeight(heightPts: number) {
   return Math.max(7, Math.min(14, heightPts * 0.6));
 }
+
+/**
+ * The exact inverse of fieldRectToPdfPoints -- PDF point space (bottom-left
+ * origin, what pdf-lib reports for an AcroForm widget) back into the
+ * normalized top-left fractions this app stores and renders.
+ *
+ * Used when importing the fields a fillable PDF already carries, so an agent
+ * doesn't hand-place forty boxes that the file already describes.
+ *
+ * Round-trip tested against fieldRectToPdfPoints rather than only against
+ * hand-derived numbers: if either direction is ever changed, a mismatch fails
+ * immediately instead of quietly shifting every imported field.
+ */
+export function pdfPointsToFieldRect(
+  rect: FieldRect,
+  pageWidth: number,
+  pageHeight: number,
+): FieldRect {
+  return {
+    x: rect.x / pageWidth,
+    y: (pageHeight - rect.y - rect.height) / pageHeight,
+    width: rect.width / pageWidth,
+    height: rect.height / pageHeight,
+  };
+}
