@@ -95,6 +95,18 @@ export async function analyzeContractPdf(pdfBuffer: Buffer): Promise<ExtractedCo
     output_config: { format: zodOutputFormat(extractedContractSchema) },
   });
 
+  // Logged so real spend shows up in the Vercel function logs rather than
+  // only on the bill. input_tokens is dominated by the PDF itself: a page
+  // sent as a document block is rendered as an image as well as having its
+  // text read, which is why the count runs far above the contract's word
+  // count.
+  const usage = response.usage;
+  console.log(
+    "[contract-analysis] tokens in=%d out=%d",
+    usage.input_tokens,
+    usage.output_tokens,
+  );
+
   if (!response.parsed_output) {
     throw new ContractAnalysisError("Couldn't read this document. Try a different file.");
   }
