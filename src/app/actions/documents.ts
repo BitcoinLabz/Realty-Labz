@@ -68,7 +68,26 @@ export async function uploadDocumentAction(
   const resolvedDeal = await resolveDealId(formData.get("dealId"), session.user);
   if (!resolvedDeal.ok) return { error: resolvedDeal.error };
 
-  const storageKey = await saveDocumentFile(session.user.id, file);
+  // Every failure in here used to be an uncaught throw: a missing Supabase
+  // env var on the host, a missing bucket, and a file whose bytes don't match
+  // its extension all crashed the action identically, so an upload just
+  // appeared to do nothing at all. The real reason now goes to the server log
+  // (readable in Vercel's function logs) and the user gets something
+  // actionable instead of silence.
+  let storageKey: string;
+  try {
+    storageKey = await saveDocumentFile(session.user.id, file);
+  } catch (err) {
+    console.error("[documents] upload failed", err);
+    return {
+      fieldErrors: {
+        file:
+          err instanceof Error && err.message.includes("doesn't match")
+            ? "That file's contents don't match its file type. Try re-saving or re-exporting it."
+            : "Couldn't save the file — this is usually a storage setup problem, not your file.",
+      },
+    };
+  }
 
   await prisma.document.create({
     data: {

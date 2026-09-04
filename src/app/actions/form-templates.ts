@@ -50,7 +50,22 @@ export async function uploadFormTemplateAction(
     return { fieldErrors: { file: "File must be under 15MB" } };
   }
 
-  const storageKey = await saveDocumentFile(session.user.id, file);
+  let storageKey: string;
+  try {
+    storageKey = await saveDocumentFile(session.user.id, file);
+  } catch (err) {
+    // Was an uncaught throw, so a storage misconfiguration looked exactly
+    // like nothing happening. See the same guard in documents.ts.
+    console.error("[form-upload] failed", err);
+    return {
+      fieldErrors: {
+        file:
+          err instanceof Error && err.message.includes("doesn't match")
+            ? "That file's contents don't match its file type. Try re-saving or re-exporting it."
+            : "Couldn't save the file — this is usually a storage setup problem, not your file.",
+      },
+    };
+  }
 
   const template = await prisma.formTemplate.create({
     data: {
@@ -113,7 +128,15 @@ export async function createFormTemplateFromLibraryAction(formData: FormData) {
   // this is a defensive server-side re-check of the same rule.
   if (libraryDoc.mimeType !== "application/pdf") return;
 
-  const storageKey = await copyDocumentFile(libraryDoc.storageKey, session.user.id, libraryDoc.mimeType);
+  let storageKey: string;
+  try {
+    storageKey = await copyDocumentFile(libraryDoc.storageKey, session.user.id, libraryDoc.mimeType);
+  } catch (err) {
+    // A void action, so there is nowhere to show a message -- but logging
+    // beats an unhandled crash, and the page simply stays put.
+    console.error("[form-template-from-library] copy failed", err);
+    return;
+  }
 
   const template = await prisma.formTemplate.create({
     data: {
@@ -392,7 +415,13 @@ export async function createFormTemplateFromDocumentAction(formData: FormData) {
   });
   if (!doc || doc.mimeType !== "application/pdf") return;
 
-  const storageKey = await copyDocumentFile(doc.storageKey, session.user.id, doc.mimeType);
+  let storageKey: string;
+  try {
+    storageKey = await copyDocumentFile(doc.storageKey, session.user.id, doc.mimeType);
+  } catch (err) {
+    console.error("[form-template-from-document] copy failed", err);
+    return;
+  }
 
   const template = await prisma.formTemplate.create({
     data: {

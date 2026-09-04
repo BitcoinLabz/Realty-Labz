@@ -40,7 +40,22 @@ export async function uploadTemplateAction(
     return { fieldErrors: { file: "File must be under 15MB" } };
   }
 
-  const storageKey = await saveDocumentFile(session.user.id, file);
+  let storageKey: string;
+  try {
+    storageKey = await saveDocumentFile(session.user.id, file);
+  } catch (err) {
+    // Was an uncaught throw, so a storage misconfiguration looked exactly
+    // like nothing happening. See the same guard in documents.ts.
+    console.error("[template-upload] failed", err);
+    return {
+      fieldErrors: {
+        file:
+          err instanceof Error && err.message.includes("doesn't match")
+            ? "That file's contents don't match its file type. Try re-saving or re-exporting it."
+            : "Couldn't save the file — this is usually a storage setup problem, not your file.",
+      },
+    };
+  }
 
   await prisma.documentTemplate.create({
     data: {
