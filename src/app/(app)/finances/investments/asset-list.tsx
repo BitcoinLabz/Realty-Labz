@@ -9,46 +9,31 @@ import type { AssetDTO } from "./types";
 
 const initialState: FormState = {};
 
-// Each list row gets its own instance of these, so pending/error state is
+// Each list row gets its own instance of this, so pending/error state is
 // isolated per-asset. Previously a plain <form action={...}> with no
 // pending/error UI at all -- a failed refresh (rate limit, Yahoo/CoinGecko
 // hiccup, etc.) looked identical to a successful one: nothing visibly
 // happened either way.
-function RefreshWalletButton({ assetId }: { assetId: string }) {
-  const [state, formAction, isPending] = useActionState(refreshWalletBalanceAction, initialState);
+function RefreshButton({
+  assetId,
+  action,
+}: {
+  assetId: string;
+  action: typeof refreshWalletBalanceAction;
+}) {
+  const [state, formAction, isPending] = useActionState(action, initialState);
   return (
-    <div className="flex flex-col items-end gap-1">
-      <form action={formAction}>
-        <input type="hidden" name="id" value={assetId} />
-        <button
-          type="submit"
-          disabled={isPending}
-          className="text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
-        >
-          {isPending ? "Refreshing…" : "Refresh"}
-        </button>
-      </form>
+    <form action={formAction} className="flex flex-col gap-1">
+      <input type="hidden" name="id" value={assetId} />
+      <button
+        type="submit"
+        disabled={isPending}
+        className="self-start text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
+      >
+        {isPending ? "Refreshing…" : "Refresh"}
+      </button>
       {state.error ? <span className="text-xs text-danger">{state.error}</span> : null}
-    </div>
-  );
-}
-
-function RefreshStockButton({ assetId }: { assetId: string }) {
-  const [state, formAction, isPending] = useActionState(refreshStockPriceAction, initialState);
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <form action={formAction}>
-        <input type="hidden" name="id" value={assetId} />
-        <button
-          type="submit"
-          disabled={isPending}
-          className="text-sm font-medium text-muted hover:text-foreground disabled:opacity-50"
-        >
-          {isPending ? "Refreshing…" : "Refresh"}
-        </button>
-      </form>
-      {state.error ? <span className="text-xs text-danger">{state.error}</span> : null}
-    </div>
+    </form>
   );
 }
 
@@ -77,6 +62,15 @@ function truncateAddress(address: string) {
 
 function formatBalance(value: number) {
   return value.toLocaleString("en-US", { maximumFractionDigits: 8 });
+}
+
+function formatCheckedAt(iso: string) {
+  return new Date(iso).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
 export function AssetList({ assets }: { assets: AssetDTO[] }) {
@@ -112,52 +106,52 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
             />
           </div>
         ) : (
-          <div
-            key={a.id}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-background px-6 py-4"
-          >
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-foreground">{a.name}</span>
-              <span className="text-sm text-muted">
-                {typeLabels[a.type]}
-                {a.walletNetwork ? ` · ${networkLabels[a.walletNetwork]} · ${truncateAddress(a.walletAddress!)}` : ""}
-              </span>
-              {a.walletNetwork && a.walletBalance !== null ? (
-                <span className="mt-1 text-sm text-muted">
-                  {formatBalance(a.walletBalance)} {networkUnits[a.walletNetwork]}
-                  {a.walletBalanceCheckedAt
-                    ? ` · as of ${new Date(a.walletBalanceCheckedAt).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}`
-                    : ""}
+          // Stacked rather than one side-by-side row: details, value and four
+          // actions in a single line crushed the details into a sliver on a
+          // phone and pushed Delete off the edge. Name + value on top, the
+          // specifics under them, actions along the bottom -- fits any width.
+          <div key={a.id} className="rounded-2xl border border-border bg-background px-5 py-4 sm:px-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex min-w-0 flex-col">
+                <span className="break-words text-sm font-medium text-foreground">{a.name}</span>
+                <span className="text-sm text-muted">
+                  {typeLabels[a.type]}
+                  {a.walletNetwork ? ` · ${networkLabels[a.walletNetwork]}` : ""}
                 </span>
-              ) : null}
-              {a.stockTicker && a.shareCount !== null ? (
-                <span className="mt-1 text-sm text-muted">
+              </div>
+              <span className="shrink-0 text-base font-semibold tabular-nums text-foreground">
+                {formatCurrency(a.currentValue)}
+              </span>
+            </div>
+
+            {a.walletNetwork && a.walletBalance !== null ? (
+              <div className="mt-3 flex flex-col gap-0.5">
+                <span className="text-sm tabular-nums text-foreground">
+                  {formatBalance(a.walletBalance)} {networkUnits[a.walletNetwork]}
+                </span>
+                <span className="text-xs text-muted">
+                  {truncateAddress(a.walletAddress!)}
+                  {a.walletBalanceCheckedAt ? ` · Updated ${formatCheckedAt(a.walletBalanceCheckedAt)}` : ""}
+                </span>
+              </div>
+            ) : null}
+            {a.stockTicker && a.shareCount !== null ? (
+              <div className="mt-3 flex flex-col gap-0.5">
+                <span className="text-sm tabular-nums text-foreground">
                   {a.shareCount.toLocaleString("en-US", { maximumFractionDigits: 4 })} shares of{" "}
                   {a.stockTicker}
                   {a.stockPricePerShare !== null ? ` @ ${formatCurrency(a.stockPricePerShare)}` : ""}
-                  {a.stockPriceCheckedAt
-                    ? ` · as of ${new Date(a.stockPriceCheckedAt).toLocaleString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}`
-                    : ""}
                 </span>
-              ) : null}
-              {a.notes ? <span className="mt-1 text-sm text-muted">{a.notes}</span> : null}
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-semibold text-foreground">
-                {formatCurrency(a.currentValue)}
-              </span>
-              {a.walletNetwork ? <RefreshWalletButton assetId={a.id} /> : null}
-              {a.stockTicker ? <RefreshStockButton assetId={a.id} /> : null}
+                {a.stockPriceCheckedAt ? (
+                  <span className="text-xs text-muted">Updated {formatCheckedAt(a.stockPriceCheckedAt)}</span>
+                ) : null}
+              </div>
+            ) : null}
+            {a.notes ? <p className="mt-3 break-words text-sm text-muted">{a.notes}</p> : null}
+
+            <div className="mt-4 flex items-start gap-5 border-t border-border pt-3">
+              {a.walletNetwork ? <RefreshButton assetId={a.id} action={refreshWalletBalanceAction} /> : null}
+              {a.stockTicker ? <RefreshButton assetId={a.id} action={refreshStockPriceAction} /> : null}
               <button
                 type="button"
                 onClick={() => setEditingId(a.id)}
@@ -170,6 +164,7 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
                 onSubmit={(e) => {
                   if (!confirm(`Delete "${a.name}"?`)) e.preventDefault();
                 }}
+                className="ml-auto"
               >
                 <input type="hidden" name="id" value={a.id} />
                 <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
