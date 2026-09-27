@@ -30,6 +30,10 @@ const nextConfig: NextConfig = {
         destination: "https://www.realtylabz.com/:path*",
         permanent: true,
       },
+      // The Forms section was retired (2026-09-27): its two tools that stayed
+      // now live under Transactions. Temporary, in case Forms comes back.
+      { source: "/forms/deadline-sets", destination: "/transactions/deadline-sets", permanent: false },
+      { source: "/forms/library", destination: "/transactions/library", permanent: false },
     ];
   },
 };

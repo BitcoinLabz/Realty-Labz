@@ -13,6 +13,7 @@ import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
 import { FormSubmissionList } from "../form-submission-list";
 import { SendPortalAccessButton } from "./send-portal-access-button";
 import { DetailTabs } from "@/components/ui/detail-tabs";
+import { E_SIGNATURE_ENABLED } from "@/lib/features";
 import type { DocumentDTO } from "../types";
 import type { FormSubmissionSummaryDTO } from "@/app/(app)/forms/templates/types";
 
@@ -181,24 +182,28 @@ export default async function ClientDetailPage({
             <SendPortalAccessButton clientId={client.id} hasEmail={!!client.email} />
           </section>
 
-          <section className="rounded-2xl border border-border bg-background p-8">
-            <h2 className="mb-6 text-base font-semibold text-foreground">Forms</h2>
+          {E_SIGNATURE_ENABLED || formSubmissionDtos.length > 0 ? (
+            <section className="rounded-2xl border border-border bg-background p-8">
+              <h2 className="mb-6 text-base font-semibold text-foreground">Forms</h2>
 
-            {formSubmissionDtos.length > 0 ? (
-              <div className="mb-6">
-                <FormSubmissionList submissions={formSubmissionDtos} />
-              </div>
-            ) : null}
+              {formSubmissionDtos.length > 0 ? (
+                <div className="mb-6">
+                  <FormSubmissionList submissions={formSubmissionDtos} />
+                </div>
+              ) : null}
 
-            <div className="max-w-md border-t border-border pt-6">
-              <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
-              <SendFormWidget
-                client={{ id: client.id, name: client.name, email: client.email }}
-                templates={sendableTemplates}
-                deals={dealOptions}
-              />
-            </div>
-          </section>
+              {E_SIGNATURE_ENABLED ? (
+                <div className="max-w-md border-t border-border pt-6">
+                  <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
+                  <SendFormWidget
+                    client={{ id: client.id, name: client.name, email: client.email }}
+                    templates={sendableTemplates}
+                    deals={dealOptions}
+                  />
+                </div>
+              ) : null}
+            </section>
+          ) : null}
         </>
       ),
     },

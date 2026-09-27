@@ -519,7 +519,7 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
       kind: "awaitingSignature" as const,
       title: `${s.formTemplate.name} still unsigned`,
       detail: `${s.client?.name ?? "Sent"} · ${daysAgo(s.createdAt)} days ago`,
-      href: s.clientId ? `/clients/${s.clientId}` : "/forms/templates",
+      href: s.clientId ? `/clients/${s.clientId}` : "/transactions",
     })),
   ];
 }

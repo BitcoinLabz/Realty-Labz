@@ -22,7 +22,7 @@ import type { DealDeadlineDTO } from "../types";
 import type {
   DeadlineTemplateDTO,
   DeadlineTemplateItemDTO,
-} from "../../forms/deadline-sets/types";
+} from "../deadline-sets/types";
 
 const initialState: FormState = {};
 

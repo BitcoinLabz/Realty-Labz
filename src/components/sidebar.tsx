@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Building2,
-  ClipboardSignature,
   Home,
   LayoutDashboard,
   Menu,
@@ -30,7 +29,6 @@ const baseNavItems = [
   { href: "/transactions", label: "Transactions", icon: Home },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/finances", label: "Finances", icon: Wallet },
-  { href: "/forms", label: "Forms", icon: ClipboardSignature },
 ];
 
 const teamNavItem = { href: "/team", label: "Team", icon: Building2 };

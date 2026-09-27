@@ -83,7 +83,7 @@ export async function createDeadlineTemplateAction(
     },
   });
 
-  revalidatePath("/forms/deadline-sets");
+  revalidatePath("/transactions/deadline-sets");
   return { success: `"${name}" saved.` };
 }
 
@@ -129,7 +129,7 @@ export async function updateDeadlineTemplateAction(
     }),
   ]);
 
-  revalidatePath("/forms/deadline-sets");
+  revalidatePath("/transactions/deadline-sets");
   return { success: `"${name}" updated.` };
 }
 
@@ -147,7 +147,7 @@ export async function deleteDeadlineTemplateAction(formData: FormData) {
     where: { id, ...teamSharedFilter(session.user) },
   });
 
-  revalidatePath("/forms/deadline-sets");
+  revalidatePath("/transactions/deadline-sets");
 }
 
 /**

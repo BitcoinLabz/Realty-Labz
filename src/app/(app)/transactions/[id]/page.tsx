@@ -4,11 +4,12 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
-import type { DeadlineTemplateDTO } from "../../forms/deadline-sets/types";
+import type { DeadlineTemplateDTO } from "../deadline-sets/types";
 import { formatCurrency } from "@/lib/format";
 import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../transaction-form";
 import { ContractAnalyzer } from "./contract-analyzer";
+import { E_SIGNATURE_ENABLED } from "@/lib/features";
 import { DeadlineList } from "./deadline-list";
 import { DealDocuments } from "./deal-documents";
 import { DeleteDealButton } from "./delete-deal-button";
@@ -400,29 +401,35 @@ export default async function DealDetailPage({
             <DealDocuments dealId={deal.id} clientId={deal.clientId} documents={documentDtos} />
           </section>
 
-          <section className="rounded-2xl border border-border bg-background p-8">
-            <h2 className="mb-1 text-base font-semibold text-foreground">Forms &amp; envelopes</h2>
-            <p className="mb-6 text-sm text-muted">
-              Every contract and signature request sent for this property.
-            </p>
+          {/* E-signature is switched off (src/lib/features.ts): no new envelopes,
+              but ones already sent stay visible here. */}
+          {E_SIGNATURE_ENABLED || formSubmissionDtos.length > 0 ? (
+            <section className="rounded-2xl border border-border bg-background p-8">
+              <h2 className="mb-1 text-base font-semibold text-foreground">Forms &amp; envelopes</h2>
+              <p className="mb-6 text-sm text-muted">
+                Every contract and signature request sent for this property.
+              </p>
 
-            {formSubmissionDtos.length > 0 ? (
-              <div className="mb-6">
-                <FormSubmissionList submissions={formSubmissionDtos} />
-              </div>
-            ) : null}
+              {formSubmissionDtos.length > 0 ? (
+                <div className="mb-6">
+                  <FormSubmissionList submissions={formSubmissionDtos} />
+                </div>
+              ) : null}
 
-            <div className="max-w-md border-t border-border pt-6">
-              <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
-              <SendFormWidget
-                client={
-                  deal.client ? { id: deal.client.id, name: deal.client.name, email: deal.client.email } : undefined
-                }
-                templates={sendableTemplates}
-                lockedDealId={deal.id}
-              />
-            </div>
-          </section>
+              {E_SIGNATURE_ENABLED ? (
+                <div className="max-w-md border-t border-border pt-6">
+                  <h3 className="mb-4 text-sm font-semibold text-foreground">Send a form to sign</h3>
+                  <SendFormWidget
+                    client={
+                      deal.client ? { id: deal.client.id, name: deal.client.name, email: deal.client.email } : undefined
+                    }
+                    templates={sendableTemplates}
+                    lockedDealId={deal.id}
+                  />
+                </div>
+              ) : null}
+            </section>
+          ) : null}
         </>
       ),
     },

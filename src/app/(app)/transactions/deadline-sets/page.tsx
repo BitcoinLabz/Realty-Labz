@@ -1,8 +1,13 @@
 import { CalendarClock } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { canManageSharedResources, teamSharedFilter } from "@/lib/authorization";
+import {
+  canManageSharedResources,
+  teamSharedFilter,
+} from "@/lib/authorization";
 import { Card } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/page-header";
+import { TransactionsTabs } from "../section-tabs";
 import { DeadlineSetList } from "./deadline-set-list";
 import type { DeadlineTemplateDTO } from "./types";
 
@@ -26,12 +31,19 @@ export default async function DeadlineSetsPage() {
   const isTeamShared = !!session!.user.teamId;
 
   return (
-    <Card
-      title={isTeamShared ? "Team deadline sets" : "Deadline sets"}
-      icon={CalendarClock}
-      description="Set up your standard contingencies once, then add them all to a transaction with a single date. Each deadline is a number of days from that date — no counting on a calendar."
-    >
-      <DeadlineSetList templates={dtos} canManage={canManage} isTeamShared={isTeamShared} />
-    </Card>
+    <div className="flex flex-col gap-8">
+      <PageHeader
+        title="Transactions"
+        description="Every property you're working on, with its paperwork, deadlines, and commission in one place."
+      />
+      <TransactionsTabs />
+      <Card
+        title={isTeamShared ? "Team deadline sets" : "Deadline sets"}
+        icon={CalendarClock}
+        description="Set up your standard contingencies once, then add them all to a transaction with a single date. Each deadline is a number of days from that date — no counting on a calendar."
+      >
+        <DeadlineSetList templates={dtos} canManage={canManage} isTeamShared={isTeamShared} />
+      </Card>
+    </div>
   );
 }

@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { canManageSharedResources, teamSharedFilter } from "@/lib/authorization";
+import { PageHeader } from "@/components/ui/page-header";
+import { TransactionsTabs } from "../section-tabs";
 import { LibraryList } from "./library-list";
 import type { DocumentTemplateDTO } from "./types";
 
@@ -27,6 +29,10 @@ export default async function LibraryPage() {
   const isTeamShared = !!session!.user.teamId;
 
   return (
-    <LibraryList templates={documentTemplateDtos} canManage={canManage} isTeamShared={isTeamShared} />
+    <div className="flex flex-col gap-8">
+      <PageHeader title="Transactions" description="Every property you're working on, with its paperwork, deadlines, and commission in one place." />
+      <TransactionsTabs />
+      <LibraryList templates={documentTemplateDtos} canManage={canManage} isTeamShared={isTeamShared} />
+    </div>
   );
 }

@@ -68,7 +68,7 @@ export async function uploadTemplateAction(
     },
   });
 
-  revalidatePath("/forms/templates");
+  revalidatePath("/transactions/library");
   return {};
 }
 
@@ -88,5 +88,5 @@ export async function deleteTemplateAction(formData: FormData) {
   await prisma.documentTemplate.delete({ where: { id: template.id } });
   await deleteDocumentFile(template.storageKey);
 
-  revalidatePath("/forms/templates");
+  revalidatePath("/transactions/library");
 }

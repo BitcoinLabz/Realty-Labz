@@ -6,6 +6,7 @@ import { isManager, teamOrOwnFilter } from "@/lib/authorization";
 import { PageHeader } from "@/components/ui/page-header";
 import type { DealFileDTO } from "./types";
 import { FilesList } from "./transaction-list";
+import { TransactionsTabs } from "./section-tabs";
 
 export default async function TransactionsPage() {
   const session = await auth();
@@ -48,6 +49,7 @@ export default async function TransactionsPage() {
           </Link>
         }
       />
+      <TransactionsTabs />
       <FilesList files={files} showAgentColumn={isManager(session!.user.role)} />
     </div>
   );
