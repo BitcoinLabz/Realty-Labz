@@ -26,6 +26,8 @@ export type DocumentDTO = {
   clientId: string | null;
   dealId: string | null;
   createdAt: string; // ISO
+  // Only filled in where the portal switch is shown (a client's page).
+  visibleToClient?: boolean;
 };
 
 // NOTE: client-level deadlines were removed from the UI (2026-08-25) --

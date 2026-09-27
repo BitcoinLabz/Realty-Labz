@@ -134,9 +134,8 @@ export async function sendDeclinedNotificationEmail(params: {
 }
 
 // Heads-up to a client that one of their contract deadlines is coming up.
-// Only sent when the client opted in (Client.emailDeadlineReminders) and has
-// a real email on file -- see sendDueDeadlineReminders in
-// src/app/actions/deadline-reminders.ts.
+// Only sent to the client when they opted in (Client.emailDeadlineReminders)
+// and have a real email on file -- see src/lib/deadline-reminder-send.ts.
 // One reminder, sent to the client and the agent together, so the agent
 // always sees exactly what their client saw -- deliberately not two
 // differently-worded emails.
@@ -144,8 +143,8 @@ export async function sendDeclinedNotificationEmail(params: {
 // `to` is an array because both recipients go on the same send. The greeting
 // is conditional: a deadline can sit on a transaction with no client
 // attached (or a client who opted out), in which case this goes to the agent
-// alone and "Hi {client}," would be wrong. No app link, since the client has
-// no login and it would be a dead end for them.
+// alone and "Hi {client}," would be wrong. The portal link likewise only
+// appears when a client is on the email -- it's their sign-in page.
 export async function sendDeadlineReminderEmail(params: {
   to: string[];
   clientName: string | null;
@@ -153,17 +152,58 @@ export async function sendDeadlineReminderEmail(params: {
   deadlineLabel: string;
   propertyLabel: string;
   dueDate: string; // already formatted for display
+  when?: string | null; // "tomorrow", "in 3 days" -- automatic reminders only
+  portalUrl?: string | null;
 }) {
   const resend = getResendClient();
+  const due = params.when ? `${params.when} (${params.dueDate})` : params.dueDate;
   await resend.emails.send({
     from: getFromAddress(),
     to: params.to,
-    subject: `Reminder: ${params.deadlineLabel} is due ${params.dueDate}`,
+    subject: params.when
+      ? `Reminder: ${params.deadlineLabel} is due ${params.when}`
+      : `Reminder: ${params.deadlineLabel} is due ${params.dueDate}`,
     html: `
       ${params.clientName ? `<p>Hi ${escapeHtml(params.clientName)},</p>` : ""}
       <p>A quick reminder that <strong>${escapeHtml(params.deadlineLabel)}</strong> for
-      ${escapeHtml(params.propertyLabel)} is due <strong>${escapeHtml(params.dueDate)}</strong>.</p>
+      ${escapeHtml(params.propertyLabel)} is due <strong>${escapeHtml(due)}</strong>.</p>
+      ${
+        params.portalUrl
+          ? `<p><a href="${params.portalUrl}">See all your dates and documents</a></p>`
+          : ""
+      }
       <p>Reply to this email or reach out to ${escapeHtml(params.agentName)} with any questions.</p>
+    `,
+  });
+}
+
+// Self-serve portal sign-in: a client types their email on /portal and gets
+// this. One email even when several agents have them on file (a buyer who
+// switched agents, say), with a link per agent -- each portal only ever
+// shows that one agent's work for them.
+export async function sendPortalSignInEmail(params: {
+  to: string;
+  clientName: string;
+  links: { agentName: string; url: string }[];
+}) {
+  const resend = getResendClient();
+  const multiple = params.links.length > 1;
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: "Your sign-in link for Realty Labz",
+    html: `
+      <p>Hi ${escapeHtml(params.clientName)},</p>
+      <p>Here's your link to see your properties, dates, and documents.</p>
+      ${params.links
+        .map(
+          (l) =>
+            `<p><a href="${l.url}">${
+              multiple ? `Open your portal with ${escapeHtml(l.agentName)}` : "Open your portal"
+            }</a></p>`,
+        )
+        .join("")}
+      <p style="color:#86868b;font-size:13px;">This link signs you in, so please don't forward it. If you didn't ask for it, you can ignore this email.</p>
     `,
   });
 }

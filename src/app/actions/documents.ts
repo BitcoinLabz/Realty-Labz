@@ -98,6 +98,13 @@ export async function uploadDocumentAction(
       size: file.size,
       clientId: resolvedClient.clientId,
       dealId: resolvedDeal.dealId,
+      // Forms that offer the choice send a "visibilityChoice" marker, since an
+      // unchecked checkbox submits nothing at all and would be
+      // indistinguishable from a form that never asked. Everywhere else keeps
+      // the column default (visible).
+      ...(formData.has("visibilityChoice")
+        ? { visibleToClient: formData.get("visibleToClient") === "on" }
+        : {}),
     },
   });
 
@@ -143,6 +150,30 @@ export async function updateDocumentLinksAction(formData: FormData) {
   if (resolvedDeal.dealId && resolvedDeal.dealId !== existing.dealId) {
     revalidatePath(`/transactions/${resolvedDeal.dealId}`);
   }
+}
+
+// The "Visible to client" switch on a client's Documents tab. Owner-only,
+// like every other document write (see ownerOnlyFilter in CLAUDE.md).
+export async function setDocumentVisibilityAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return;
+  const visible = formData.get("visible") === "true";
+
+  const doc = await prisma.document.findFirst({
+    where: { id, userId: session.user.id },
+    select: { id: true, clientId: true },
+  });
+  if (!doc) return;
+
+  await prisma.document.updateMany({
+    where: { id: doc.id, userId: session.user.id },
+    data: { visibleToClient: visible },
+  });
+
+  if (doc.clientId) revalidatePath(`/clients/${doc.clientId}`);
 }
 
 export async function deleteDocumentAction(formData: FormData) {

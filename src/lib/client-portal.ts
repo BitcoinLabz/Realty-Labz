@@ -25,3 +25,22 @@ export async function resolvePortalClientId(): Promise<string | null> {
   });
   return session?.clientId ?? null;
 }
+
+// A session with less than this left is replaced rather than re-sent, so a
+// link a client receives today is good for weeks, not until tomorrow.
+const MIN_REMAINING_MS = 7 * 24 * 60 * 60 * 1000;
+
+// Reuse a live session rather than minting a new one on every request, so a
+// link a client already has in their inbox keeps working.
+export async function getOrCreatePortalSession(clientId: string) {
+  const existing = await prisma.clientPortalSession.findFirst({
+    where: { clientId, expiresAt: { gt: new Date(Date.now() + MIN_REMAINING_MS) } },
+    orderBy: { expiresAt: "desc" },
+  });
+  return (
+    existing ??
+    (await prisma.clientPortalSession.create({
+      data: { clientId, expiresAt: portalSessionExpiry() },
+    }))
+  );
+}

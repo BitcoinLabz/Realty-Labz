@@ -16,7 +16,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   }
 
   const { id } = await params;
-  const doc = await prisma.document.findFirst({ where: { id, clientId } });
+  // visibleToClient too: hiding a file in the portal list must also stop a
+  // client who kept the old download link.
+  const doc = await prisma.document.findFirst({ where: { id, clientId, visibleToClient: true } });
   if (!doc) {
     return new NextResponse("Not found", { status: 404 });
   }

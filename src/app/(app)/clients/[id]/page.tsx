@@ -67,6 +67,7 @@ export default async function ClientDetailPage({
     clientId: d.clientId,
     dealId: d.dealId,
     createdAt: d.createdAt.toISOString(),
+    visibleToClient: d.visibleToClient,
   }));
 
   const dealOptions = deals.map((d) => ({ id: d.id, propertyAddress: dealDisplayName(d.propertyAddress) }));
@@ -164,9 +165,18 @@ export default async function ClientDetailPage({
         <>
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-1 text-base font-semibold text-foreground">Client portal</h2>
+            <p className="mb-4 text-sm text-muted">
+              {client.name} can see where their properties stand, their key dates, and any
+              document you&apos;ve left visible. No password — they sign in at{" "}
+              <span className="font-medium text-foreground">realtylabz.com/portal</span> with
+              their email, or use a link you send.
+            </p>
             <p className="mb-6 text-sm text-muted">
-              Give {client.name} their own private link to check where their properties stand
-              and download their documents. No account, no password — and only they can see it.
+              {!client.email
+                ? "Add an email address in Overview so they can sign in and get reminders."
+                : client.emailDeadlineReminders
+                  ? `Deadline reminders go to ${client.email} 3 days before and the day before. You're copied on each.`
+                  : "Deadline reminder emails are turned off for this client (change it in Overview)."}
             </p>
             <SendPortalAccessButton clientId={client.id} hasEmail={!!client.email} />
           </section>

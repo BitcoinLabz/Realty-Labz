@@ -6,6 +6,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { prisma } from "@/lib/db";
 import { resolvePortalClientId } from "@/lib/client-portal";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
+import { portalSignOutAction } from "@/app/actions/client-portal";
+import { PortalSignIn } from "./portal-sign-in";
 
 // Reached by an unguessable magic link, so it should never be indexed.
 export const metadata: Metadata = {
@@ -32,22 +34,14 @@ function formatDate(value: Date | string) {
   });
 }
 
-function ExpiredNotice() {
-  return (
-    <div className="flex min-h-screen w-full flex-col items-center justify-center gap-4 bg-surface px-6 text-center">
-      <Logo size="md" />
-      <h1 className="text-xl font-semibold text-foreground">This link has expired</h1>
-      <p className="max-w-sm text-sm text-muted">
-        For your security these links don&apos;t last forever. Ask your agent to send you a new one
-        and you&apos;ll be right back in.
-      </p>
-    </div>
-  );
-}
-
-export default async function ClientPortalPage() {
+export default async function ClientPortalPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ expired?: string }>;
+}) {
+  const { expired } = await searchParams;
   const clientId = await resolvePortalClientId();
-  if (!clientId) return <ExpiredNotice />;
+  if (!clientId) return <PortalSignIn expired={expired === "1"} />;
 
   const client = await prisma.client.findUnique({
     where: { id: clientId },
@@ -55,7 +49,7 @@ export default async function ClientPortalPage() {
     // obvious way to ask about it instead of hunting for an old email.
     include: { user: { select: { name: true, email: true } } },
   });
-  if (!client) return <ExpiredNotice />;
+  if (!client) return <PortalSignIn expired={false} />;
 
   const [deals, documents] = await Promise.all([
     prisma.deal.findMany({
@@ -69,8 +63,9 @@ export default async function ClientPortalPage() {
       },
       orderBy: { createdAt: "desc" },
     }),
+    // Only what the agent has left visible -- see Document.visibleToClient.
     prisma.document.findMany({
-      where: { clientId },
+      where: { clientId, visibleToClient: true },
       select: { id: true, fileName: true, createdAt: true },
       orderBy: { createdAt: "desc" },
     }),
@@ -82,7 +77,16 @@ export default async function ClientPortalPage() {
   return (
     <div className="min-h-screen bg-surface">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 sm:px-6">
-        <Logo size="md" />
+        <div className="flex items-center justify-between gap-4">
+          <Logo size="md" />
+          {/* For a shared or family computer. The link in their inbox still
+              signs them back in. */}
+          <form action={portalSignOutAction}>
+            <button type="submit" className="text-sm font-medium text-muted hover:text-foreground">
+              Sign out
+            </button>
+          </form>
+        </div>
 
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">

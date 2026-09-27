@@ -299,15 +299,19 @@ model MileageLog {
 }
 
 model Document {
-  id         String   @id @default(cuid())
-  fileName   String
+  id              String   @id @default(cuid())
+  fileName        String
   // Object key within the private Supabase Storage "documents" bucket
   // (see src/lib/document-storage.ts). Not a public URL — files are only
   // reachable through the authenticated GET /api/documents/[id] route.
-  storageKey String
-  mimeType   String
-  size       Int
-  createdAt  DateTime @default(now())
+  storageKey      String
+  mimeType        String
+  size            Int
+  createdAt       DateTime @default(now())
+  // Whether the linked client can see and download this in their portal.
+  // Defaults to true so every document that existed before this switch stays
+  // exactly as visible as it was; an agent turns it off for internal files.
+  visibleToClient Boolean  @default(true)
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
@@ -502,17 +506,23 @@ model OpenHouseVisitor {
 // else an agent adds) — deliberately not fixed fields on Deal, so Phase 3's
 // automatic deadline detection can create arbitrary deadlines here too.
 model DealDeadline {
-  id                  String    @id @default(cuid())
-  label               String
-  dueDate             DateTime
-  completedAt         DateTime?
-  createdAt           DateTime  @default(now())
+  id                      String    @id @default(cuid())
+  label                   String
+  dueDate                 DateTime
+  completedAt             DateTime?
+  createdAt               DateTime  @default(now())
   // Stamped once a reminder email has been sent (regardless of delivery
   // success -- same fire-and-forget philosophy every other email send in
   // this app already has, no retry queue exists anywhere) so
   // sendDueDeadlineReminders never re-sends the same reminder on a later
   // page visit. Null means "not sent yet."
-  emailReminderSentAt DateTime?
+  emailReminderSentAt     DateTime?
+  // The daily automatic reminders (src/app/api/cron/deadline-reminders),
+  // kept apart from emailReminderSentAt, which only records the manual
+  // button. Each is stamped once so a stage is never emailed twice -- the
+  // "early" one goes a few days out, the "final" one the day before.
+  autoReminderEarlySentAt DateTime?
+  autoReminderFinalSentAt DateTime?
 
   deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
   dealId String
