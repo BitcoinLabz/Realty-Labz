@@ -31,12 +31,12 @@ export default function FormsLayout({ children }: { children: React.ReactNode })
       </div>
 
       <div className="overflow-x-auto">
-        <div className="flex w-fit gap-1 rounded-full border border-border bg-surface p-1">
+        <div className="flex w-max gap-1 rounded-full border border-border bg-surface p-1">
           {tabs.map((tab) => (
             <Link
               key={tab.href}
               href={tab.href}
-              className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+              className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors ${
                 tab.href === active
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted hover:text-foreground"
