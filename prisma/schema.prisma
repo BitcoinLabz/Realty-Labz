@@ -523,6 +523,13 @@ model DealDeadline {
   // "early" one goes a few days out, the "final" one the day before.
   autoReminderEarlySentAt DateTime?
   autoReminderFinalSentAt DateTime?
+  // Set when the deadline came from the contract reader: the contract's own
+  // words it was read from (so the agent can check it at a glance), and a
+  // one-sentence plain-English explanation shown to the client in their
+  // portal and reminder emails. Both editable before saving; null for
+  // deadlines added by hand.
+  sourceQuote             String?
+  clientNote              String?
 
   deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
   dealId String

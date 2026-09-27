@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { CalendarClock, FileText, Home, Mail } from "lucide-react";
+import { CalendarClock, Check, FileText, Home, Mail } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -59,7 +59,12 @@ export default async function ClientPortalPage({
         propertyAddress: true,
         status: true,
         closingDate: true,
-        deadlines: { where: { completedAt: null }, orderBy: { dueDate: "asc" } },
+        // Done ones too, shown checked off: seeing "4 of 6 done" is half of
+        // what makes a timeline reassuring rather than a list of worries.
+        deadlines: {
+          select: { id: true, label: true, dueDate: true, completedAt: true, clientNote: true },
+          orderBy: { dueDate: "asc" },
+        },
       },
       orderBy: { createdAt: "desc" },
     }),
@@ -128,24 +133,39 @@ export default async function ClientPortalPage({
                   ) : null}
                   {deal.deadlines.length > 0 ? (
                     <div className="mt-3 border-t border-border pt-3">
-                      <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted">
-                        <CalendarClock size={13} />
-                        Dates to know
+                      <p className="mb-2 flex items-center justify-between gap-2 text-xs font-medium uppercase tracking-wide text-muted">
+                        <span className="flex items-center gap-1.5">
+                          <CalendarClock size={13} />
+                          Dates to know
+                        </span>
+                        <span className="normal-case tracking-normal">
+                          {deal.deadlines.filter((d) => d.completedAt).length} of {deal.deadlines.length} done
+                        </span>
                       </p>
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-2.5">
                         {deal.deadlines.map((d) => {
-                          const isPast = new Date(d.dueDate) < today;
+                          const isDone = !!d.completedAt;
+                          const isPast = !isDone && new Date(d.dueDate) < today;
                           return (
-                            <div
-                              key={d.id}
-                              className="flex items-baseline justify-between gap-4 text-sm"
-                            >
-                              <span className="text-foreground">{d.label}</span>
-                              <span
-                                className={`shrink-0 ${isPast ? "text-danger" : "text-muted"}`}
-                              >
-                                {formatDate(d.dueDate)}
-                              </span>
+                            <div key={d.id} className="flex flex-col gap-0.5">
+                              <div className="flex items-baseline justify-between gap-4 text-sm">
+                                <span
+                                  className={`flex items-center gap-1.5 ${
+                                    isDone ? "text-muted line-through" : "text-foreground"
+                                  }`}
+                                >
+                                  {isDone ? <Check size={13} className="shrink-0 text-accent" /> : null}
+                                  {d.label}
+                                </span>
+                                <span
+                                  className={`shrink-0 ${isPast ? "text-danger" : "text-muted"}`}
+                                >
+                                  {formatDate(d.dueDate)}
+                                </span>
+                              </div>
+                              {d.clientNote && !isDone ? (
+                                <p className="text-xs text-muted">{d.clientNote}</p>
+                              ) : null}
                             </div>
                           );
                         })}

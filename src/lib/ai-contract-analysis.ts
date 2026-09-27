@@ -39,10 +39,48 @@ const extractedContractSchema = z.object({
           .string()
           .describe("Short name for the deadline, e.g. 'Inspection contingency'"),
         dueDate: z.string().describe("The date this is due, as yyyy-mm-dd"),
+        // "Show your work": the agent checks each date against the contract's
+        // own words instead of trusting it blind. Shown under the deadline in
+        // the review screen and kept on the saved deadline.
+        sourceQuote: z
+          .string()
+          .nullable()
+          .describe(
+            "The exact sentence or phrase from the contract this deadline comes from, copied verbatim and kept under 200 characters. Null only if there is no single passage.",
+          ),
+        page: z
+          .number()
+          .int()
+          .nullable()
+          .describe("The 1-based page number of the PDF where sourceQuote appears, or null if unsure"),
+        basis: z
+          .string()
+          .nullable()
+          .describe(
+            "How the date was worked out when it isn't written as a calendar date, e.g. '10 days after acceptance (Sep 1)'. Null when the contract states the date directly.",
+          ),
+        clientExplanation: z
+          .string()
+          .describe(
+            "One short, plain-English sentence telling the buyer or seller what this deadline means for them and what they need to do, with no legal jargon. For example: 'Your window to have the home inspected and ask the seller for repairs.'",
+          ),
       }),
     )
     .describe(
       "Every dated contingency/deadline in the contract (inspection, financing, appraisal, title review, closing, etc.). Empty array if none found.",
+    ),
+  concerns: z
+    .array(
+      z.object({
+        issue: z.string().describe("One short sentence describing what an agent should double-check"),
+        sourceQuote: z
+          .string()
+          .nullable()
+          .describe("The contract text this concern is about, verbatim and under 200 characters, or null"),
+      }),
+    )
+    .describe(
+      "Things in this contract an agent would want to double-check: dates that conflict with each other, a contingency with no date, blank or unfilled fields, unusually short windows, or terms that look unusual. Empty array if nothing stands out. Do not pad this list.",
     ),
 });
 
@@ -55,7 +93,10 @@ Extract the property address, sale price, closing date, and every dated continge
 Rules:
 - Only report what the document actually states. If something isn't in the document, return null (or an empty deadlines array) rather than guessing.
 - Many contracts express deadlines relative to another date, e.g. "inspection within 10 days of acceptance." Compute the actual calendar date from the dates given in the document, and only include the deadline if you can determine a real date.
-- Return every date as yyyy-mm-dd.`;
+- Return every date as yyyy-mm-dd.
+- For each deadline, quote the contract's own words exactly as written, so the agent can find and check them. Never paraphrase inside sourceQuote.
+- The client explanation is read by a home buyer or seller, not a lawyer: one sentence, everyday words, focused on what it means for them.
+- Only raise a concern when there is something specific to check. An empty list is a good answer for a clean contract.`;
 
 // Sends the contract PDF to Claude and gets back structured data. Uses
 // structured outputs (a Zod schema) rather than parsing free text, so the
@@ -107,6 +148,11 @@ export async function analyzeContractPdf(pdfBuffer: Buffer): Promise<ExtractedCo
     usage.output_tokens,
   );
 
+  // A safety decline arrives as a normal 200 with no parsed output; say so
+  // plainly rather than blaming the file.
+  if (response.stop_reason === "refusal") {
+    throw new ContractAnalysisError("This document couldn't be read automatically. Add the dates by hand.");
+  }
   if (!response.parsed_output) {
     throw new ContractAnalysisError("Couldn't read this document. Try a different file.");
   }

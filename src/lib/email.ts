@@ -153,6 +153,7 @@ export async function sendDeadlineReminderEmail(params: {
   propertyLabel: string;
   dueDate: string; // already formatted for display
   when?: string | null; // "tomorrow", "in 3 days" -- automatic reminders only
+  note?: string | null; // plain-English "what this means for you"
   portalUrl?: string | null;
 }) {
   const resend = getResendClient();
@@ -167,6 +168,7 @@ export async function sendDeadlineReminderEmail(params: {
       ${params.clientName ? `<p>Hi ${escapeHtml(params.clientName)},</p>` : ""}
       <p>A quick reminder that <strong>${escapeHtml(params.deadlineLabel)}</strong> for
       ${escapeHtml(params.propertyLabel)} is due <strong>${escapeHtml(due)}</strong>.</p>
+      ${params.note ? `<p>${escapeHtml(params.note)}</p>` : ""}
       ${
         params.portalUrl
           ? `<p><a href="${params.portalUrl}">See all your dates and documents</a></p>`

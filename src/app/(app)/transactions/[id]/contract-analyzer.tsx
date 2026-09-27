@@ -1,7 +1,9 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
+import { checkDeadlines, describeFlag, type DeadlineFlag } from "@/lib/contract-checks";
+import { todayInReminderZone } from "@/lib/deadline-reminder-schedule";
 import {
   analyzeContractAction,
   applyContractAnalysisAction,
@@ -15,7 +17,138 @@ import type { DocumentDTO } from "@/app/(app)/clients/types";
 const initialAnalysisState: AnalysisState = {};
 const initialApplyState: FormState = {};
 
-type ReviewDeadline = { label: string; dueDate: string; checked: boolean };
+type ReviewDeadline = {
+  label: string;
+  dueDate: string;
+  checked: boolean;
+  sourceQuote: string | null;
+  page: number | null;
+  basis: string | null;
+  clientNote: string;
+};
+
+const inputClass =
+  "rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20";
+
+function formatShortDate(value: string) {
+  return new Date(`${value}T00:00:00.000Z`).toLocaleDateString("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+// "Worth a second look": the model's judgement calls about the contract as a
+// whole. Advisory only -- nothing here blocks saving.
+function ConcernList({ concerns }: { concerns: NonNullable<AnalysisState["extracted"]>["concerns"] }) {
+  if (concerns.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2 rounded-xl bg-surface p-4">
+      <p className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+        <AlertTriangle size={14} className="text-danger" />
+        Worth a second look
+      </p>
+      <ul className="flex flex-col gap-2">
+        {concerns.map((c, i) => (
+          <li key={i} className="text-sm text-foreground">
+            {c.issue}
+            {c.sourceQuote ? (
+              <span className="mt-0.5 block text-xs italic text-muted">&ldquo;{c.sourceQuote}&rdquo;</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ReviewDeadlineCard({
+  deadline,
+  flags,
+  onChange,
+}: {
+  deadline: ReviewDeadline;
+  flags: DeadlineFlag[];
+  onChange: (patch: Partial<ReviewDeadline>) => void;
+}) {
+  const weekend = flags.find((f): f is Extract<DeadlineFlag, { kind: "weekend" }> => f.kind === "weekend");
+
+  return (
+    <div
+      className={`flex flex-col gap-3 rounded-xl border p-4 transition-opacity ${
+        deadline.checked ? "border-border" : "border-border opacity-50"
+      }`}
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          type="checkbox"
+          checked={deadline.checked}
+          onChange={(e) => onChange({ checked: e.target.checked })}
+          aria-label={`Include ${deadline.label}`}
+          className="h-4 w-4 shrink-0 accent-accent"
+        />
+        <input
+          type="text"
+          value={deadline.label}
+          onChange={(e) => onChange({ label: e.target.value })}
+          aria-label="Deadline name"
+          className={`min-w-0 flex-1 ${inputClass}`}
+        />
+        <input
+          type="date"
+          value={deadline.dueDate}
+          onChange={(e) => onChange({ dueDate: e.target.value })}
+          aria-label="Due date"
+          className={inputClass}
+        />
+      </div>
+
+      {deadline.basis ? <p className="text-xs text-muted">{deadline.basis}</p> : null}
+
+      {deadline.sourceQuote ? (
+        <blockquote className="border-l-2 border-border pl-3 text-xs italic text-muted">
+          &ldquo;{deadline.sourceQuote}&rdquo;
+          {deadline.page ? <span className="not-italic"> — page {deadline.page}</span> : null}
+        </blockquote>
+      ) : null}
+
+      {flags.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {flags.map((f) => (
+            <span
+              key={f.kind}
+              className="rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-danger"
+            >
+              {describeFlag(f)}
+            </span>
+          ))}
+          {weekend ? (
+            <button
+              type="button"
+              onClick={() => onChange({ dueDate: weekend.suggestedDate })}
+              className="text-xs font-medium text-accent hover:opacity-80"
+            >
+              Move to {formatShortDate(weekend.suggestedDate)}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-muted">What your client sees</span>
+        <input
+          type="text"
+          value={deadline.clientNote}
+          onChange={(e) => onChange({ clientNote: e.target.value })}
+          maxLength={300}
+          placeholder="Optional — a plain-English line for their portal and reminders"
+          className={inputClass}
+        />
+      </label>
+    </div>
+  );
+}
 
 function ReviewPanel({
   dealId,
@@ -28,8 +161,24 @@ function ReviewPanel({
 }) {
   const [state, formAction, isPending] = useActionState(applyContractAnalysisAction, initialApplyState);
   const [deadlines, setDeadlines] = useState<ReviewDeadline[]>(
-    extracted.deadlines.map((d) => ({ ...d, checked: true })),
+    extracted.deadlines.map((d) => ({
+      label: d.label,
+      dueDate: d.dueDate,
+      checked: true,
+      sourceQuote: d.sourceQuote,
+      page: d.page,
+      basis: d.basis,
+      clientNote: d.clientExplanation,
+    })),
   );
+  // The closing date field is uncontrolled elsewhere in this form; tracked
+  // here only so "After the closing date" updates as the agent edits it.
+  const [closingDate, setClosingDate] = useState(extracted.closingDate ?? "");
+  const flags = checkDeadlines({
+    deadlines,
+    closingDate: closingDate || null,
+    today: todayInReminderZone(new Date()).toISOString().slice(0, 10),
+  });
 
   function updateDeadline(index: number, patch: Partial<ReviewDeadline>) {
     setDeadlines((prev) => prev.map((d, i) => (i === index ? { ...d, ...patch } : d)));
@@ -79,10 +228,13 @@ function ReviewPanel({
         label="Closing date"
         name="closingDate"
         type="date"
-        defaultValue={extracted.closingDate ?? ""}
+        value={closingDate}
+        onChange={(e) => setClosingDate(e.target.value)}
       />
 
-      <div className="flex flex-col gap-2 border-t border-border pt-4">
+      <ConcernList concerns={extracted.concerns} />
+
+      <div className="flex flex-col gap-3 border-t border-border pt-4">
         <p className="text-sm font-medium text-foreground">
           Deadlines found ({deadlines.length})
         </p>
@@ -90,29 +242,12 @@ function ReviewPanel({
           <p className="text-sm text-muted">No dated deadlines were found in this document.</p>
         ) : (
           deadlines.map((d, i) => (
-            <div key={i} className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <input
-                type="checkbox"
-                checked={d.checked}
-                onChange={(e) => updateDeadline(i, { checked: e.target.checked })}
-                aria-label={`Include ${d.label}`}
-                className="mt-1 sm:mt-0"
-              />
-              <input
-                type="text"
-                value={d.label}
-                onChange={(e) => updateDeadline(i, { label: e.target.value })}
-                aria-label="Deadline name"
-                className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
-              />
-              <input
-                type="date"
-                value={d.dueDate}
-                onChange={(e) => updateDeadline(i, { dueDate: e.target.value })}
-                aria-label="Due date"
-                className="rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
-              />
-            </div>
+            <ReviewDeadlineCard
+              key={i}
+              deadline={d}
+              flags={flags[i]}
+              onChange={(patch) => updateDeadline(i, patch)}
+            />
           ))
         )}
       </div>
@@ -121,7 +256,9 @@ function ReviewPanel({
         type="hidden"
         name="deadlines"
         value={JSON.stringify(
-          deadlines.filter((d) => d.checked).map(({ label, dueDate }) => ({ label, dueDate })),
+          deadlines
+            .filter((d) => d.checked)
+            .map(({ label, dueDate, sourceQuote, clientNote }) => ({ label, dueDate, sourceQuote, clientNote })),
         )}
       />
 

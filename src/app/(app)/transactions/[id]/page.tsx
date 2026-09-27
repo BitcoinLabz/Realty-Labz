@@ -209,6 +209,8 @@ export default async function DealDetailPage({
     dueDate: d.dueDate.toISOString().slice(0, 10),
     completedAt: d.completedAt ? d.completedAt.toISOString() : null,
     reminderSentAt: d.emailReminderSentAt ? d.emailReminderSentAt.toISOString() : null,
+    sourceQuote: d.sourceQuote,
+    clientNote: d.clientNote,
   }));
 
   const deadlineTemplateDtos: DeadlineTemplateDTO[] = deadlineTemplateRows.map((t) => ({

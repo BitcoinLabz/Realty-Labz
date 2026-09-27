@@ -37,6 +37,7 @@ export type DeadlineWithContext = {
   label: string;
   dueDate: Date;
   dealId: string;
+  clientNote?: string | null;
   deal: {
     propertyAddress: string | null;
     client: { name: string; email: string | null; emailDeadlineReminders: boolean } | null;
@@ -67,6 +68,9 @@ export async function sendRemindersFor(
       propertyLabel: dealDisplayName(deadline.deal.propertyAddress, client?.name),
       dueDate: formatDueDate(deadline.dueDate),
       when: options.when ?? null,
+      // The contract reader's plain-English line, only when the client is
+      // actually on the email -- it's written for them.
+      note: includeClient ? (deadline.clientNote ?? null) : null,
       portalUrl: includeClient ? PORTAL_URL : null,
     });
     return { sent: true, includedClient: includeClient };

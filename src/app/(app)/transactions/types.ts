@@ -84,10 +84,13 @@ export type DealDeadlineDTO = {
   label: string;
   dueDate: string; // yyyy-mm-dd
   completedAt: string | null;
-  // When a reminder email was last sent for this deadline. Purely
-  // informational -- reminders are manual and repeatable, so this never
-  // gates whether another can be sent.
+  // When the "Send reminder" button was last used for this deadline. Purely
+  // informational -- the manual send is repeatable, and the automatic ones
+  // track themselves separately (autoReminder*SentAt).
   reminderSentAt: string | null;
+  // From the contract reader, when it created this deadline.
+  sourceQuote: string | null;
+  clientNote: string | null;
 };
 
 export type OpenHouseVisitorDTO = {

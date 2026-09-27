@@ -322,6 +322,15 @@ export function DeadlineList({
                       })}
                       {isOverdue ? " · Overdue" : ""}
                     </span>
+                    {d.clientNote ? (
+                      <span className="text-xs text-muted">Client sees: {d.clientNote}</span>
+                    ) : null}
+                    {d.sourceQuote ? (
+                      <details className="text-xs text-muted">
+                        <summary className="cursor-pointer select-none">From the contract</summary>
+                        <p className="mt-1 border-l-2 border-border pl-3 italic">&ldquo;{d.sourceQuote}&rdquo;</p>
+                      </details>
+                    ) : null}
                     {d.reminderSentAt ? (
                       <span className="text-xs text-muted">
                         Reminder sent{" "}

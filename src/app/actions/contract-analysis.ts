@@ -63,6 +63,13 @@ export async function analyzeContractAction(
   }
 }
 
+// Trimmed text or null, cut to a maximum length.
+function optionalText(value: unknown, max: number): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, max) : null;
+}
+
 // Writes only what the agent actually confirmed in the review panel. Fields
 // arrive as plain form values (blank = don't change), and deadlines arrive as
 // one JSON blob from the checkbox list -- the same hidden-JSON-input pattern
@@ -101,19 +108,31 @@ export async function applyContractAnalysisAction(
   }
 
   const deadlinesJson = formData.get("deadlines");
-  let deadlines: { label: string; dueDate: string }[] = [];
+  let deadlines: { label: string; dueDate: string; sourceQuote: string | null; clientNote: string | null }[] =
+    [];
   if (typeof deadlinesJson === "string" && deadlinesJson) {
     try {
       const parsed: unknown = JSON.parse(deadlinesJson);
       if (!Array.isArray(parsed)) return { error: "Malformed deadline data" };
-      deadlines = parsed.filter(
-        (d): d is { label: string; dueDate: string } =>
-          !!d &&
-          typeof d === "object" &&
-          typeof (d as { label?: unknown }).label === "string" &&
-          typeof (d as { dueDate?: unknown }).dueDate === "string" &&
-          !Number.isNaN(new Date((d as { dueDate: string }).dueDate).getTime()),
-      );
+      deadlines = parsed
+        .filter(
+          (d): d is { label: string; dueDate: string; sourceQuote?: unknown; clientNote?: unknown } =>
+            !!d &&
+            typeof d === "object" &&
+            typeof (d as { label?: unknown }).label === "string" &&
+            typeof (d as { dueDate?: unknown }).dueDate === "string" &&
+            !Number.isNaN(new Date((d as { dueDate: string }).dueDate).getTime()),
+        )
+        .map((d) => ({
+          label: d.label,
+          dueDate: d.dueDate,
+          // Both optional, and both arrive from the browser -- capped so a
+          // tampered request can't park a novel in the deadline row. The
+          // client note is shown to the client and sent in email, where it
+          // is escaped (see escapeHtml in src/lib/email.ts).
+          sourceQuote: optionalText(d.sourceQuote, 500),
+          clientNote: optionalText(d.clientNote, 300),
+        }));
     } catch {
       return { error: "Malformed deadline data" };
     }
@@ -128,7 +147,13 @@ export async function applyContractAnalysisAction(
 
   if (deadlines.length > 0) {
     await prisma.dealDeadline.createMany({
-      data: deadlines.map((d) => ({ dealId, label: d.label, dueDate: new Date(d.dueDate) })),
+      data: deadlines.map((d) => ({
+        dealId,
+        label: d.label,
+        dueDate: new Date(d.dueDate),
+        sourceQuote: d.sourceQuote,
+        clientNote: d.clientNote,
+      })),
     });
   }
 
