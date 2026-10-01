@@ -4,17 +4,11 @@ import { useActionState, useEffect, useState } from "react";
 import { AlertTriangle, Sparkles } from "lucide-react";
 import { checkDeadlines, describeFlag, type DeadlineFlag } from "@/lib/contract-checks";
 import { todayInReminderZone } from "@/lib/deadline-reminder-schedule";
-import {
-  analyzeContractAction,
-  applyContractAnalysisAction,
-  type AnalysisState,
-} from "@/app/actions/contract-analysis";
+import { applyContractAnalysisAction, type AnalysisState } from "@/app/actions/contract-analysis";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import type { DocumentDTO } from "@/app/(app)/clients/types";
 
-const initialAnalysisState: AnalysisState = {};
 const initialApplyState: FormState = {};
 
 type ReviewDeadline = {
@@ -275,62 +269,5 @@ export function ReviewPanel({
         </Button>
       </div>
     </form>
-  );
-}
-
-export function ContractAnalyzer({
-  dealId,
-  documents,
-}: {
-  dealId: string;
-  documents: DocumentDTO[];
-}) {
-  const [state, formAction, isPending] = useActionState(analyzeContractAction, initialAnalysisState);
-  const [dismissed, setDismissed] = useState(false);
-
-  const pdfs = documents.filter((d) => d.mimeType === "application/pdf");
-  if (pdfs.length === 0) {
-    return (
-      <p className="text-sm text-muted">
-        Upload a contract PDF below, then you can have it read for deadlines automatically.
-      </p>
-    );
-  }
-
-  const showReview = !!state.extracted && !dismissed;
-
-  return (
-    <div className="flex flex-col gap-3">
-      {pdfs.map((doc) => (
-        <form
-          key={doc.id}
-          action={formAction}
-          onSubmit={() => setDismissed(false)}
-          className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <span className="truncate text-sm font-medium text-foreground">{doc.fileName}</span>
-          <input type="hidden" name="documentId" value={doc.id} />
-          <input type="hidden" name="dealId" value={dealId} />
-          <button
-            type="submit"
-            disabled={isPending}
-            className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-accent hover:opacity-80 disabled:opacity-50"
-          >
-            <Sparkles size={14} />
-            {isPending ? "Reading…" : "Find deadlines"}
-          </button>
-        </form>
-      ))}
-
-      {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
-
-      {showReview ? (
-        <ReviewPanel
-          dealId={dealId}
-          extracted={state.extracted!}
-          onDone={() => setDismissed(true)}
-        />
-      ) : null}
-    </div>
   );
 }

@@ -8,7 +8,6 @@ import type { DeadlineTemplateDTO } from "../deadline-sets/types";
 import { formatCurrency } from "@/lib/format";
 import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../transaction-form";
-import { ContractAnalyzer } from "./contract-analyzer";
 import { ContractAssistant } from "./contract-assistant";
 import { E_SIGNATURE_ENABLED } from "@/lib/features";
 import { DeadlineList } from "./deadline-list";
@@ -264,7 +263,12 @@ export default async function DealDetailPage({
           {/* The first thing on a fresh transaction: hand over the contract.
               Once it has deadlines this lives on the Deadlines tab only. */}
           {deadlineDtos.length === 0 ? (
-            <ContractAssistant dealId={deal.id} enabled={isAiConfigured()} hasDeadlines={false} />
+            <ContractAssistant
+              dealId={deal.id}
+              enabled={isAiConfigured()}
+              hasDeadlines={false}
+              documents={documentDtos}
+            />
           ) : null}
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
@@ -367,7 +371,12 @@ export default async function DealDetailPage({
       label: "Deadlines",
       content: (
         <>
-          <ContractAssistant dealId={deal.id} enabled={isAiConfigured()} hasDeadlines={deadlineDtos.length > 0} />
+          <ContractAssistant
+            dealId={deal.id}
+            enabled={isAiConfigured()}
+            hasDeadlines={deadlineDtos.length > 0}
+            documents={documentDtos}
+          />
           <section className="rounded-2xl border border-border bg-background p-8">
             <div className="mb-6 flex items-baseline justify-between">
               <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
@@ -390,22 +399,11 @@ export default async function DealDetailPage({
       ),
     },
     {
-      id: "documents-forms",
+      // "documents" is also the #documents link target in ContractAssistant.
+      id: "documents",
       label: E_SIGNATURE_ENABLED ? "Documents & Forms" : "Documents",
       content: (
         <>
-          {isAiConfigured() ? (
-            <section className="rounded-2xl border border-border bg-background p-8">
-              <h2 className="mb-1 text-base font-semibold text-foreground">
-                Read a contract for deadlines
-              </h2>
-              <p className="mb-6 text-sm text-muted">
-                Have an uploaded contract read for its key dates — you review everything before
-                anything is saved.
-              </p>
-              <ContractAnalyzer dealId={deal.id} documents={documentDtos} />
-            </section>
-          ) : null}
 
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>

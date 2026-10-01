@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { ownerOnlyFilter } from "@/lib/authorization";
-import { MAX_FILE_SIZE_BYTES, readDocumentFile, saveDocumentFile } from "@/lib/document-storage";
+import { readDocumentFile } from "@/lib/document-storage";
 import {
   analyzeContractPdf,
   ContractAnalysisError,
@@ -60,72 +60,6 @@ export async function analyzeContractAction(
     const message =
       err instanceof ContractAnalysisError ? err.message : "Couldn't analyze this document right now";
     return { error: message };
-  }
-}
-
-// The Contract assistant's one step: save the contract to this transaction
-// and read it straight away, instead of uploading in one place and finding
-// a separate "read" button somewhere else. Like analyzeContractAction it
-// writes no deadlines -- the agent reviews first. The document itself IS
-// saved, so the contract is on file even if the reading fails.
-export async function uploadAndReadContractAction(
-  _prevState: AnalysisState,
-  formData: FormData,
-): Promise<AnalysisState> {
-  const session = await auth();
-  if (!session?.user) return { error: "You must be signed in" };
-  if (!isAiConfigured()) return { error: "Contract reading isn't switched on yet" };
-
-  const dealId = formData.get("dealId");
-  if (typeof dealId !== "string" || !dealId) return { error: "Missing transaction" };
-
-  const deal = await prisma.deal.findFirst({
-    where: { id: dealId, ...ownerOnlyFilter(session.user) },
-    select: { id: true, clientId: true },
-  });
-  if (!deal) return { error: "Transaction not found" };
-
-  const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0) {
-    return { fieldErrors: { file: "Choose the contract PDF" } };
-  }
-  if (file.type !== "application/pdf") {
-    return { fieldErrors: { file: "The contract needs to be a PDF" } };
-  }
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { fieldErrors: { file: "File must be under 15MB" } };
-  }
-
-  let storageKey: string;
-  try {
-    storageKey = await saveDocumentFile(session.user.id, file);
-  } catch (err) {
-    console.error("[contract-analysis] upload failed", err);
-    return { fieldErrors: { file: "Couldn't save the file. Try re-saving the PDF and uploading again." } };
-  }
-
-  await prisma.document.create({
-    data: {
-      userId: session.user.id,
-      fileName: file.name,
-      storageKey,
-      mimeType: file.type,
-      size: file.size,
-      dealId: deal.id,
-      clientId: deal.clientId,
-    },
-  });
-  revalidatePath(`/transactions/${deal.id}`);
-  if (deal.clientId) revalidatePath(`/clients/${deal.clientId}`);
-
-  try {
-    const extracted = await analyzeContractPdf(Buffer.from(await file.arrayBuffer()));
-    return { extracted };
-  } catch (err) {
-    console.error("[contract-analysis] read failed", { dealId, err });
-    const reason =
-      err instanceof ContractAnalysisError ? err.message : "Couldn't read it right now — try again in a moment.";
-    return { error: `Saved to Documents, but ${reason.charAt(0).toLowerCase()}${reason.slice(1)}` };
   }
 }
 

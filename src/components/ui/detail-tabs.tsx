@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // Generic client-side tab switcher for a detail page's stacked sections
 // (client/deal detail pages) -- same pill-bar visual language already used
@@ -14,6 +14,27 @@ export function DetailTabs({
   tabs: { id: string; label: string; content: React.ReactNode }[];
 }) {
   const [active, setActive] = useState(tabs[0]?.id);
+
+  // A link to "#some-tab-id" opens that tab, so one section can point to
+  // another ("Go to Documents") without the reader hunting for it.
+  //
+  // The hash is cleared once used: left in the URL, the next server refresh
+  // after a save would yank the reader back to that tab, and clicking the
+  // same link twice would do nothing (no hashchange).
+  const tabIds = tabs.map((t) => t.id).join(",");
+  useEffect(() => {
+    const ids = tabIds.split(",");
+    function openFromHash() {
+      const id = window.location.hash.slice(1);
+      if (!ids.includes(id)) return;
+      setActive(id);
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, [tabIds]);
 
   return (
     <div className="flex flex-col gap-6">
