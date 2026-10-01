@@ -9,6 +9,7 @@ import { formatCurrency } from "@/lib/format";
 import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../transaction-form";
 import { ContractAnalyzer } from "./contract-analyzer";
+import { ContractAssistant } from "./contract-assistant";
 import { E_SIGNATURE_ENABLED } from "@/lib/features";
 import { DeadlineList } from "./deadline-list";
 import { DealDocuments } from "./deal-documents";
@@ -260,6 +261,11 @@ export default async function DealDetailPage({
       label: "Overview",
       content: (
         <>
+          {/* The first thing on a fresh transaction: hand over the contract.
+              Once it has deadlines this lives on the Deadlines tab only. */}
+          {deadlineDtos.length === 0 ? (
+            <ContractAssistant dealId={deal.id} enabled={isAiConfigured()} hasDeadlines={false} />
+          ) : null}
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
             <div className="max-w-md">
@@ -360,29 +366,32 @@ export default async function DealDetailPage({
       id: "deadlines",
       label: "Deadlines",
       content: (
-        <section className="rounded-2xl border border-border bg-background p-8">
-          <div className="mb-6 flex items-baseline justify-between">
-            <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
-            {deadlineDtos.length > 0 ? (
-              <a
-                href={`/api/calendar/transactions/${deal.id}`}
-                className="text-sm font-medium text-accent hover:opacity-80"
-              >
-                Add to calendar
-              </a>
-            ) : null}
-          </div>
-          <DeadlineList
-            dealId={deal.id}
-            deadlines={deadlineDtos}
-            deadlineTemplates={deadlineTemplateDtos}
-          />
-        </section>
+        <>
+          <ContractAssistant dealId={deal.id} enabled={isAiConfigured()} hasDeadlines={deadlineDtos.length > 0} />
+          <section className="rounded-2xl border border-border bg-background p-8">
+            <div className="mb-6 flex items-baseline justify-between">
+              <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
+              {deadlineDtos.length > 0 ? (
+                <a
+                  href={`/api/calendar/transactions/${deal.id}`}
+                  className="text-sm font-medium text-accent hover:opacity-80"
+                >
+                  Add to calendar
+                </a>
+              ) : null}
+            </div>
+            <DeadlineList
+              dealId={deal.id}
+              deadlines={deadlineDtos}
+              deadlineTemplates={deadlineTemplateDtos}
+            />
+          </section>
+        </>
       ),
     },
     {
       id: "documents-forms",
-      label: "Documents & Forms",
+      label: E_SIGNATURE_ENABLED ? "Documents & Forms" : "Documents",
       content: (
         <>
           {isAiConfigured() ? (

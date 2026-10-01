@@ -150,14 +150,16 @@ function ReviewDeadlineCard({
   );
 }
 
-function ReviewPanel({
+export function ReviewPanel({
   dealId,
   extracted,
   onDone,
 }: {
   dealId: string;
   extracted: NonNullable<AnalysisState["extracted"]>;
-  onDone: () => void;
+  // Called with the "Added N deadlines…" confirmation after a save, or with
+  // nothing when the agent discards.
+  onDone: (message?: string) => void;
 }) {
   const [state, formAction, isPending] = useActionState(applyContractAnalysisAction, initialApplyState);
   const [deadlines, setDeadlines] = useState<ReviewDeadline[]>(
@@ -192,7 +194,7 @@ function ReviewPanel({
     // would show stale copies of values that are now actually saved. Must be
     // an effect, not a bare call during render: onDone() sets state in the
     // parent, and doing that mid-render is a React error.
-    if (succeeded) onDone();
+    if (succeeded) onDone(state.success);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [succeeded]);
 
@@ -268,7 +270,7 @@ function ReviewPanel({
         <Button type="submit" disabled={isPending}>
           {isPending ? "Applying…" : "Apply to this deal"}
         </Button>
-        <Button type="button" variant="secondary" onClick={onDone}>
+        <Button type="button" variant="secondary" onClick={() => onDone()}>
           Discard
         </Button>
       </div>
