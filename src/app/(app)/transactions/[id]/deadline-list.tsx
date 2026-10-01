@@ -1,11 +1,12 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { CalendarClock, Send, X } from "lucide-react";
+import { CalendarClock, ChevronDown, Plus, Send, X } from "lucide-react";
 import {
   createDeadlineAction,
   deleteDeadlineAction,
   toggleDeadlineAction,
+  updateDeadlineAction,
 } from "@/app/actions/deal-deadlines";
 import { sendDeadlineReminderNowAction } from "@/app/actions/deadline-reminders";
 import { applyDeadlineTemplateAction } from "@/app/actions/deadline-templates";
@@ -133,12 +134,7 @@ function ApplyDeadlineSet({
       ));
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-xl border border-border p-4">
-      <div className="flex items-center gap-2">
-        <CalendarClock size={16} className="text-muted" />
-        <span className="text-sm font-medium text-foreground">Add a saved set of deadlines</span>
-      </div>
-
+    <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="dealId" value={dealId} />
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -256,6 +252,184 @@ function ApplyDeadlineSet({
   );
 }
 
+// A tucked-away section, closed until asked for. Native <details> so it's
+// keyboard- and screen-reader-friendly with no state to manage.
+function Disclosure({
+  icon,
+  label,
+  children,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group rounded-xl border border-border">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-foreground [&::-webkit-details-marker]:hidden">
+        <span className="flex items-center gap-2">
+          {icon}
+          {label}
+        </span>
+        <ChevronDown size={16} className="text-muted transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="border-t border-border p-4">{children}</div>
+    </details>
+  );
+}
+
+// One deadline opened for editing, in place. Delete lives here rather than
+// on every row: it's the rare action, and keeping it one tap further away
+// both declutters the list and makes an accidental delete harder.
+function EditDeadlineRow({
+  deadline,
+  dealId,
+  onClose,
+}: {
+  deadline: DealDeadlineDTO;
+  dealId: string;
+  onClose: () => void;
+}) {
+  const [state, formAction, isPending] = useActionState(updateDeadlineAction, initialState);
+
+  useEffect(() => {
+    if (state.success) onClose();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.success]);
+
+  return (
+    <div className="flex flex-col gap-4 rounded-xl border border-accent px-4 py-4">
+      <form action={formAction} className="flex flex-col gap-3">
+        <input type="hidden" name="id" value={deadline.id} />
+        <input type="hidden" name="dealId" value={dealId} />
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex-1">
+            <Field
+              label="Name"
+              name="label"
+              type="text"
+              defaultValue={deadline.label}
+              required
+              error={state.fieldErrors?.label}
+            />
+          </div>
+          <div className="sm:w-44">
+            <Field
+              label="Due date"
+              name="dueDate"
+              type="date"
+              defaultValue={deadline.dueDate}
+              required
+              error={state.fieldErrors?.dueDate}
+            />
+          </div>
+        </div>
+        <Field
+          label="What your client sees (optional)"
+          name="clientNote"
+          type="text"
+          maxLength={300}
+          defaultValue={deadline.clientNote ?? ""}
+          hint="A plain-English line shown in their portal and reminder emails."
+        />
+        {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
+        <div className="flex gap-2">
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "Saving…" : "Save"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+      <form
+        action={deleteDeadlineAction}
+        onSubmit={(e) => {
+          if (!confirm(`Delete "${deadline.label}"?`)) e.preventDefault();
+        }}
+        className="border-t border-border pt-3"
+      >
+        <input type="hidden" name="id" value={deadline.id} />
+        <input type="hidden" name="dealId" value={dealId} />
+        <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
+          Delete this deadline
+        </button>
+      </form>
+    </div>
+  );
+}
+
+function DeadlineRow({
+  deadline: d,
+  dealId,
+  onEdit,
+}: {
+  deadline: DealDeadlineDTO;
+  dealId: string;
+  onEdit: () => void;
+}) {
+  const isDone = !!d.completedAt;
+  const isOverdue = !isDone && new Date(d.dueDate + "T00:00:00") < new Date();
+
+  return (
+    // Stacks on phones so the name never gets squeezed into a sliver by the
+    // actions beside it.
+    <div className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <form action={toggleDeadlineAction} className="pt-0.5">
+          <input type="hidden" name="id" value={d.id} />
+          <input type="hidden" name="dealId" value={dealId} />
+          <input type="hidden" name="isCompleted" value={String(isDone)} />
+          <button
+            type="submit"
+            aria-label={isDone ? "Mark incomplete" : "Mark complete"}
+            className={`flex h-5 w-5 items-center justify-center rounded-full border text-xs transition-colors ${
+              isDone ? "border-accent bg-accent text-accent-foreground" : "border-border"
+            }`}
+          >
+            {isDone ? "✓" : ""}
+          </button>
+        </form>
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className={`text-sm font-medium ${isDone ? "text-muted line-through" : "text-foreground"}`}>
+            {d.label}
+          </span>
+          <span className={`text-sm ${isOverdue ? "text-danger" : "text-muted"}`}>
+            {new Date(d.dueDate + "T00:00:00").toLocaleDateString("en-US", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+            {isOverdue ? " · Overdue" : ""}
+            {d.reminderSentAt
+              ? ` · Reminder sent ${new Date(d.reminderSentAt).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                })}`
+              : ""}
+          </span>
+          {d.clientNote && !isDone ? <span className="text-xs text-muted">Client sees: {d.clientNote}</span> : null}
+          {d.sourceQuote ? (
+            <details className="text-xs text-muted">
+              <summary className="cursor-pointer select-none">From the contract</summary>
+              <p className="mt-1 border-l-2 border-border pl-3 italic">&ldquo;{d.sourceQuote}&rdquo;</p>
+            </details>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-start justify-end gap-4 pl-8 sm:pl-0">
+        {!isDone ? <SendReminderButton deadlineId={d.id} dealId={dealId} /> : null}
+        <button type="button" onClick={onEdit} className="text-sm font-medium text-muted hover:text-foreground">
+          Edit
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// The list comes first -- it's what an agent opens this tab for. Adding by
+// hand and applying a saved set are tucked into closed sections below it,
+// so a transaction with its deadlines in place isn't a wall of empty forms.
 export function DeadlineList({
   dealId,
   deadlines,
@@ -265,101 +439,34 @@ export function DeadlineList({
   deadlines: DealDeadlineDTO[];
   deadlineTemplates: DeadlineTemplateDTO[];
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   return (
-    <div className="flex flex-col gap-6">
-      {deadlineTemplates.length > 0 ? (
-        <ApplyDeadlineSet dealId={dealId} templates={deadlineTemplates} />
-      ) : null}
-
-      <AddDeadlineForm dealId={dealId} />
-
+    <div className="flex flex-col gap-4">
       {deadlines.length === 0 ? (
-        <p className="text-sm text-muted">
-          No contingencies or deadlines yet — e.g. inspection, financing, appraisal, closing.
-        </p>
+        <p className="text-sm text-muted">No deadlines yet. Read the contract above, or add them below.</p>
       ) : (
         <div className="flex flex-col gap-2">
-          {deadlines.map((d) => {
-            const isDone = !!d.completedAt;
-            const isOverdue = !isDone && new Date(d.dueDate + "T00:00:00") < new Date();
-            return (
-              <div
-                key={d.id}
-                // Stacks on phones: at 375px the label, date, "Reminder sent",
-                // "Send reminder" and "Delete" all competing on one row
-                // squeezed the text into an unreadable sliver. Same fix
-                // already applied to the open-house and referral rows.
-                className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <form action={toggleDeadlineAction}>
-                    <input type="hidden" name="id" value={d.id} />
-                    <input type="hidden" name="dealId" value={dealId} />
-                    <input type="hidden" name="isCompleted" value={String(isDone)} />
-                    <button
-                      type="submit"
-                      aria-label={isDone ? "Mark incomplete" : "Mark complete"}
-                      className={`flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${
-                        isDone ? "border-accent bg-accent text-accent-foreground" : "border-border"
-                      }`}
-                    >
-                      {isDone ? "✓" : ""}
-                    </button>
-                  </form>
-                  <div className="flex min-w-0 flex-col">
-                    <span
-                      className={`text-sm font-medium ${
-                        isDone ? "text-muted line-through" : "text-foreground"
-                      }`}
-                    >
-                      {d.label}
-                    </span>
-                    <span className={`text-sm ${isOverdue ? "text-danger" : "text-muted"}`}>
-                      {new Date(d.dueDate + "T00:00:00").toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                      {isOverdue ? " · Overdue" : ""}
-                    </span>
-                    {d.clientNote ? (
-                      <span className="text-xs text-muted">Client sees: {d.clientNote}</span>
-                    ) : null}
-                    {d.sourceQuote ? (
-                      <details className="text-xs text-muted">
-                        <summary className="cursor-pointer select-none">From the contract</summary>
-                        <p className="mt-1 border-l-2 border-border pl-3 italic">&ldquo;{d.sourceQuote}&rdquo;</p>
-                      </details>
-                    ) : null}
-                    {d.reminderSentAt ? (
-                      <span className="text-xs text-muted">
-                        Reminder sent{" "}
-                        {new Date(d.reminderSentAt).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center justify-end gap-4 pl-8 sm:pl-0">
-                  {!isDone ? <SendReminderButton deadlineId={d.id} dealId={dealId} /> : null}
-                  <form action={deleteDeadlineAction}>
-                    <input type="hidden" name="id" value={d.id} />
-                    <input type="hidden" name="dealId" value={dealId} />
-                    <button
-                      type="submit"
-                      className="text-sm font-medium text-danger hover:opacity-80"
-                    >
-                      Delete
-                    </button>
-                  </form>
-                </div>
-              </div>
-            );
-          })}
+          {deadlines.map((d) =>
+            editingId === d.id ? (
+              <EditDeadlineRow key={d.id} deadline={d} dealId={dealId} onClose={() => setEditingId(null)} />
+            ) : (
+              <DeadlineRow key={d.id} deadline={d} dealId={dealId} onEdit={() => setEditingId(d.id)} />
+            ),
+          )}
         </div>
       )}
+
+      <div className="flex flex-col gap-2">
+        <Disclosure icon={<Plus size={16} className="text-muted" />} label="Add a deadline">
+          <AddDeadlineForm dealId={dealId} />
+        </Disclosure>
+        {deadlineTemplates.length > 0 ? (
+          <Disclosure icon={<CalendarClock size={16} className="text-muted" />} label="Add a saved set of deadlines">
+            <ApplyDeadlineSet dealId={dealId} templates={deadlineTemplates} />
+          </Disclosure>
+        ) : null}
+      </div>
     </div>
   );
 }

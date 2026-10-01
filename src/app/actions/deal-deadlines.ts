@@ -95,3 +95,60 @@ export async function deleteDeadlineAction(formData: FormData) {
 
   revalidatePath(`/transactions/${dealId}`);
 }
+
+// Edit a deadline after it's saved -- a contract reread can miss something,
+// and a typo in a name or date shouldn't mean delete-and-retype.
+export async function updateDeadlineAction(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You must be signed in" };
+
+  const id = formData.get("id");
+  const dealId = formData.get("dealId");
+  if (typeof id !== "string" || typeof dealId !== "string") return { error: "Missing deadline" };
+
+  const deal = await assertDealAccess(dealId, session.user);
+  if (!deal) return { error: "Deal not found" };
+
+  const parsed = dealDeadlineSchema.safeParse({
+    label: formData.get("label"),
+    dueDate: formData.get("dueDate"),
+  });
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      fieldErrors[String(issue.path[0])] = issue.message;
+    }
+    return { fieldErrors };
+  }
+
+  const existing = await prisma.dealDeadline.findFirst({
+    where: { id, dealId },
+    select: { dueDate: true },
+  });
+  if (!existing) return { error: "Deadline not found" };
+
+  const rawNote = formData.get("clientNote");
+  const clientNote = typeof rawNote === "string" && rawNote.trim() ? rawNote.trim().slice(0, 300) : null;
+  const dueDate = new Date(parsed.data.dueDate);
+  const dateMoved = existing.dueDate.getTime() !== dueDate.getTime();
+
+  // Same compound {id, dealId} guard as toggle/delete above. A moved date
+  // clears the automatic-reminder stamps so the client is reminded about the
+  // new date rather than the job thinking it already did.
+  await prisma.dealDeadline.updateMany({
+    where: { id, dealId },
+    data: {
+      label: parsed.data.label,
+      dueDate,
+      clientNote,
+      ...(dateMoved ? { autoReminderEarlySentAt: null, autoReminderFinalSentAt: null } : {}),
+    },
+  });
+
+  revalidatePath(`/transactions/${dealId}`);
+  revalidatePath("/dashboard");
+  return { success: "Saved" };
+}

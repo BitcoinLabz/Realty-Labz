@@ -366,12 +366,12 @@ export default async function DealDetailPage({
       label: "Deadlines",
       content: (
         <section className="rounded-2xl border border-border bg-background p-8">
-          <div className="mb-6 flex items-baseline justify-between">
+          <div className="mb-6 flex items-baseline justify-between gap-4">
             <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
             {deadlineDtos.length > 0 ? (
               <a
                 href={`/api/calendar/transactions/${deal.id}`}
-                className="text-sm font-medium text-accent hover:opacity-80"
+                className="shrink-0 whitespace-nowrap text-sm font-medium text-accent hover:opacity-80"
               >
                 Add to calendar
               </a>
