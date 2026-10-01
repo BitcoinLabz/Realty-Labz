@@ -42,13 +42,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface md:flex-row">
+    <div className="flex min-h-screen bg-surface">
       <Sidebar
         userName={session?.user?.name}
         showTeamLink={showTeamLink}
         upcomingDeadlines={upcomingDeadlines}
       />
-      <main className="flex-1 px-6 py-10 md:px-10">
+      {/* min-w-0 lets wide content scroll inside the page instead of pushing
+          past the screen; pl-[4.5rem] is the 56px phone icon rail (sidebar.tsx)
+          plus a 16px gutter. */}
+      <main className="min-w-0 flex-1 py-8 pl-[4.5rem] pr-4 sm:pr-6 md:px-10 md:py-10">
         <div className="mx-auto max-w-5xl">{children}</div>
       </main>
     </div>

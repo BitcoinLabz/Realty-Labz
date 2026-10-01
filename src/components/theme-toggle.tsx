@@ -8,7 +8,8 @@ import { Moon, Sun } from "lucide-react";
 // and the first client render (before next-themes reads localStorage), so
 // rendering based on them before mount would cause a hydration mismatch --
 // render a stable placeholder until mounted instead.
-export function ThemeToggle() {
+// `compact`: icon only, for the phone icon rail (see sidebar.tsx).
+export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const [mounted, setMounted] = useState(false);
   const { resolvedTheme, setTheme } = useTheme();
 
@@ -17,10 +18,23 @@ export function ThemeToggle() {
   }, []);
 
   if (!mounted) {
-    return <div className="h-5 w-24" aria-hidden="true" />;
+    return <div className={compact ? "h-10 w-10" : "h-5 w-24"} aria-hidden="true" />;
   }
 
   const isDark = resolvedTheme === "dark";
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        onClick={() => setTheme(isDark ? "light" : "dark")}
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+        className="flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-foreground"
+      >
+        {isDark ? <Moon size={18} /> : <Sun size={18} />}
+      </button>
+    );
+  }
 
   return (
     <button

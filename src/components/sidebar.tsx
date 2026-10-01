@@ -7,7 +7,7 @@ import {
   Building2,
   Home,
   LayoutDashboard,
-  Menu,
+  PanelLeft,
   Settings,
   Users,
   Wallet,
@@ -54,19 +54,62 @@ export function Sidebar({
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
+  const initials =
+    (userName ?? "")
+      .split(/s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]!.toUpperCase())
+      .join("") || "?";
+
   return (
     <>
-      <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3 md:hidden">
-        <Logo size="sm" href="/dashboard" />
-        <div className="flex items-center gap-4">
-          <NotificationBell deadlines={upcomingDeadlines} />
+      {/* Phones: a slim icon rail that's always there, like Claude's own
+          site -- every section is one tap away without opening a menu first.
+          The panel button at the top (or your initials) expands the full
+          labelled menu below. Fixed, so the page scrolls beside it; the
+          layout pads <main> by the same w-14. */}
+      <div className="fixed inset-y-0 left-0 z-30 flex w-14 flex-col items-center border-r border-border bg-background py-3 md:hidden">
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          aria-label="Open menu"
+          className="flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-foreground"
+        >
+          <PanelLeft size={20} />
+        </button>
+
+        <nav className="mt-4 flex flex-1 flex-col items-center gap-1.5">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-label={item.label}
+                aria-current={active ? "page" : undefined}
+                title={item.label}
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
+                  active ? "bg-accent/10 text-accent" : "text-muted hover:bg-surface hover:text-foreground"
+                }`}
+              >
+                <Icon size={20} />
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex flex-col items-center gap-1.5">
+          <NotificationBell deadlines={upcomingDeadlines} placement="rail" />
+          <ThemeToggle compact />
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            aria-label="Open menu"
-            className="text-foreground"
+            aria-label="Account menu"
+            className="mt-1 flex h-9 w-9 items-center justify-center rounded-full bg-surface text-xs font-semibold text-foreground"
           >
-            <Menu size={22} />
+            {initials}
           </button>
         </div>
       </div>
