@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { isDeadlineOverdue } from "@/lib/deadline-reminder-schedule";
 import { CalendarClock, Check, FileText, Home, Mail } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import { Card } from "@/components/ui/card";
@@ -76,9 +77,6 @@ export default async function ClientPortalPage({
     }),
   ]);
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   return (
     <div className="min-h-screen bg-surface">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-10 sm:px-6">
@@ -145,7 +143,7 @@ export default async function ClientPortalPage({
                       <div className="flex flex-col gap-2.5">
                         {deal.deadlines.map((d) => {
                           const isDone = !!d.completedAt;
-                          const isPast = !isDone && new Date(d.dueDate) < today;
+                          const isPast = !isDone && isDeadlineOverdue(d.dueDate);
                           return (
                             <div key={d.id} className="flex flex-col gap-0.5">
                               <div className="flex items-baseline justify-between gap-4 text-sm">

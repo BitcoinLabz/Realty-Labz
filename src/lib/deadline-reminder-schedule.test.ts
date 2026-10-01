@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   daysUntilDue,
   describeDaysUntil,
+  isDeadlineOverdue,
   reminderStageFor,
   todayInReminderZone,
 } from "./deadline-reminder-schedule";
@@ -76,5 +77,26 @@ describe("describeDaysUntil", () => {
     expect(describeDaysUntil(0)).toBe("today");
     expect(describeDaysUntil(1)).toBe("tomorrow");
     expect(describeDaysUntil(3)).toBe("in 3 days");
+  });
+});
+
+describe("isDeadlineOverdue", () => {
+  // 9:39pm Sep 30 in Michigan -- already Oct 1 on a UTC server.
+  const eveningSep30 = new Date("2026-10-01T01:39:00.000Z");
+
+  it("doesn't call tomorrow's deadline overdue in the evening (UTC server)", () => {
+    expect(isDeadlineOverdue("2026-10-01", eveningSep30)).toBe(false);
+    expect(isDeadlineOverdue(due("2026-10-01"), eveningSep30)).toBe(false);
+  });
+
+  it("doesn't call a deadline due today overdue", () => {
+    const noonOct1 = new Date("2026-10-01T16:00:00.000Z");
+    expect(isDeadlineOverdue("2026-10-01", noonOct1)).toBe(false);
+  });
+
+  it("calls yesterday's deadline overdue", () => {
+    const morningOct2 = new Date("2026-10-02T13:00:00.000Z");
+    expect(isDeadlineOverdue("2026-10-01", morningOct2)).toBe(true);
+    expect(isDeadlineOverdue(due("2026-10-01"), morningOct2)).toBe(true);
   });
 });

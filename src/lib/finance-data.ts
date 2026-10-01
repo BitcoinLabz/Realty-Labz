@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { isDeadlineOverdue, todayInReminderZone } from "@/lib/deadline-reminder-schedule";
 import { buildAmortizationSchedule, scheduleAtDate } from "@/lib/loan-calculations";
 import { CATEGORY_LABELS } from "@/lib/transaction-categories";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
@@ -437,7 +438,7 @@ export async function getUpcomingDeadlines(userId: string, days = 7): Promise<Up
     propertyAddress: dealDisplayName(d.deal.propertyAddress),
     dealId: d.dealId,
     dueDate: d.dueDate.toISOString().slice(0, 10),
-    isOverdue: d.dueDate < now,
+    isOverdue: isDeadlineOverdue(d.dueDate, now),
   }));
 }
 
@@ -467,7 +468,9 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
 
   const [overdue, missingDocs, awaitingSignature] = await Promise.all([
     prisma.dealDeadline.findMany({
-      where: { completedAt: null, dueDate: { lt: now }, deal: { userId } },
+      // Before today in Michigan, not before this instant: a deadline due
+      // today hasn't been missed yet (see isDeadlineOverdue).
+      where: { completedAt: null, dueDate: { lt: todayInReminderZone(now) }, deal: { userId } },
       include: { deal: { select: { propertyAddress: true } } },
       orderBy: { dueDate: "asc" },
     }),

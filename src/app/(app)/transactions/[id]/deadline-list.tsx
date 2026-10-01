@@ -15,6 +15,7 @@ import {
   formatDeadlineDate,
   isWeekendUtc,
 } from "@/lib/deadline-templates";
+import { isDeadlineOverdue } from "@/lib/deadline-reminder-schedule";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -368,7 +369,7 @@ function DeadlineRow({
   onEdit: () => void;
 }) {
   const isDone = !!d.completedAt;
-  const isOverdue = !isDone && new Date(d.dueDate + "T00:00:00") < new Date();
+  const isOverdue = !isDone && isDeadlineOverdue(d.dueDate);
 
   return (
     // Stacks on phones so the name never gets squeezed into a sliver by the

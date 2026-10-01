@@ -54,3 +54,15 @@ export function describeDaysUntil(daysUntil: number): string {
   if (daysUntil === 1) return "tomorrow";
   return `in ${daysUntil} days`;
 }
+
+// The one definition of "overdue" for a deadline: its date is before today
+// *in Michigan*. Compared as plain calendar dates, never as instants:
+// - pages are first rendered on Vercel's servers, which run on UTC, so at
+//   9pm in Michigan the server already thinks it's tomorrow; and
+// - a deadline due today isn't overdue -- "midnight today < now" made every
+//   same-day deadline read as missed.
+// Accepts the stored Date (UTC midnight) or a yyyy-mm-dd string from a DTO.
+export function isDeadlineOverdue(dueDate: Date | string, now: Date = new Date()): boolean {
+  const due = typeof dueDate === "string" ? dueDate.slice(0, 10) : dueDate.toISOString().slice(0, 10);
+  return due < todayInReminderZone(now).toISOString().slice(0, 10);
+}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isDeadlineOverdue } from "@/lib/deadline-reminder-schedule";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -164,7 +165,7 @@ export default async function TeamDashboardPage() {
         ) : (
           <div className="flex flex-col gap-2">
             {upcomingDeadlines.map((d) => {
-              const isOverdue = d.dueDate < now;
+              const isOverdue = isDeadlineOverdue(d.dueDate, now);
               return (
                 <Link
                   key={d.id}

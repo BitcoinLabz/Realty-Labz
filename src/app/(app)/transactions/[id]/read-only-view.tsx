@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isDeadlineOverdue } from "@/lib/deadline-reminder-schedule";
 import { Eye, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -109,7 +110,7 @@ export function ReadOnlyDealView({
           <div className="flex flex-col gap-2">
             {deadlines.map((d) => {
               const done = !!d.completedAt;
-              const overdue = !done && new Date(d.dueDate) < new Date();
+              const overdue = !done && isDeadlineOverdue(d.dueDate);
               return (
                 <div
                   key={d.id}
