@@ -4,6 +4,7 @@ import { useId, useRef, useState } from "react";
 
 export function FileDropInput({
   id,
+  name = "file",
   label = "File",
   accept,
   required,
@@ -11,6 +12,7 @@ export function FileDropInput({
   error,
 }: {
   id?: string;
+  name?: string;
   label?: string;
   accept?: string;
   required?: boolean;
@@ -54,7 +56,7 @@ export function FileDropInput({
         <input
           ref={inputRef}
           id={inputId}
-          name="file"
+          name={name}
           type="file"
           accept={accept}
           required={required}

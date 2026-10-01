@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { PenLine } from "lucide-react";
 import { createFormTemplateFromDocumentAction } from "@/app/actions/form-templates";
 import { deleteDocumentAction, updateDocumentLinksAction, uploadDocumentAction } from "@/app/actions/documents";
@@ -8,6 +8,7 @@ import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { FileDropInput } from "@/components/ui/file-drop-input";
 import { formatFileSize } from "@/lib/format";
+import { E_SIGNATURE_ENABLED } from "@/lib/features";
 import type { DocumentDTO } from "@/app/(app)/clients/types";
 
 const initialState: FormState = {};
@@ -21,13 +22,24 @@ function DealUploadForm({ dealId, clientId }: { dealId: string; clientId: string
   const [state, formAction, isPending] = useActionState(uploadDocumentAction, initialState);
   const formRef = useRef<HTMLFormElement>(null);
   const succeeded = !state.error && !state.fieldErrors && state !== initialState;
+  // Whether the file just sent was a PDF -- only then is "read it for
+  // deadlines" a sensible next step.
+  const [lastWasPdf, setLastWasPdf] = useState(false);
 
   useEffect(() => {
     if (succeeded) formRef.current?.reset();
   }, [succeeded]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+    <form
+      ref={formRef}
+      action={formAction}
+      onSubmit={(e) => {
+        const input = e.currentTarget.elements.namedItem("file") as HTMLInputElement | null;
+        setLastWasPdf(input?.files?.[0]?.type === "application/pdf");
+      }}
+      className="flex flex-col gap-4"
+    >
       <input type="hidden" name="dealId" value={dealId} />
       <input type="hidden" name="clientId" value={clientId ?? ""} />
       <FileDropInput
@@ -38,7 +50,28 @@ function DealUploadForm({ dealId, clientId }: { dealId: string; clientId: string
         error={state.fieldErrors?.file}
       />
 
+      {clientId ? (
+        <>
+          <input type="hidden" name="visibilityChoice" value="1" />
+          <label className="flex items-start gap-3 text-sm text-foreground">
+            <input type="checkbox" name="visibleToClient" defaultChecked className="mt-0.5 h-4 w-4 accent-accent" />
+            <span>
+              Show in your client&apos;s portal
+              <span className="block text-muted">Turn off for internal files they shouldn&apos;t see.</span>
+            </span>
+          </label>
+        </>
+      ) : null}
+
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
+      {succeeded && lastWasPdf ? (
+        <p className="text-sm text-foreground">
+          Uploaded.{" "}
+          <a href="#contract-assistant" className="font-medium text-accent hover:opacity-80">
+            Read it for deadlines →
+          </a>
+        </p>
+      ) : null}
 
       <div>
         <Button type="submit" disabled={isPending}>
@@ -77,7 +110,7 @@ export function DealDocuments({
                 {/* Only a PDF can go through the field designer. Shown per
                     document rather than as one section action, since which
                     file you want signable is the whole question. */}
-                {doc.mimeType === "application/pdf" ? (
+                {E_SIGNATURE_ENABLED && doc.mimeType === "application/pdf" ? (
                   <form action={createFormTemplateFromDocumentAction}>
                     <input type="hidden" name="documentId" value={doc.id} />
                     <button

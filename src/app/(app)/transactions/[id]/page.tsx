@@ -29,10 +29,15 @@ import type { FormSubmissionSummaryDTO } from "../../forms/templates/types";
 
 export default async function DealDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  // ?read={documentId} arrives from New transaction → "I have a signed
+  // contract": the Contract assistant starts reading it on arrival.
+  searchParams: Promise<{ read?: string }>;
 }) {
   const { id } = await params;
+  const { read } = await searchParams;
   const session = await auth();
 
   const [
@@ -260,16 +265,6 @@ export default async function DealDetailPage({
       label: "Overview",
       content: (
         <>
-          {/* The first thing on a fresh transaction: hand over the contract.
-              Once it has deadlines this lives on the Deadlines tab only. */}
-          {deadlineDtos.length === 0 ? (
-            <ContractAssistant
-              dealId={deal.id}
-              enabled={isAiConfigured()}
-              hasDeadlines={false}
-              documents={documentDtos}
-            />
-          ) : null}
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
             <div className="max-w-md">
@@ -370,32 +365,24 @@ export default async function DealDetailPage({
       id: "deadlines",
       label: "Deadlines",
       content: (
-        <>
-          <ContractAssistant
+        <section className="rounded-2xl border border-border bg-background p-8">
+          <div className="mb-6 flex items-baseline justify-between">
+            <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
+            {deadlineDtos.length > 0 ? (
+              <a
+                href={`/api/calendar/transactions/${deal.id}`}
+                className="text-sm font-medium text-accent hover:opacity-80"
+              >
+                Add to calendar
+              </a>
+            ) : null}
+          </div>
+          <DeadlineList
             dealId={deal.id}
-            enabled={isAiConfigured()}
-            hasDeadlines={deadlineDtos.length > 0}
-            documents={documentDtos}
+            deadlines={deadlineDtos}
+            deadlineTemplates={deadlineTemplateDtos}
           />
-          <section className="rounded-2xl border border-border bg-background p-8">
-            <div className="mb-6 flex items-baseline justify-between">
-              <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
-              {deadlineDtos.length > 0 ? (
-                <a
-                  href={`/api/calendar/transactions/${deal.id}`}
-                  className="text-sm font-medium text-accent hover:opacity-80"
-                >
-                  Add to calendar
-                </a>
-              ) : null}
-            </div>
-            <DeadlineList
-              dealId={deal.id}
-              deadlines={deadlineDtos}
-              deadlineTemplates={deadlineTemplateDtos}
-            />
-          </section>
-        </>
+        </section>
       ),
     },
     {
@@ -478,6 +465,26 @@ export default async function DealDetailPage({
         </h1>
         <p className="mt-1 text-sm text-muted">Manage this deal&apos;s details and deadlines.</p>
       </div>
+
+      {/* One instance above the tabs, so it never unmounts mid-flow: saving
+          adds deadlines, and a card that lived only on a "no deadlines yet"
+          tab would vanish along with its confirmation. */}
+      <ContractAssistant
+        dealId={deal.id}
+        enabled={isAiConfigured()}
+        hasDeadlines={deadlineDtos.length > 0}
+        dealIsActive={deal.status === "ACTIVE"}
+        documents={documentDtos}
+        existingDeadlines={deadlineDtos.map((d) => ({
+          id: d.id,
+          label: d.label,
+          dueDate: d.dueDate,
+          completed: !!d.completedAt,
+        }))}
+        autoReadDocumentId={
+          documentDtos.find((d) => d.id === read && d.mimeType === "application/pdf")?.id ?? null
+        }
+      />
 
       <DetailTabs tabs={tabs} />
 

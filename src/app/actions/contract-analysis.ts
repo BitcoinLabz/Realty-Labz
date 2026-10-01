@@ -74,10 +74,19 @@ function optionalText(value: unknown, max: number): string | null {
 // arrive as plain form values (blank = don't change), and deadlines arrive as
 // one JSON blob from the checkbox list -- the same hidden-JSON-input pattern
 // saveFormFieldsAction already established for the field designer.
+// What a save did, so the Contract assistant can say it plainly and offer
+// the obvious next step (add to calendar, add the client's email).
+export type ApplyResult = {
+  added: number;
+  updated: number;
+  client: { id: string; name: string; hasEmail: boolean; remindersOn: boolean } | null;
+};
+export type ApplyState = FormState & { result?: ApplyResult };
+
 export async function applyContractAnalysisAction(
-  _prevState: FormState,
+  _prevState: ApplyState,
   formData: FormData,
-): Promise<FormState> {
+): Promise<ApplyState> {
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
 
@@ -95,7 +104,13 @@ export async function applyContractAnalysisAction(
     propertyAddress?: string;
     salePrice?: number;
     closingDate?: Date;
+    status?: "UNDER_CONTRACT";
   } = {};
+  // Offered only while the deal is still Active: a signed contract is what
+  // moves it to Under contract, and saying so here saves a trip to Overview.
+  if (formData.get("markUnderContract") === "on" && deal.status === "ACTIVE") {
+    dealUpdates.status = "UNDER_CONTRACT";
+  }
   if (typeof propertyAddress === "string" && propertyAddress.trim()) {
     dealUpdates.propertyAddress = propertyAddress.trim();
   }
@@ -108,15 +123,26 @@ export async function applyContractAnalysisAction(
   }
 
   const deadlinesJson = formData.get("deadlines");
-  let deadlines: { label: string; dueDate: string; sourceQuote: string | null; clientNote: string | null }[] =
-    [];
+  let deadlines: {
+    label: string;
+    dueDate: string;
+    sourceQuote: string | null;
+    clientNote: string | null;
+    existingId: string | null;
+  }[] = [];
   if (typeof deadlinesJson === "string" && deadlinesJson) {
     try {
       const parsed: unknown = JSON.parse(deadlinesJson);
       if (!Array.isArray(parsed)) return { error: "Malformed deadline data" };
       deadlines = parsed
         .filter(
-          (d): d is { label: string; dueDate: string; sourceQuote?: unknown; clientNote?: unknown } =>
+          (d): d is {
+            label: string;
+            dueDate: string;
+            sourceQuote?: unknown;
+            clientNote?: unknown;
+            existingId?: unknown;
+          } =>
             !!d &&
             typeof d === "object" &&
             typeof (d as { label?: unknown }).label === "string" &&
@@ -132,6 +158,10 @@ export async function applyContractAnalysisAction(
           // is escaped (see escapeHtml in src/lib/email.ts).
           sourceQuote: optionalText(d.sourceQuote, 500),
           clientNote: optionalText(d.clientNote, 300),
+          // Set when the review matched this to a deadline already on the
+          // deal (an amended contract). Only ever used together with dealId
+          // in the update below, so a forged id from another deal is inert.
+          existingId: typeof d.existingId === "string" && d.existingId ? d.existingId : null,
         }));
     } catch {
       return { error: "Malformed deadline data" };
@@ -145,9 +175,12 @@ export async function applyContractAnalysisAction(
     });
   }
 
-  if (deadlines.length > 0) {
+  const toCreate = deadlines.filter((d) => !d.existingId);
+  const toUpdate = deadlines.filter((d) => d.existingId);
+
+  if (toCreate.length > 0) {
     await prisma.dealDeadline.createMany({
-      data: deadlines.map((d) => ({
+      data: toCreate.map((d) => ({
         dealId,
         label: d.label,
         dueDate: new Date(d.dueDate),
@@ -157,21 +190,48 @@ export async function applyContractAnalysisAction(
     });
   }
 
+  let updated = 0;
+  for (const d of toUpdate) {
+    // Compound where: the id alone carries no ownership (see deal-deadlines.ts).
+    // Clearing the automatic-reminder stamps means the client hears about the
+    // NEW date -- otherwise a moved deadline would go silently unreminded.
+    const res = await prisma.dealDeadline.updateMany({
+      where: { id: d.existingId!, dealId, completedAt: null },
+      data: {
+        label: d.label,
+        dueDate: new Date(d.dueDate),
+        sourceQuote: d.sourceQuote,
+        clientNote: d.clientNote,
+        autoReminderEarlySentAt: null,
+        autoReminderFinalSentAt: null,
+      },
+    });
+    updated += res.count;
+  }
+
   revalidatePath(`/transactions/${dealId}`);
+  revalidatePath("/transactions");
   revalidatePath("/dashboard");
 
   const client = deal.clientId
     ? await prisma.client.findFirst({
         where: { id: deal.clientId, userId: deal.userId },
-        select: { name: true, email: true, emailDeadlineReminders: true },
+        select: { id: true, name: true, email: true, emailDeadlineReminders: true },
       })
     : null;
-  const added = deadlines.length === 1 ? "Added 1 deadline." : `Added ${deadlines.length} deadlines.`;
-  const reminders =
-    deadlines.length === 0
-      ? ""
-      : client?.email && client.emailDeadlineReminders
-        ? ` ${client.name} will get reminders 3 days before and the day before, and you're copied.`
-        : " You'll get reminders 3 days before and the day before.";
-  return { success: `${added}${reminders}` };
+
+  return {
+    result: {
+      added: toCreate.length,
+      updated,
+      client: client
+        ? {
+            id: client.id,
+            name: client.name,
+            hasEmail: !!client.email,
+            remindersOn: client.emailDeadlineReminders,
+          }
+        : null,
+    },
+  };
 }

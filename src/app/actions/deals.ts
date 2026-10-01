@@ -7,6 +7,8 @@ import { prisma } from "@/lib/db";
 import { createFileSchema, dealSchema } from "@/lib/validation";
 import { ownerOnlyFilter } from "@/lib/authorization";
 import type { FormState } from "@/app/actions/auth";
+import { deleteDocumentFile, MAX_FILE_SIZE_BYTES, saveDocumentFile } from "@/lib/document-storage";
+import { isAiConfigured } from "@/lib/ai-contract-analysis";
 
 function parseDealForm(formData: FormData) {
   return dealSchema.safeParse({
@@ -193,26 +195,82 @@ export async function createFileAction(
     return { fieldErrors };
   }
 
+  // "I have a signed contract" (2026-09-30): the PA comes in with the form,
+  // so the transaction opens straight onto the Contract assistant reading it
+  // -- one screen and one review instead of create, upload, switch tab, read.
+  // Checked before anything is created, so a bad file leaves nothing behind.
+  const contract = formData.get("contract");
+  const startingFromContract = formData.get("startMode") === "contract";
+  if (startingFromContract) {
+    if (!(contract instanceof File) || contract.size === 0) {
+      return { fieldErrors: { contract: "Add the signed contract" } };
+    }
+    if (contract.type !== "application/pdf") {
+      return { fieldErrors: { contract: "The contract needs to be a PDF" } };
+    }
+    if (contract.size > MAX_FILE_SIZE_BYTES) {
+      return { fieldErrors: { contract: "File must be under 15MB" } };
+    }
+  }
+
+  let storageKey: string | null = null;
+  if (startingFromContract) {
+    try {
+      storageKey = await saveDocumentFile(session.user.id, contract as File);
+    } catch (err) {
+      console.error("[deals] contract upload failed", err);
+      return { fieldErrors: { contract: "Couldn't save the file. Try re-saving the PDF and uploading again." } };
+    }
+  }
+
   const resolvedClient = await resolveOrCreateClientId(
     parsed.data,
     session.user.id,
     formData.get("emailDeadlineReminders") === "true",
   );
-  if (!resolvedClient.ok) return { error: resolvedClient.error };
+  if (!resolvedClient.ok) {
+    if (storageKey) await deleteDocumentFile(storageKey);
+    return { error: resolvedClient.error };
+  }
 
-  const deal = await prisma.deal.create({
-    data: {
-      side: parsed.data.side,
-      propertyAddress: parsed.data.propertyAddress || null,
-      mlsNumber: parsed.data.mlsNumber || null,
-      clientId: resolvedClient.clientId,
-      userId: session.user.id,
-    },
+  const file = contract as File;
+  const { deal, documentId } = await prisma.$transaction(async (tx) => {
+    const deal = await tx.deal.create({
+      data: {
+        side: parsed.data.side,
+        // A signed purchase agreement is what "under contract" means.
+        status: startingFromContract ? "UNDER_CONTRACT" : "ACTIVE",
+        propertyAddress: parsed.data.propertyAddress || null,
+        mlsNumber: parsed.data.mlsNumber || null,
+        clientId: resolvedClient.clientId,
+        userId: session.user.id,
+      },
+    });
+    const document = storageKey
+      ? await tx.document.create({
+          data: {
+            userId: session.user.id,
+            fileName: file.name,
+            storageKey,
+            mimeType: file.type,
+            size: file.size,
+            dealId: deal.id,
+            clientId: resolvedClient.clientId,
+          },
+        })
+      : null;
+    return { deal, documentId: document?.id ?? null };
   });
 
   revalidatePath("/transactions");
   revalidatePath(`/clients/${resolvedClient.clientId}`);
-  redirect(`/transactions/${deal.id}`);
+  // Without an API key the contract is still filed; the assistant card then
+  // explains reading isn't switched on rather than trying and failing.
+  redirect(
+    documentId && isAiConfigured()
+      ? `/transactions/${deal.id}?read=${documentId}`
+      : `/transactions/${deal.id}`,
+  );
 }
 
 export async function deleteDealAction(formData: FormData) {

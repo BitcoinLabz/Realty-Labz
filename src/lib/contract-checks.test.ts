@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkDeadlines, describeFlag } from "./contract-checks";
+import { checkDeadlines, describeFlag, matchExistingDeadlines } from "./contract-checks";
 
 const run = (deadlines: { label: string; dueDate: string }[], closingDate: string | null = null) =>
   checkDeadlines({ deadlines, closingDate, today: "2026-09-27" });
@@ -69,5 +69,53 @@ describe("describeFlag", () => {
       "Falls on a Sunday",
     );
     expect(describeFlag({ kind: "afterClosing" })).toBe("After the closing date");
+  });
+});
+
+describe("matchExistingDeadlines", () => {
+  const existing = [
+    { id: "a", label: "Inspection contingency", dueDate: "2026-10-01", completed: false },
+    { id: "b", label: "Financing", dueDate: "2026-10-15", completed: false },
+    { id: "c", label: "Earnest money", dueDate: "2026-09-20", completed: true },
+  ];
+
+  it("matches by name and reports a changed date", () => {
+    expect(matchExistingDeadlines([{ label: "Inspection contingency", dueDate: "2026-10-03" }], existing)).toEqual([
+      { existingId: "a", oldDate: "2026-10-01", changed: true },
+    ]);
+  });
+
+  it("ignores case and extra spaces in the name", () => {
+    expect(matchExistingDeadlines([{ label: "  inspection   CONTINGENCY ", dueDate: "2026-10-01" }], existing)).toEqual([
+      { existingId: "a", oldDate: "2026-10-01", changed: false },
+    ]);
+  });
+
+  it("reports an unchanged date as not changed", () => {
+    expect(matchExistingDeadlines([{ label: "Financing", dueDate: "2026-10-15" }], existing)[0]).toEqual({
+      existingId: "b",
+      oldDate: "2026-10-15",
+      changed: false,
+    });
+  });
+
+  it("leaves completed deadlines alone", () => {
+    expect(matchExistingDeadlines([{ label: "Earnest money", dueDate: "2026-09-22" }], existing)).toEqual([null]);
+  });
+
+  it("returns null for a brand-new deadline", () => {
+    expect(matchExistingDeadlines([{ label: "Appraisal", dueDate: "2026-10-10" }], existing)).toEqual([null]);
+  });
+
+  it("lets one existing deadline absorb only one found row", () => {
+    const result = matchExistingDeadlines(
+      [
+        { label: "Financing", dueDate: "2026-10-15" },
+        { label: "Financing", dueDate: "2026-10-20" },
+      ],
+      existing,
+    );
+    expect(result[0]?.existingId).toBe("b");
+    expect(result[1]).toBeNull();
   });
 });

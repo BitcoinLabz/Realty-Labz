@@ -73,3 +73,32 @@ export function describeFlag(flag: DeadlineFlag): string {
       return "Listed twice";
   }
 }
+
+// Amended or countered contracts: a deadline the reader finds that already
+// exists on the deal (same name, still open) should change that deadline's
+// date, not add a duplicate beside it. Matching is by name only -- the date
+// is exactly what's expected to differ. Completed deadlines are left alone:
+// re-opening something the agent already checked off would be a surprise.
+export type ExistingDeadline = { id: string; label: string; dueDate: string; completed: boolean };
+export type DeadlineMatch = { existingId: string; oldDate: string; changed: boolean } | null;
+
+function normaliseLabel(label: string): string {
+  return label.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function matchExistingDeadlines(
+  found: { label: string; dueDate: string }[],
+  existing: ExistingDeadline[],
+): DeadlineMatch[] {
+  const open = existing.filter((e) => !e.completed);
+  const claimed = new Set<string>();
+
+  return found.map((f) => {
+    const match = open.find((e) => !claimed.has(e.id) && normaliseLabel(e.label) === normaliseLabel(f.label));
+    if (!match) return null;
+    // Each existing deadline can absorb only one found row, so a contract
+    // that genuinely lists two "Walkthrough" dates still adds the second.
+    claimed.add(match.id);
+    return { existingId: match.id, oldDate: match.dueDate, changed: match.dueDate !== f.dueDate };
+  });
+}

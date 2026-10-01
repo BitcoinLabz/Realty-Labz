@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { CreateFileForm } from "./create-transaction-form";
+import { isAiConfigured } from "@/lib/ai-contract-analysis";
 
 export default async function NewFilePage() {
   const session = await auth();
@@ -27,7 +28,7 @@ export default async function NewFilePage() {
         </p>
       </div>
 
-      <CreateFileForm clients={clients} />
+      <CreateFileForm clients={clients} canRead={isAiConfigured()} />
     </div>
   );
 }
