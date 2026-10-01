@@ -426,17 +426,49 @@ model Deal {
   archivedTeam   Team?   @relation("ArchivedDeals", fields: [archivedTeamId], references: [id], onDelete: SetNull)
   archivedTeamId String?
 
+  // Whether the agent's brokerage (broker, admin, team lead) can see this
+  // transaction (2026-10-01, founder decision: shared by default, the agent
+  // can hide one). Defaults true, so every existing file stays visible. Only
+  // the owner can flip it; managers see a count of hidden files per agent so
+  // nothing drops out of supervision silently. Enforced by dealReadFilter.
+  sharedWithBrokerage Boolean @default(true)
+
   deadlines       DealDeadline[]
   documents       Document[]
   formSubmissions FormSubmission[]
   expenses        Transaction[]
   openHouses      OpenHouse[]
+  officeTasks     OfficeTask[]
 
   @@index([userId])
   @@index([clientId])
   @@index([referralPartnerId])
   @@index([archivedTeamId])
   @@map("deals")
+}
+
+// The brokerage's own to-do list for a transaction (2026-10-01): title
+// ordered, closing scheduled, sign ordered/installed/removed, commission
+// received, plus anything custom. Only the office edits it; the agent sees it
+// read-only on their transaction. Deliberately no userId -- it belongs to
+// the transaction and the office working it, not to an agent, and the
+// agent's own records stay untouchable by a manager (ownerOnlyFilter).
+model OfficeTask {
+  id            String    @id @default(cuid())
+  label         String
+  dueDate       DateTime?
+  note          String?
+  order         Int       @default(0)
+  completedAt   DateTime?
+  completedById String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId String
+
+  @@index([dealId])
+  @@map("office_tasks")
 }
 
 // A contact an agent trades referrals with (2026-07-29) -- Deal.referralFeePercent

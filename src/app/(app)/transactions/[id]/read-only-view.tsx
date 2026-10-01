@@ -34,6 +34,7 @@ export function ReadOnlyDealView({
   grossCommission,
   deadlines,
   documents,
+  officeChecklist,
 }: {
   agentName: string | null;
   propertyAddress: string | null;
@@ -47,6 +48,10 @@ export function ReadOnlyDealView({
   grossCommission: number;
   deadlines: { id: string; label: string; dueDate: string; completedAt: string | null }[];
   documents: { id: string; fileName: string; createdAt: string }[];
+  // The brokerage's own list for this file -- the one thing a manager edits
+  // here (see office-checklist.tsx). Rendered by the page, which decides who
+  // may edit it.
+  officeChecklist?: React.ReactNode;
 }) {
   const money = (v: number | null) => (v === null ? null : formatCurrency(v));
   const date = (v: string | null) =>
@@ -76,7 +81,7 @@ export function ReadOnlyDealView({
           href="/team"
           className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
         >
-          ← Back to Team
+          ← Back to Overview
         </Link>
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           {dealDisplayName(propertyAddress, clientName)}
@@ -131,6 +136,8 @@ export function ReadOnlyDealView({
           </div>
         )}
       </Card>
+
+      {officeChecklist}
 
       <Card title="Documents" icon={FileText} description="Everything filed against this transaction.">
         {documents.length === 0 ? (

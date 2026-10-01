@@ -1,12 +1,15 @@
 import { auth } from "@/auth";
-import { isManager } from "@/lib/authorization";
-import { getUpcomingDeadlines } from "@/lib/finance-data";
+import { isManager, isOversightRole } from "@/lib/authorization";
+import { getTeamUpcomingDeadlines, getUpcomingDeadlines } from "@/lib/finance-data";
 import { Sidebar } from "@/components/sidebar";
 import { autoLogDueRecurringTransactions } from "@/app/actions/recurring-transactions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   const showTeamLink = !!session?.user && isManager(session.user.role) && !!session.user.teamId;
+  // Broker / office Admin: the oversight app (see proxy.ts for the redirects
+  // that keep them out of the agent-only pages).
+  const oversight = !!session?.user?.teamId && isOversightRole(session.user.role);
 
   // Runs on every authenticated page view -- see the comment on
   // autoLogDueRecurringTransactions for why this lives here rather than on
@@ -22,7 +25,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Deadline reminders deliberately do NOT run here: emails should only go
   // out when the agent presses "Send reminder" (founder decision), never as
   // a side effect of opening a page.
-  if (session?.user) {
+  // An agent's finances chore -- a broker in the oversight app has none.
+  if (session?.user && !oversight) {
     try {
       await autoLogDueRecurringTransactions(session.user.id);
     } catch (err) {
@@ -33,7 +37,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   let upcomingDeadlines: Awaited<ReturnType<typeof getUpcomingDeadlines>> = [];
   if (session?.user) {
     try {
-      upcomingDeadlines = await getUpcomingDeadlines(session.user.id);
+      upcomingDeadlines = oversight
+        ? await getTeamUpcomingDeadlines(session.user.teamId!)
+        : await getUpcomingDeadlines(session.user.id);
     } catch (err) {
       // Only feeds the sidebar notification bell -- an empty bell is a far
       // better outcome than an unusable app.
@@ -46,6 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <Sidebar
         userName={session?.user?.name}
         showTeamLink={showTeamLink}
+        oversight={oversight}
         upcomingDeadlines={upcomingDeadlines}
       />
       {/* min-w-0 lets wide content scroll inside the page instead of pushing

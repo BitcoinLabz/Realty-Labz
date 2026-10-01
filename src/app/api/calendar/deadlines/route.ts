@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter } from "@/lib/authorization";
+import { dealReadFilter } from "@/lib/authorization";
 import { buildDeadlineIcs } from "@/lib/calendar-export";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 
@@ -10,7 +10,7 @@ export async function GET() {
   if (!session?.user) return new NextResponse("Unauthorized", { status: 401 });
 
   const deadlines = await prisma.dealDeadline.findMany({
-    where: { completedAt: null, deal: teamOrOwnFilter(session.user) },
+    where: { completedAt: null, deal: dealReadFilter(session.user) },
     include: { deal: { select: { propertyAddress: true } } },
     orderBy: { dueDate: "asc" },
   });

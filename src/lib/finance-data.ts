@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { teamSharedDealsFilter } from "@/lib/authorization";
+import type { Prisma } from "@/generated/prisma/client";
 import { isDeadlineOverdue, todayInReminderZone } from "@/lib/deadline-reminder-schedule";
 import { buildAmortizationSchedule, scheduleAtDate } from "@/lib/loan-calculations";
 import { CATEGORY_LABELS } from "@/lib/transaction-categories";
@@ -423,11 +425,24 @@ export type UpcomingDeadline = {
 // -- see the ClientDeadline model's own comment for why that one stays
 // isolated to the client detail page.
 export async function getUpcomingDeadlines(userId: string, days = 7): Promise<UpcomingDeadline[]> {
+  return upcomingDeadlinesFor({ userId }, days);
+}
+
+// The brokerage's version for the oversight app's notification bell: every
+// shared file on the team, never the broker's own (they have none to work).
+export async function getTeamUpcomingDeadlines(teamId: string, days = 7): Promise<UpcomingDeadline[]> {
+  return upcomingDeadlinesFor(teamSharedDealsFilter(teamId), days);
+}
+
+async function upcomingDeadlinesFor(
+  dealWhere: Prisma.DealWhereInput,
+  days: number,
+): Promise<UpcomingDeadline[]> {
   const now = new Date();
   const soon = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
 
   const deadlines = await prisma.dealDeadline.findMany({
-    where: { completedAt: null, dueDate: { lte: soon }, deal: { userId } },
+    where: { completedAt: null, dueDate: { lte: soon }, deal: dealWhere },
     include: { deal: true },
     orderBy: { dueDate: "asc" },
   });

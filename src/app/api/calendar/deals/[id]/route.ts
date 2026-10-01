@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter } from "@/lib/authorization";
+import { dealReadFilter } from "@/lib/authorization";
 import { buildDeadlineIcs } from "@/lib/calendar-export";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 
@@ -11,7 +11,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
   const { id } = await params;
   const deal = await prisma.deal.findFirst({
-    where: { id, ...teamOrOwnFilter(session.user) },
+    where: { id, ...dealReadFilter(session.user) },
     include: { deadlines: { where: { completedAt: null }, orderBy: { dueDate: "asc" } } },
   });
   if (!deal) return new NextResponse("Not found", { status: 404 });

@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   canManageMembership,
   canManageSharedResources,
+  canWorkOfficeChecklist,
+  dealReadFilter,
   documentReadFilter,
   ownerOnlyFilter,
   isManager,
+  isOversightRole,
   roleLabel,
   teamLabel,
   teamOrOwnFilter,
@@ -234,9 +237,16 @@ describe("ownerOnlyFilter", () => {
 // Widens downloads through the DEAL only, so a broker can pull transaction
 // paperwork without reaching an agent's client files or unfiled uploads.
 describe("documentReadFilter", () => {
-  it("lets a manager reach a teammate's document via its transaction", () => {
+  it("lets a manager reach a teammate's document via its transaction, only while it's shared", () => {
     expect(documentReadFilter({ id: "u1", role: "BROKER", teamId: "t1" })).toEqual({
-      OR: [{ userId: "u1" }, { deal: { user: { teamId: "t1" } } }],
+      OR: [
+        { userId: "u1" },
+        {
+          deal: {
+            OR: [{ userId: "u1" }, { user: { teamId: "t1" }, sharedWithBrokerage: true }],
+          },
+        },
+      ],
     });
   });
 
@@ -257,5 +267,43 @@ describe("documentReadFilter", () => {
     expect(documentReadFilter({ id: "u1", role: "BROKER", teamId: null })).toEqual({
       OR: [{ userId: "u1" }, { deal: { userId: "u1" } }],
     });
+  });
+});
+
+describe("isOversightRole", () => {
+  it("is Broker and Admin only", () => {
+    expect(isOversightRole("BROKER")).toBe(true);
+    expect(isOversightRole("ADMIN")).toBe(true);
+    expect(isOversightRole("TEAM_LEAD")).toBe(false);
+    expect(isOversightRole("AGENT")).toBe(false);
+  });
+});
+
+describe("dealReadFilter", () => {
+  it("gives a manager their own deals plus only teammates' SHARED deals", () => {
+    for (const role of ["TEAM_LEAD", "ADMIN", "BROKER"] as const) {
+      expect(dealReadFilter({ id: "u1", role, teamId: "t1" })).toEqual({
+        OR: [{ userId: "u1" }, { user: { teamId: "t1" }, sharedWithBrokerage: true }],
+      });
+    }
+  });
+
+  it("never widens for an agent, or a manager with no team", () => {
+    expect(dealReadFilter({ id: "u1", role: "AGENT", teamId: "t1" })).toEqual({ userId: "u1" });
+    expect(dealReadFilter({ id: "u1", role: "BROKER", teamId: null })).toEqual({ userId: "u1" });
+  });
+
+  it("is what documentReadFilter widens through, so hidden files' documents stay hidden", () => {
+    const broker = { id: "u1", role: "BROKER" as const, teamId: "t1" };
+    expect(JSON.stringify(documentReadFilter(broker))).toContain('"sharedWithBrokerage":true');
+  });
+});
+
+describe("canWorkOfficeChecklist", () => {
+  it("is managers on a team only", () => {
+    expect(canWorkOfficeChecklist({ id: "u1", role: "BROKER", teamId: "t1" })).toBe(true);
+    expect(canWorkOfficeChecklist({ id: "u1", role: "TEAM_LEAD", teamId: "t1" })).toBe(true);
+    expect(canWorkOfficeChecklist({ id: "u1", role: "AGENT", teamId: "t1" })).toBe(false);
+    expect(canWorkOfficeChecklist({ id: "u1", role: "BROKER", teamId: null })).toBe(false);
   });
 });

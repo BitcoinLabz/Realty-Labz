@@ -5,7 +5,11 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { createFileSchema, dealSchema } from "@/lib/validation";
-import { ownerOnlyFilter } from "@/lib/authorization";
+import { isOversightRole, ownerOnlyFilter } from "@/lib/authorization";
+
+// Brokers and office Admins oversee; they don't carry their own files
+// (2026-10-01). Checked on the server, not just by hiding the button.
+const OVERSIGHT_CANNOT_CREATE = "Transactions are created by your agents. Your view is the brokerage overview.";
 import type { FormState } from "@/app/actions/auth";
 import { deleteDocumentFile, MAX_FILE_SIZE_BYTES, saveDocumentFile } from "@/lib/document-storage";
 import { isAiConfigured } from "@/lib/ai-contract-analysis";
@@ -49,6 +53,7 @@ export async function createDealAction(
 ): Promise<FormState> {
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
+  if (session.user.teamId && isOversightRole(session.user.role)) return { error: OVERSIGHT_CANNOT_CREATE };
 
   const parsed = parseDealForm(formData);
   if (!parsed.success) {
@@ -176,6 +181,7 @@ export async function createFileAction(
 ): Promise<FormState> {
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
+  if (session.user.teamId && isOversightRole(session.user.role)) return { error: OVERSIGHT_CANNOT_CREATE };
 
   const parsed = createFileSchema.safeParse({
     side: formData.get("side"),
@@ -313,6 +319,7 @@ export async function deleteDealAction(formData: FormData) {
 export async function duplicateDealAction(formData: FormData) {
   const session = await auth();
   if (!session?.user) return;
+  if (session.user.teamId && isOversightRole(session.user.role)) return;
 
   const id = formData.get("id");
   if (typeof id !== "string" || !id) return;
@@ -351,4 +358,26 @@ export async function duplicateDealAction(formData: FormData) {
   revalidatePath("/transactions");
   if (copy.clientId) revalidatePath(`/clients/${copy.clientId}`);
   redirect(`/transactions/${copy.id}`);
+}
+
+// The agent's "Share with my brokerage" switch on one transaction
+// (2026-10-01). Owner-only: nobody else can hide or reveal an agent's file.
+// The brokerage still sees a count of hidden files per agent on its
+// Overview, so a file never drops out of supervision silently.
+export async function setDealSharingAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return;
+  const shared = formData.get("shared") === "true";
+
+  await prisma.deal.updateMany({
+    where: { id, ...ownerOnlyFilter(session.user) },
+    data: { sharedWithBrokerage: shared },
+  });
+
+  revalidatePath(`/transactions/${id}`);
+  revalidatePath("/transactions");
+  revalidatePath("/team");
 }

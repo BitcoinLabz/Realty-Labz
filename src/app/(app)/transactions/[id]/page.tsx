@@ -3,7 +3,9 @@ import { BadgeDollarSign, Copy } from "lucide-react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
+import { canWorkOfficeChecklist, dealReadFilter, teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
+import { OfficeChecklist, type OfficeTaskDTO } from "./office-checklist";
+import { ShareWithBrokerage } from "./share-with-brokerage";
 import type { DeadlineTemplateDTO } from "../deadline-sets/types";
 import { formatCurrency } from "@/lib/format";
 import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
@@ -52,12 +54,13 @@ export default async function DealDetailPage({
   ] =
     await Promise.all([
     prisma.deal.findFirst({
-      where: { id, ...teamOrOwnFilter(session!.user) },
+      where: { id, ...dealReadFilter(session!.user) },
       include: {
         deadlines: { orderBy: { dueDate: "asc" } },
         documents: { orderBy: { createdAt: "desc" } },
         client: { select: { id: true, name: true, email: true } },
         user: { select: { name: true } },
+        officeTasks: { orderBy: { order: "asc" } },
         expenses: { where: { type: "EXPENSE" }, orderBy: { date: "desc" } },
         openHouses: {
           orderBy: { date: "desc" },
@@ -109,16 +112,31 @@ export default async function DealDetailPage({
 
   if (!deal) notFound();
 
-  // A manager reached this through teamOrOwnFilter -- they can see the team's
+  // A manager reached this through dealReadFilter -- they can see the team's
   // transactions because a broker is accountable for files closed under their
   // license. Supervision means reading a file, not editing it, so anyone who
   // doesn't own this one gets the read-and-download view instead.
   //
   // This is presentation. The boundary itself lives in the server actions,
   // every one of which is scoped by ownerOnlyFilter.
+  const officeTaskDtos: OfficeTaskDTO[] = deal.officeTasks.map((t) => ({
+    id: t.id,
+    label: t.label,
+    dueDate: t.dueDate ? t.dueDate.toISOString().slice(0, 10) : null,
+    note: t.note,
+    completedAt: t.completedAt ? t.completedAt.toISOString() : null,
+  }));
+
   if (deal.userId !== session!.user.id) {
     return (
       <ReadOnlyDealView
+        officeChecklist={
+          <OfficeChecklist
+            dealId={deal.id}
+            tasks={officeTaskDtos}
+            canEdit={canWorkOfficeChecklist(session!.user)}
+          />
+        }
         agentName={deal.user.name}
         propertyAddress={deal.propertyAddress}
         clientName={deal.client?.name ?? null}
@@ -265,6 +283,11 @@ export default async function DealDetailPage({
       label: "Overview",
       content: (
         <>
+          {/* Only meaningful for an agent on a team -- a solo agent has no
+              brokerage to share with. */}
+          {session!.user.teamId ? (
+            <ShareWithBrokerage dealId={deal.id} shared={deal.sharedWithBrokerage} />
+          ) : null}
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
             <div className="max-w-md">
@@ -365,24 +388,32 @@ export default async function DealDetailPage({
       id: "deadlines",
       label: "Deadlines",
       content: (
-        <section className="rounded-2xl border border-border bg-background p-8">
-          <div className="mb-6 flex items-baseline justify-between gap-4">
-            <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
-            {deadlineDtos.length > 0 ? (
-              <a
-                href={`/api/calendar/transactions/${deal.id}`}
-                className="shrink-0 whitespace-nowrap text-sm font-medium text-accent hover:opacity-80"
-              >
-                Add to calendar
-              </a>
-            ) : null}
-          </div>
-          <DeadlineList
-            dealId={deal.id}
-            deadlines={deadlineDtos}
-            deadlineTemplates={deadlineTemplateDtos}
-          />
-        </section>
+        <>
+          <section className="rounded-2xl border border-border bg-background p-8">
+            <div className="mb-6 flex items-baseline justify-between gap-4">
+              <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
+              {deadlineDtos.length > 0 ? (
+                <a
+                  href={`/api/calendar/transactions/${deal.id}`}
+                  className="shrink-0 whitespace-nowrap text-sm font-medium text-accent hover:opacity-80"
+                >
+                  Add to calendar
+                </a>
+              ) : null}
+            </div>
+            <DeadlineList
+              dealId={deal.id}
+              deadlines={deadlineDtos}
+              deadlineTemplates={deadlineTemplateDtos}
+            />
+          </section>
+          {/* The office's list for this file, read-only here, once they've
+              started one -- so the agent knows where title, closing and signs
+              stand without asking. */}
+          {officeTaskDtos.length > 0 ? (
+            <OfficeChecklist dealId={deal.id} tasks={officeTaskDtos} canEdit={false} />
+          ) : null}
+        </>
       ),
     },
     {

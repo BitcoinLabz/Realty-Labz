@@ -33,22 +33,33 @@ const baseNavItems = [
 
 const teamNavItem = { href: "/team", label: "Team", icon: Building2 };
 
+// The oversight app (Broker / office Admin, 2026-10-01): their agents' work
+// and nothing of their own -- no Dashboard, Clients or Finances.
+const oversightNavItems = [
+  { href: "/team", label: "Overview", icon: Building2 },
+  { href: "/transactions", label: "Transactions", icon: Home },
+];
+
 const accountNavItem = { href: "/account", label: "Account", icon: Settings };
 
 export function Sidebar({
   userName,
   showTeamLink,
+  oversight = false,
   upcomingDeadlines = [],
 }: {
   userName?: string | null;
   showTeamLink?: boolean;
+  oversight?: boolean;
   upcomingDeadlines?: UpcomingDeadline[];
 }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const navItems = showTeamLink
-    ? [...baseNavItems, teamNavItem, accountNavItem]
-    : [...baseNavItems, accountNavItem];
+  const navItems = oversight
+    ? [...oversightNavItems, accountNavItem]
+    : showTeamLink
+      ? [...baseNavItems, teamNavItem, accountNavItem]
+      : [...baseNavItems, accountNavItem];
 
   function isActive(href: string) {
     return pathname === href || pathname.startsWith(`${href}/`);
@@ -128,7 +139,7 @@ export function Sidebar({
         }`}
       >
         <div className="flex items-center justify-between px-6 py-5">
-          <Logo size="sm" href="/dashboard" onClick={() => setIsOpen(false)} />
+          <Logo size="sm" href={oversight ? "/team" : "/dashboard"} onClick={() => setIsOpen(false)} />
           <div className="flex items-center gap-4">
             <NotificationBell deadlines={upcomingDeadlines} />
             <button

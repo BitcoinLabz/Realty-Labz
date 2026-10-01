@@ -6,6 +6,7 @@ import {
   roleLabel,
   teamLabel,
   wouldLeaveTeamUnmanaged,
+  isOversightRole,
 } from "@/lib/authorization";
 import { Card } from "@/components/ui/card";
 import { DetailTabs } from "@/components/ui/detail-tabs";
@@ -141,25 +142,30 @@ export default async function AccountPage() {
               ))}
             </div>
             <p className="mt-4 text-sm text-muted">
-              Managers see everyone&apos;s transactions — properties, dates, commission and
-              documents. Nothing under Finances is shared unless you choose to share it, and
-              clients are never shared.
+              Managers see agents&apos; transactions — properties, dates, commission and
+              documents. Every transaction is shared unless its agent switches sharing off on
+              that one file. Nothing under Finances is shared unless the agent chooses to share
+              it, and clients are never shared.
             </p>
           </Card>
 
-          <Card
-            title="What your brokerage can see"
-            icon={Eye}
-            description="Off by default. Nothing here is shared until you turn it on, and you can turn it back off at any time."
-          >
-            <div className="max-w-lg">
-              <FinanceSharingForm
-                orgWord={orgWord}
-                shareBusinessFinances={user.shareBusinessFinances}
-                shareMileage={user.shareMileage}
-              />
-            </div>
-          </Card>
+          {/* An agent's choice about their own finances -- a broker or office
+              admin in the oversight app has none to share. */}
+          {isOversightRole(user.role) ? null : (
+            <Card
+              title="What your brokerage can see"
+              icon={Eye}
+              description="Off by default. Nothing here is shared until you turn it on, and you can turn it back off at any time."
+            >
+              <div className="max-w-lg">
+                <FinanceSharingForm
+                  orgWord={orgWord}
+                  shareBusinessFinances={user.shareBusinessFinances}
+                  shareMileage={user.shareMileage}
+                />
+              </div>
+            </Card>
+          )}
 
           {canManage ? (
             <>

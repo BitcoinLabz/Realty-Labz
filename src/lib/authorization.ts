@@ -11,11 +11,22 @@ export function isManager(role: Role): boolean {
 
 type SessionUser = { id: string; role: Role; teamId: string | null };
 
+// Broker and office Admin get the oversight-only app (2026-10-01): no
+// Dashboard, Clients, Finances or transactions of their own -- they watch
+// their agents' transactions and run the office checklist. Team Leads are
+// working agents, so they keep the agent app plus the Team view.
+export function isOversightRole(role: Role): boolean {
+  return role === "BROKER" || role === "ADMIN";
+}
+
 // Prisma where-fragment for any model with a `userId` + `user` relation
 // (Deal today, others later): managers get every record on their team,
 // everyone else is scoped to their own. Use this instead of hand-rolling an
 // OR clause per feature — see the "load-bearing security boundary" note in
 // CLAUDE.md's Architecture Principles.
+//
+// For DEALS use dealReadFilter below instead: it also honours the agent's
+// "Share with my brokerage" switch. This one stays for other models.
 export function teamOrOwnFilter(sessionUser: SessionUser) {
   if (isManager(sessionUser.role) && sessionUser.teamId) {
     return { user: { teamId: sessionUser.teamId } };
@@ -143,6 +154,41 @@ export function ownerOnlyFilter(sessionUser: SessionUser) {
  */
 export function documentReadFilter(sessionUser: SessionUser) {
   return {
-    OR: [{ userId: sessionUser.id }, { deal: teamOrOwnFilter(sessionUser) }],
+    OR: [{ userId: sessionUser.id }, { deal: dealReadFilter(sessionUser) }],
   };
+}
+
+/**
+ * Read scope for transactions (the Deal model). The one place the agent's
+ * "Share with my brokerage" switch is enforced (2026-10-01).
+ *
+ * Your own transactions always. For a manager, a teammate's transaction
+ * only while its owner leaves it shared. Every Deal read -- list, detail,
+ * calendar exports, document downloads (via documentReadFilter), the Team
+ * overview -- goes through here, so a hidden file can't leak through one
+ * page that forgot to check.
+ */
+export function dealReadFilter(sessionUser: SessionUser) {
+  if (isManager(sessionUser.role) && sessionUser.teamId) {
+    return {
+      OR: [
+        { userId: sessionUser.id },
+        { user: { teamId: sessionUser.teamId }, sharedWithBrokerage: true },
+      ],
+    };
+  }
+  return { userId: sessionUser.id };
+}
+
+// The Team overview's version of the same rule: a teammate's transactions
+// the brokerage may see. Kept beside dealReadFilter so the two can't drift.
+export function teamSharedDealsFilter(teamId: string) {
+  return { user: { teamId }, sharedWithBrokerage: true };
+}
+
+// Who may run a transaction's Office checklist: a manager on the team the
+// deal's agent belongs to. The deal itself must also pass dealReadFilter,
+// so a hidden file can't be worked on.
+export function canWorkOfficeChecklist(sessionUser: SessionUser): boolean {
+  return isManager(sessionUser.role) && !!sessionUser.teamId;
 }
