@@ -150,7 +150,7 @@ export default async function DashboardPage() {
     <div className="flex flex-col gap-8">
       {/* The one decorative touch: a soft wash of the logo's cyan behind the
           greeting. Low enough contrast that it never competes with content. */}
-      <div className="-mx-2 rounded-3xl bg-linear-to-br from-brand-cyan/20 via-brand-cyan/5 to-transparent px-6 py-6 sm:-mx-4 sm:px-8">
+      <div className="-mx-2 rounded-3xl border border-(--hero-edge) bg-linear-to-br from-(--hero-from) via-(--hero-via) to-transparent px-6 py-6 [--muted:var(--hero-muted)] sm:-mx-4 sm:px-8">
         <PageHeader
           title={`Welcome back, ${session?.user?.name?.split(" ")[0] ?? ""}`}
           description={team ? `${team.name} · Team account` : "Solo account"}

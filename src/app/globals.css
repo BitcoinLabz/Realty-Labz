@@ -24,6 +24,15 @@
   --chart-4: #8b6be0;
   --chart-5: #e5486f;
   --chart-6: #94a0b4;
+  /* Dashboard greeting wash. Stronger in light mode than dark: faint cyan
+     glows on navy-black but vanishes on a pale background (founder feedback
+     2026-10-01). --hero-muted keeps the grey line under the greeting at
+     AA (5.3:1) on the brightest part of the wash; the stock --muted would
+     drop to 3.8:1 there. */
+  --hero-from: color-mix(in srgb, #5bc5f2 45%, transparent);
+  --hero-via: color-mix(in srgb, #0b6fb8 10%, transparent);
+  --hero-edge: color-mix(in srgb, #5bc5f2 35%, transparent);
+  --hero-muted: #4a5568;
 }
 
 @theme inline {
@@ -66,6 +75,10 @@
   --chart-4: #a78bfa;
   --chart-5: #ff6b8a;
   --chart-6: #98a2b3;
+  --hero-from: color-mix(in srgb, #5bc5f2 20%, transparent);
+  --hero-via: color-mix(in srgb, #5bc5f2 5%, transparent);
+  --hero-edge: transparent;
+  --hero-muted: #98a2b3;
 }
 
 body {
