@@ -20,7 +20,8 @@ export default function OpengraphImage() {
         style={{
           width: "100%",
           height: "100%",
-          background: "#ffffff",
+          // A soft wash of the logo's cyan, like the dashboard greeting.
+          background: "linear-gradient(160deg, #e6f6fd 0%, #ffffff 55%)",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -54,10 +55,10 @@ export default function OpengraphImage() {
               <circle key={i} cx={b.cx} cy={b.cy} r={b.r} fill={LOGO_LIQUID_COLOR} />
             ))}
           </svg>
-          <span style={{ fontSize: 64, fontWeight: 600, color: "#1d1d1f" }}>Realty Labz</span>
+          <span style={{ fontSize: 64, fontWeight: 600, color: LOGO_OUTLINE_LIGHT }}>Realty Labz</span>
         </div>
-        <span style={{ fontSize: 30, color: "#86868b", maxWidth: 820, textAlign: "center" }}>
-          Transactions, e-signed contracts, clients, and your full financial picture — in one calm
+        <span style={{ fontSize: 30, color: "#5e6b80", maxWidth: 820, textAlign: "center" }}>
+          Transactions, contract deadlines, clients, and your full financial picture — in one calm
           place.
         </span>
       </div>

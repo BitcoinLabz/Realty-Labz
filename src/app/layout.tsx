@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 const title = "Realty Labz";
 const description =
-  "Deals, e-signed contracts, clients, and full personal + business finances for real estate agents and their teams.";
+  "Transactions, contract deadlines, clients, and full personal + business finances for real estate agents and their teams.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.realtylabz.com"),

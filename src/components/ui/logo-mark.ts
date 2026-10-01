@@ -56,3 +56,11 @@ export const LOGO_STROKE_WIDTH = 5.6;
 export const LOGO_LIQUID_COLOR = "#5BC5F2";
 export const LOGO_OUTLINE_LIGHT = "#16192E";
 export const LOGO_OUTLINE_DARK = "#F5F5F7";
+
+// The app-icon tile (2026-09-30): the mark in white on a navy -> brand-blue
+// gradient, for every place the logo stands alone as an icon -- iPhone Home
+// Screen and banners, the browser tab, Android installs. The in-app logo
+// (sidebar, sign-in) keeps the navy outline on the page background instead.
+export const LOGO_TILE_FROM = "#16192E";
+export const LOGO_TILE_TO = "#0B6FB8";
+export const LOGO_TILE_OUTLINE = "#FFFFFF";

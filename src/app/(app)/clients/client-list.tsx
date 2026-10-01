@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { CLIENT_STAGE_LABELS } from "@/lib/client-categories";
+import { CLIENT_STAGE_LABELS, CLIENT_STAGE_TONES } from "@/lib/client-categories";
 import type { ClientDTO } from "./types";
 
 const selectClass =
@@ -61,7 +61,7 @@ export function ClientList({ clients }: { clients: ClientDTO[] }) {
                 </span>
               </div>
               <span className="shrink-0">
-                <Badge>{CLIENT_STAGE_LABELS[c.stage]}</Badge>
+                <Badge tone={CLIENT_STAGE_TONES[c.stage]}>{CLIENT_STAGE_LABELS[c.stage]}</Badge>
               </span>
             </Link>
           ))}

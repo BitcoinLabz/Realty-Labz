@@ -1,3 +1,5 @@
+import type { BadgeTone } from "@/components/ui/badge";
+
 // ⚠️ UI LABEL vs. MODEL NAME (2026-08-20)
 //
 // The founder chose "Transaction" as the user-facing name for a real estate
@@ -22,6 +24,16 @@ export const DEAL_SIDE_LABELS: Record<DealSide, string> = {
   DUAL: "Dual",
   TENANT: "Tenant",
   LANDLORD: "Landlord",
+};
+
+// One colour per status, used wherever a status pill appears, so "Under
+// contract" reads the same on every screen. See Badge for what each means.
+export const DEAL_STATUS_TONES: Record<DealStatus, BadgeTone> = {
+  ACTIVE: "accent",
+  UNDER_CONTRACT: "warning",
+  PENDING: "violet",
+  CLOSED: "success",
+  FELL_THROUGH: "danger",
 };
 
 export const DEAL_STATUS_LABELS: Record<DealStatus, string> = {

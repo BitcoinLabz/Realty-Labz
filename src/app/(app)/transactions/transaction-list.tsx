@@ -5,7 +5,7 @@ import Link from "next/link";
 import { FileText, Home, Mail } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName, type DealFileDTO } from "./types";
+import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, DEAL_STATUS_TONES, dealDisplayName, type DealFileDTO } from "./types";
 
 const selectClass =
   "rounded-xl border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20";
@@ -122,16 +122,18 @@ export function FilesList({
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <Badge>{DEAL_SIDE_LABELS[f.side]}</Badge>
-                <Badge>{DEAL_STATUS_LABELS[f.status]}</Badge>
+                <Badge tone={DEAL_STATUS_TONES[f.status]}>{DEAL_STATUS_LABELS[f.status]}</Badge>
                 {/* Titled, not bare icons -- "📄 3 ✉️ 1" left the reader guessing. */}
                 <span title={`${f.documentCount} document${f.documentCount === 1 ? "" : "s"}`}>
                   <Badge icon={FileText}>{f.documentCount}</Badge>
                 </span>
-                <span
-                  title={`${f.envelopeCount} signature request${f.envelopeCount === 1 ? "" : "s"}`}
-                >
-                  <Badge icon={Mail}>{f.envelopeCount}</Badge>
-                </span>
+                {f.envelopeCount > 0 ? (
+                  <span
+                    title={`${f.envelopeCount} signature request${f.envelopeCount === 1 ? "" : "s"}`}
+                  >
+                    <Badge icon={Mail}>{f.envelopeCount}</Badge>
+                  </span>
+                ) : null}
               </div>
             </Link>
           ))}

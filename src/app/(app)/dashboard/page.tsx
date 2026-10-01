@@ -12,7 +12,17 @@ import {
   getAttentionItems,
   getUpcomingDeadlines,
 } from "@/lib/finance-data";
-import { CalendarClock, PiggyBank, TrendingUp } from "lucide-react";
+import {
+  BadgeCheck,
+  CalendarClock,
+  Car,
+  FileText,
+  HandCoins,
+  PiggyBank,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -138,10 +148,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader
-        title={`Welcome back, ${session?.user?.name?.split(" ")[0] ?? ""}`}
-        description={team ? `${team.name} · Team account` : "Solo account"}
-      />
+      {/* The one decorative touch: a soft wash of the logo's cyan behind the
+          greeting. Low enough contrast that it never competes with content. */}
+      <div className="-mx-2 rounded-3xl bg-linear-to-br from-brand-cyan/20 via-brand-cyan/5 to-transparent px-6 py-6 sm:-mx-4 sm:px-8">
+        <PageHeader
+          title={`Welcome back, ${session?.user?.name?.split(" ")[0] ?? ""}`}
+          description={team ? `${team.name} · Team account` : "Solo account"}
+        />
+      </div>
 
       <SetupChecklist steps={setupSteps} />
 
@@ -149,16 +163,21 @@ export default async function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link href="/finances" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard label={`Net income (${currentYear})`} value={formatCurrency(netIncome)} />
+          <SummaryCard
+            label={`Net income (${currentYear})`}
+            value={formatCurrency(netIncome)}
+            icon={Wallet}
+            tone="success"
+          />
         </Link>
         <Link href="/finances/mileage" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard label="Mileage saved" value={formatCurrency(mileageSaved)} />
+          <SummaryCard label="Mileage saved" value={formatCurrency(mileageSaved)} icon={Car} tone="accent" />
         </Link>
         <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard label="Clients" value={clientCount.toString()} />
+          <SummaryCard label="Clients" value={clientCount.toString()} icon={Users} tone="violet" />
         </Link>
         <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard label="Documents" value={documentCount.toString()} />
+          <SummaryCard label="Documents" value={documentCount.toString()} icon={FileText} tone="accent" />
         </Link>
       </div>
 
@@ -167,6 +186,8 @@ export default async function DashboardPage() {
           <SummaryCard
             label={`Closed (${currentYear})`}
             value={closedDeals.count.toString()}
+            icon={BadgeCheck}
+            tone="success"
             hint="Transactions you've marked as Closed with a closing date this year."
           />
         </Link>
@@ -174,6 +195,8 @@ export default async function DashboardPage() {
           <SummaryCard
             label={`What you kept (${currentYear})`}
             value={formatCurrency(closedDeals.netCommission)}
+            icon={HandCoins}
+            tone="success"
             hint="Your commission after the brokerage's cut and any referral fees, team splits, or other deductions come out."
           />
         </Link>
@@ -184,6 +207,7 @@ export default async function DashboardPage() {
       <Card
         title="Coming up"
         icon={CalendarClock}
+        tone="warning"
         description="Deadlines on your transactions in the next 7 days."
         action={
           upcomingDeadlines.length > 0 ? (
@@ -231,7 +255,7 @@ export default async function DashboardPage() {
       </Card>
 
       {hasMonthlyData ? (
-        <Card title="Money in & out this year" icon={TrendingUp}>
+        <Card title="Money in & out this year" icon={TrendingUp} tone="success">
           <MonthlyBarChart data={monthlySeries} />
         </Card>
       ) : null}
@@ -239,6 +263,7 @@ export default async function DashboardPage() {
       <Card
         title="What you're worth"
         icon={PiggyBank}
+        tone="violet"
         description="Everything you own, minus what you owe."
         action={
           <Link

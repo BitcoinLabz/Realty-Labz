@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { teamSharedFilter } from "@/lib/authorization";
-import { CLIENT_SOURCE_LABELS, CLIENT_STAGE_LABELS } from "@/lib/client-categories";
+import { CLIENT_SOURCE_LABELS, CLIENT_STAGE_LABELS, CLIENT_STAGE_TONES } from "@/lib/client-categories";
+import { Badge } from "@/components/ui/badge";
 import { ClientForm, type ClientFormValues } from "../client-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { DealForm } from "@/app/(app)/transactions/transaction-form";
-import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName } from "@/app/(app)/transactions/types";
+import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, DEAL_STATUS_TONES, dealDisplayName } from "@/app/(app)/transactions/types";
 import { ClientDocuments } from "./client-documents";
 import { SendFormWidget, type SendableTemplate } from "./send-form-widget";
 import { FormSubmissionList } from "../form-submission-list";
@@ -134,9 +135,7 @@ export default async function ClientDetailPage({
                     </span>
                     <span className="text-sm text-muted">{DEAL_SIDE_LABELS[deal.side]}</span>
                   </div>
-                  <span className="text-sm font-medium text-muted">
-                    {DEAL_STATUS_LABELS[deal.status]}
-                  </span>
+                  <Badge tone={DEAL_STATUS_TONES[deal.status]}>{DEAL_STATUS_LABELS[deal.status]}</Badge>
                 </Link>
               ))}
             </div>
@@ -220,9 +219,7 @@ export default async function ClientDetailPage({
         </Link>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">{client.name}</h1>
-          <span className="rounded-full bg-surface px-3 py-1 text-sm font-medium text-muted">
-            {CLIENT_STAGE_LABELS[client.stage]}
-          </span>
+          <Badge tone={CLIENT_STAGE_TONES[client.stage]}>{CLIENT_STAGE_LABELS[client.stage]}</Badge>
         </div>
         <p className="mt-1 text-sm text-muted">
           Contact info, properties, and documents for this client.

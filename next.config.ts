@@ -22,6 +22,11 @@ const nextConfig: NextConfig = {
   // working, so this takes effect with zero required Google Console change.
   // Once live, no user (and no Google OAuth request) ever reaches the apex
   // domain again, so there's only ever one redirect_uri to keep correct.
+  // /favicon.ico is requested by convention; the brand-tile icon is rendered
+  // by src/app/favicon-48.png (Next reserves a "favicon.ico" folder name).
+  async rewrites() {
+    return [{ source: "/favicon.ico", destination: "/favicon-48.png" }];
+  },
   async redirects() {
     return [
       {

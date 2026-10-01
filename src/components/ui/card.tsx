@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { TONE_CHIP, type Tone } from "./tone";
 
 // The app's one section container. Replaces ~40 hand-copied instances of
 // `rounded-2xl border border-border bg-background p-8` with a single place
@@ -10,9 +11,13 @@ export function Card({
   description,
   action,
   icon: Icon,
+  tone,
   children,
   className = "",
 }: {
+  // With a tone the icon sits in a tinted chip; without one it stays a quiet
+  // grey glyph, which is right for most cards.
+  tone?: Tone;
   title?: string;
   description?: React.ReactNode;
   // Right-aligned control on the heading row (a link, a button, a select).
@@ -30,7 +35,13 @@ export function Card({
           <div className="min-w-0">
             {title ? (
               <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-                {Icon ? <Icon size={17} className="shrink-0 text-muted" /> : null}
+                {Icon && tone ? (
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${TONE_CHIP[tone]}`}>
+                    <Icon size={15} />
+                  </span>
+                ) : Icon ? (
+                  <Icon size={17} className="shrink-0 text-muted" />
+                ) : null}
                 {title}
               </h2>
             ) : null}

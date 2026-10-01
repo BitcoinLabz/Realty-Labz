@@ -19,6 +19,17 @@ export const CLIENT_SOURCE_LABELS: Record<string, string> = {
   OTHER: "Other",
 };
 
+// Pill colour per stage -- see Badge. Only the stages that mean something at
+// a glance get colour; the in-between ones stay neutral.
+export const CLIENT_STAGE_TONES: Record<string, "neutral" | "accent" | "success" | "danger"> = {
+  NEW: "accent",
+  CONTACTED: "neutral",
+  NURTURING: "neutral",
+  ACTIVE: "success",
+  CLOSED: "success",
+  LOST: "danger",
+};
+
 export const CLIENT_STAGE_LABELS: Record<string, string> = {
   NEW: "New",
   CONTACTED: "Contacted",
