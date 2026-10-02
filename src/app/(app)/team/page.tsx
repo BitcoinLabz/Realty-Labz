@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { isManager, roleLabel, teamSharedDealsFilter } from "@/lib/authorization";
+import { isManager, isOversightRole, roleLabel, teamSharedDealsFilter } from "@/lib/authorization";
 import { isDeadlineOverdue, todayInReminderZone } from "@/lib/deadline-reminder-schedule";
 import { formatCurrency } from "@/lib/format";
 import { getSharedTeamFinances } from "@/lib/finance-data";
@@ -123,6 +123,8 @@ export default async function TeamOverviewPage() {
     getSharedTeamFinances(teamId, currentYear),
   ]);
 
+  // Brokers and office admins carry no files, so they aren't "agents" here.
+  const agents = teammates.filter((t) => !isOversightRole(t.role));
   const hiddenCount = new Map(hiddenByAgent.map((h) => [h.userId, h._count._all]));
   const statsByAgent = new Map(teammates.map((t) => [t.id, { active: 0, closed: 0, commission: 0 }]));
   let underContract = 0;
@@ -153,7 +155,7 @@ export default async function TeamOverviewPage() {
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <SummaryCard label="Agents" value={teammates.length.toString()} icon={Users} tone="violet" />
+        <SummaryCard label="Agents" value={agents.length.toString()} icon={Users} tone="violet" />
         <SummaryCard label="Active" value={activeTotal.toString()} icon={Home} tone="accent" />
         <SummaryCard label="Under contract" value={underContract.toString()} icon={KeyRound} tone="warning" />
         <SummaryCard label="Closing in 30 days" value={closings.length.toString()} icon={BadgeCheck} tone="success" />
@@ -260,43 +262,58 @@ export default async function TeamOverviewPage() {
         icon={Users}
         tone="violet"
         action={
-          <Link href="/account" className="text-sm font-medium text-accent hover:opacity-80">
+          <Link href="/account#team" className="text-sm font-medium text-accent hover:opacity-80">
             Invite or manage
           </Link>
         }
       >
-        <div className="flex flex-col gap-2">
-          {teammates.map((t) => {
-            const stats = statsByAgent.get(t.id)!;
-            const hidden = hiddenCount.get(t.id) ?? 0;
-            return (
-              <div
-                key={t.id}
-                className="flex flex-col gap-2 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
-              >
-                <div className="flex min-w-0 flex-col">
-                  <span className="text-sm font-medium text-foreground">{t.name}</span>
-                  <span className="truncate text-sm text-muted">
-                    {t.email} · {roleLabel(t.role)}
-                  </span>
-                </div>
-                <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted">
-                  <span>{stats.active} active</span>
-                  <span>{stats.closed} closed</span>
-                  <span className="font-medium text-foreground">{formatCurrency(stats.commission)}</span>
-                  {/* The mitigation for the agent's hide switch: the broker
-                      always knows a file exists, even when they can't open it. */}
-                  {hidden > 0 ? (
-                    <span className="inline-flex items-center gap-1 text-warning" title="Transactions this agent hasn't shared">
-                      <EyeOff size={14} />
-                      {hidden} not shared
+        {agents.length === 0 ? (
+          // A brand-new brokerage: the one thing to do is link an agent.
+          <div className="flex flex-col items-start gap-3 rounded-xl bg-surface p-5">
+            <p className="text-sm font-medium text-foreground">Add your first agent</p>
+            <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm text-muted">
+              <li>Invite them by their license number, or create an invite link and send it to them.</li>
+              <li>They open it — signed in if they already use Realty Labz, or they create an account.</li>
+              <li>Once they join, their transactions show up here.</li>
+            </ol>
+            <Link href="/account#team" className="text-sm font-medium text-accent hover:opacity-80">
+              Invite an agent →
+            </Link>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {agents.map((t) => {
+              const stats = statsByAgent.get(t.id)!;
+              const hidden = hiddenCount.get(t.id) ?? 0;
+              return (
+                <div
+                  key={t.id}
+                  className="flex flex-col gap-2 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                >
+                  <div className="flex min-w-0 flex-col">
+                    <span className="text-sm font-medium text-foreground">{t.name}</span>
+                    <span className="truncate text-sm text-muted">
+                      {t.email} · {roleLabel(t.role)}
                     </span>
-                  ) : null}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-x-5 gap-y-1 text-sm text-muted">
+                    <span>{stats.active} active</span>
+                    <span>{stats.closed} closed</span>
+                    <span className="font-medium text-foreground">{formatCurrency(stats.commission)}</span>
+                    {/* The mitigation for the agent's hide switch: the broker
+                        always knows a file exists, even when they can't open it. */}
+                    {hidden > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-warning" title="Transactions this agent hasn't shared">
+                        <EyeOff size={14} />
+                        {hidden} not shared
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </Card>
 
       {/* Absent entirely when nobody has opted in, rather than an empty

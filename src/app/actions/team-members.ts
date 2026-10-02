@@ -240,3 +240,51 @@ async function detachFromTeam(userId: string, teamId: string) {
 function roleArticle(role: Role): string {
   return role === "AGENT" ? "an agent" : role === "TEAM_LEAD" ? "a team lead" : "an admin";
 }
+
+// The brokerage's own name and license number, editable after sign-up
+// (2026-10-02). Until now both could only be typed once at sign-up, so a
+// brokerage created another way (or with a typo) had no fix. Same gate as
+// changing the roster: whoever may manage membership.
+export async function updateBrokerageSettingsAction(
+  _prevState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const session = await auth();
+  if (!session?.user?.teamId) return { error: "You must be signed in to a brokerage" };
+  const teamId = session.user.teamId;
+
+  const members = await prisma.user.findMany({ where: { teamId }, select: { role: true } });
+  if (!canManageMembership(session.user, members)) {
+    return { error: "Only your broker or an admin can change these." };
+  }
+
+  const rawName = formData.get("name");
+  const name = typeof rawName === "string" ? rawName.trim().slice(0, 100) : "";
+  if (!name) return { fieldErrors: { name: "Give your brokerage a name" } };
+
+  // Stored upper-case and trimmed, the same normalisation sign-up applies.
+  const rawNumber = formData.get("brokerageNumber");
+  const brokerageNumber =
+    typeof rawNumber === "string" && rawNumber.trim() ? rawNumber.trim().toUpperCase().slice(0, 32) : null;
+
+  if (brokerageNumber) {
+    const taken = await prisma.team.findFirst({
+      where: { brokerageNumber, id: { not: teamId } },
+      select: { id: true },
+    });
+    if (taken) {
+      return {
+        fieldErrors: {
+          brokerageNumber:
+            "Another brokerage already uses that license number. If it's yours, contact support.",
+        },
+      };
+    }
+  }
+
+  await prisma.team.update({ where: { id: teamId }, data: { name, brokerageNumber } });
+
+  revalidatePath("/account");
+  revalidatePath("/team");
+  return { success: "Saved" };
+}

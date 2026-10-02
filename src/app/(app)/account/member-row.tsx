@@ -8,9 +8,9 @@ import type { Role } from "@/generated/prisma/enums";
 const initialState: FormState = {};
 
 const ROLE_OPTIONS: { value: Role; label: string; hint: string }[] = [
-  { value: "AGENT", label: "Agent", hint: "Sees only their own work." },
-  { value: "TEAM_LEAD", label: "Team lead", hint: "Sees everyone's transactions." },
-  { value: "ADMIN", label: "Admin", hint: "Sees everything and can manage the roster." },
+  { value: "AGENT", label: "Agent", hint: "Their own work; transactions are shared with the brokerage unless they hide one." },
+  { value: "TEAM_LEAD", label: "Team lead", hint: "A working agent who also sees the team's shared transactions." },
+  { value: "ADMIN", label: "Admin", hint: "Office staff: the brokerage view only (no transactions of their own), and can manage the roster." },
 ];
 
 export type TeamMember = {

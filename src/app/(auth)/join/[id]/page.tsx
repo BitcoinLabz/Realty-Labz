@@ -99,7 +99,9 @@ export default async function JoinPage({ params }: { params: Promise<{ id: strin
           </p>
           <p className="text-foreground">
             <span className="font-medium">What {teamName} will see:</span> your transactions —
-            properties, status, dates, commission, and the documents attached to them.
+            properties, status, dates, commission, and the documents attached to them. You can
+            keep any single transaction private with its &ldquo;Share with my brokerage&rdquo;
+            switch; they&apos;ll see that one isn&apos;t shared, but not which.
           </p>
           <p className="text-muted">
             <span className="font-medium text-foreground">What they won&apos;t see:</span> your

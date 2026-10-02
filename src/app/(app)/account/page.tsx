@@ -17,6 +17,7 @@ import { InviteForm } from "./invite-form";
 import { InviteByLicenseForm } from "./invite-by-license-form";
 import { LeaveTeamForm } from "./leave-team-form";
 import { FinanceSharingForm } from "./finance-sharing-form";
+import { BrokerageSettingsForm } from "./brokerage-settings-form";
 import { InviteList, type PendingInvite } from "./invite-list";
 import { MemberRow } from "./member-row";
 
@@ -83,7 +84,9 @@ export default async function AccountPage() {
           <Card title="Account type">
             <p className="text-sm text-muted">
               {user.team
-                ? `You're part of ${user.team.name} as ${roleLabel(user.role)}.`
+                ? isOversightRole(user.role)
+                  ? `You're the ${roleLabel(user.role)} of ${user.team.name}. You oversee your agents' shared transactions and run the office checklist — you don't carry transactions of your own here.`
+                  : `You're part of ${user.team.name} as ${roleLabel(user.role)}.`
                 : "You have a solo account — everything here is just yours."}
             </p>
             {!user.team ? (
@@ -116,57 +119,15 @@ export default async function AccountPage() {
   ];
 
   if (onATeam) {
-    tabs.push({
+    // Broker / office Admin: their brokerage is what Account is for, so its
+    // tab opens first. Everyone else keeps their own details first.
+    tabs[isOversightRole(user.role) ? "unshift" : "push"]({
       id: "team",
       label: orgWord === "brokerage" ? "Your brokerage" : "Your team",
       content: (
         <>
-          <Card
-            title="People"
-            icon={Users}
-            description={
-              canManage
-                ? `Everyone in your ${orgWord}. Changing someone to Team lead or Admin lets them see everyone's transactions.`
-                : `Everyone in your ${orgWord}.`
-            }
-          >
-            <div className="flex flex-col gap-2">
-              {members.map((teammate) => (
-                <MemberRow
-                  key={teammate.id}
-                  member={teammate}
-                  isYou={teammate.id === user.id}
-                  canManage={canManage}
-                  orgWord={orgWord}
-                />
-              ))}
-            </div>
-            <p className="mt-4 text-sm text-muted">
-              Managers see agents&apos; transactions — properties, dates, commission and
-              documents. Every transaction is shared unless its agent switches sharing off on
-              that one file. Nothing under Finances is shared unless the agent chooses to share
-              it, and clients are never shared.
-            </p>
-          </Card>
-
-          {/* An agent's choice about their own finances -- a broker or office
-              admin in the oversight app has none to share. */}
-          {isOversightRole(user.role) ? null : (
-            <Card
-              title="What your brokerage can see"
-              icon={Eye}
-              description="Off by default. Nothing here is shared until you turn it on, and you can turn it back off at any time."
-            >
-              <div className="max-w-lg">
-                <FinanceSharingForm
-                  orgWord={orgWord}
-                  shareBusinessFinances={user.shareBusinessFinances}
-                  shareMileage={user.shareMileage}
-                />
-              </div>
-            </Card>
-          )}
-
+          {/* Adding agents is the first thing a broker comes here for, so it
+              leads the tab rather than sitting under the roster. */}
           {canManage ? (
             <>
               <Card
@@ -192,6 +153,67 @@ export default async function AccountPage() {
               </Card>
             </>
           ) : null}
+
+          <Card
+            title="People"
+            icon={Users}
+            description={
+              canManage
+                ? `Everyone in your ${orgWord}. A Team lead also sees agents' shared transactions; an Admin is office staff with the brokerage view only.`
+                : `Everyone in your ${orgWord}.`
+            }
+          >
+            <div className="flex flex-col gap-2">
+              {members.map((teammate) => (
+                <MemberRow
+                  key={teammate.id}
+                  member={teammate}
+                  isYou={teammate.id === user.id}
+                  canManage={canManage}
+                  orgWord={orgWord}
+                />
+              ))}
+            </div>
+            <p className="mt-4 text-sm text-muted">
+              Managers see agents&apos; transactions — properties, dates, commission and
+              documents. Every transaction is shared unless its agent switches sharing off on
+              that one file. Nothing under Finances is shared unless the agent chooses to share
+              it, and clients are never shared.
+            </p>
+          </Card>
+
+          {canManage ? (
+            <Card
+              title={orgWord === "brokerage" ? "Brokerage details" : "Team details"}
+              description="Shown to agents on their invite, and on your Overview."
+            >
+              <div className="max-w-md">
+                <BrokerageSettingsForm
+                  name={user.team!.name}
+                  brokerageNumber={user.team!.brokerageNumber ?? ""}
+                />
+              </div>
+            </Card>
+          ) : null}
+
+          {/* An agent's choice about their own finances -- a broker or office
+              admin in the oversight app has none to share. */}
+          {isOversightRole(user.role) ? null : (
+            <Card
+              title="What your brokerage can see"
+              icon={Eye}
+              description="Off by default. Nothing here is shared until you turn it on, and you can turn it back off at any time."
+            >
+              <div className="max-w-lg">
+                <FinanceSharingForm
+                  orgWord={orgWord}
+                  shareBusinessFinances={user.shareBusinessFinances}
+                  shareMileage={user.shareMileage}
+                />
+              </div>
+            </Card>
+          )}
+
 
           {/* Hidden rather than shown-and-refused: the server blocks the last
               manager from leaving, and offering a button that always fails is
