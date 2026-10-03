@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { canWorkOfficeChecklist, dealReadFilter } from "@/lib/authorization";
 import type { FormState } from "@/app/actions/auth";
+import { officeChecklistLabels } from "@/lib/office-checklist";
 import type { Role } from "@/generated/prisma/enums";
 
 // The brokerage's Office checklist on an agent's transaction (2026-10-01).
@@ -12,16 +13,6 @@ import type { Role } from "@/generated/prisma/enums";
 // The agent's own records (deadlines, documents, details) stay untouchable
 // by a manager -- this is a separate, office-owned list.
 
-// The checklist most offices run on every file. Added in one tap, skipping
-// any already there, and every item is still editable or deletable.
-const STANDARD_CHECKLIST = [
-  "Title ordered",
-  "Closing scheduled",
-  "Sign ordered",
-  "Sign installed",
-  "Sign removed",
-  "Commission received",
-];
 
 type SessionUser = { id: string; role: Role; teamId: string | null };
 
@@ -101,7 +92,9 @@ export async function addStandardChecklistAction(formData: FormData) {
   const have = new Set(existing.map((t) => t.label.trim().toLowerCase()));
   let order = existing.reduce((max, t) => Math.max(max, t.order), -1);
 
-  const toAdd = STANDARD_CHECKLIST.filter((label) => !have.has(label.toLowerCase()));
+  // The office's own template (Office settings), or the standard six.
+  const labels = await officeChecklistLabels(session.user.teamId!);
+  const toAdd = labels.filter((label) => !have.has(label.toLowerCase()));
   if (toAdd.length === 0) return;
 
   await prisma.officeTask.createMany({

@@ -13,6 +13,7 @@ const OVERSIGHT_CANNOT_CREATE = "Transactions are created by your agents. Your v
 import type { FormState } from "@/app/actions/auth";
 import { deleteDocumentFile, MAX_FILE_SIZE_BYTES, saveDocumentFile } from "@/lib/document-storage";
 import { isAiConfigured } from "@/lib/ai-contract-analysis";
+import { applyOfficeChecklist } from "@/lib/office-checklist";
 
 function parseDealForm(formData: FormData) {
   return dealSchema.safeParse({
@@ -132,6 +133,10 @@ export async function updateDealAction(
   });
 
   if (result.count === 0) return { error: "Deal not found" };
+
+  // Going under contract hands the file to the office: its checklist is
+  // added automatically (no-op if already there, or for a solo agent).
+  await applyOfficeChecklist(id, session.user.id);
 
   revalidatePath(`/transactions/${id}`);
   if (clientId) revalidatePath(`/clients/${clientId}`);
@@ -267,6 +272,9 @@ export async function createFileAction(
       : null;
     return { deal, documentId: document?.id ?? null };
   });
+
+  // Started from a signed contract, so it's already under contract.
+  await applyOfficeChecklist(deal.id, session.user.id);
 
   revalidatePath("/transactions");
   revalidatePath(`/clients/${resolvedClient.clientId}`);

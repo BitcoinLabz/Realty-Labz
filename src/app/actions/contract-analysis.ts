@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { ownerOnlyFilter } from "@/lib/authorization";
 import { readDocumentFile } from "@/lib/document-storage";
+import { applyOfficeChecklist } from "@/lib/office-checklist";
 import {
   analyzeContractPdf,
   ContractAnalysisError,
@@ -174,6 +175,9 @@ export async function applyContractAnalysisAction(
       data: dealUpdates,
     });
   }
+  // "Mark as Under contract" hands the file to the office (see
+  // applyOfficeChecklist -- a no-op unless it just went under contract).
+  await applyOfficeChecklist(dealId, session.user.id);
 
   const toCreate = deadlines.filter((d) => !d.existingId);
   const toUpdate = deadlines.filter((d) => d.existingId);
