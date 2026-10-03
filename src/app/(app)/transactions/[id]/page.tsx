@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { canWorkOfficeChecklist, dealReadFilter, teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
 import { OfficeChecklist, type OfficeTaskDTO } from "./office-checklist";
 import { PaperworkList, type PaperworkItemDTO } from "./paperwork-list";
+import { DealVendors, type DealVendorDTO } from "./deal-vendors";
 import { OfficeUploadForm } from "./office-upload-form";
 import { paperworkStatus } from "@/lib/paperwork";
 import { ShareWithBrokerage } from "./share-with-brokerage";
@@ -64,6 +65,7 @@ export default async function DealDetailPage({
         client: { select: { id: true, name: true, email: true } },
         user: { select: { name: true, teamId: true } },
         officeTasks: { orderBy: { order: "asc" } },
+        vendors: { include: { vendor: true }, orderBy: { createdAt: "asc" } },
         expenses: { where: { type: "EXPENSE" }, orderBy: { date: "desc" } },
         openHouses: {
           orderBy: { date: "desc" },
@@ -146,9 +148,41 @@ export default async function DealDetailPage({
   }));
   const requirementOptions = requirements.map((r) => ({ id: r.id, label: r.label }));
 
+  // The office's vendor directory, and the vendors already on this file.
+  const toVendorDto = (v: {
+    id: string;
+    kind: string;
+    name: string;
+    contactName: string | null;
+    email: string | null;
+    phone: string | null;
+    notes: string | null;
+  }): DealVendorDTO => ({
+    id: v.id,
+    kind: v.kind,
+    name: v.name,
+    contactName: v.contactName,
+    email: v.email,
+    phone: v.phone,
+    notes: v.notes,
+  });
+  const vendorDirectory = deal.user.teamId
+    ? (await prisma.vendor.findMany({ where: { teamId: deal.user.teamId }, orderBy: { name: "asc" } })).map(toVendorDto)
+    : [];
+  const attachedVendors = deal.vendors.map((dv) => toVendorDto(dv.vendor));
+  const isOfficeViewer = canWorkOfficeChecklist(session!.user) && deal.user.teamId === session!.user.teamId;
+
   if (deal.userId !== session!.user.id) {
     return (
       <ReadOnlyDealView
+        vendors={
+          <DealVendors
+            dealId={deal.id}
+            attached={attachedVendors}
+            directory={vendorDirectory}
+            canEdit={isOfficeViewer}
+          />
+        }
         dealId={deal.id}
         requirementOptions={canWorkOfficeChecklist(session!.user) ? requirementOptions : []}
         documentRequirements={Object.fromEntries(deal.documents.map((d) => [d.id, d.requirementId]))}
@@ -314,6 +348,7 @@ export default async function DealDetailPage({
           {session!.user.teamId ? (
             <ShareWithBrokerage dealId={deal.id} shared={deal.sharedWithBrokerage} />
           ) : null}
+          <DealVendors dealId={deal.id} attached={attachedVendors} directory={vendorDirectory} canEdit />
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
             <div className="max-w-md">

@@ -36,6 +36,7 @@ export function ReadOnlyDealView({
   deadlines,
   documents,
   officeChecklist,
+  vendors,
   dealId,
   paperwork,
   officeUpload,
@@ -58,6 +59,8 @@ export function ReadOnlyDealView({
   // here (see office-checklist.tsx). Rendered by the page, which decides who
   // may edit it.
   officeChecklist?: React.ReactNode;
+  // Vendors on the file (title, lender...), editable by the office.
+  vendors?: React.ReactNode;
   // The office's paperwork list for this file, and the office's own upload
   // box (office documents are the one thing a manager adds to a file).
   dealId?: string;
@@ -150,6 +153,8 @@ export function ReadOnlyDealView({
           </div>
         )}
       </Card>
+
+      {vendors}
 
       {officeChecklist}
 
