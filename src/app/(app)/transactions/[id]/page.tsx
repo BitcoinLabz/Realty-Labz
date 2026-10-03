@@ -501,6 +501,19 @@ export default async function DealDetailPage({
               dealId={deal.id}
               deadlines={deadlineDtos}
               deadlineTemplates={deadlineTemplateDtos}
+              emailContext={{
+                // Everyone on the file with an email: vendors, then the client.
+                recipients: [
+                  ...attachedVendors
+                    .filter((v) => v.email)
+                    .map((v) => ({ name: v.name, contactName: v.contactName, email: v.email! })),
+                  ...(deal.client?.email
+                    ? [{ name: deal.client.name, contactName: deal.client.name, email: deal.client.email }]
+                    : []),
+                ],
+                propertyLabel: dealDisplayName(deal.propertyAddress, deal.client?.name),
+                agentName: session!.user.name ?? "",
+              }}
             />
           </section>
           {/* The office's list for this file, read-only here, once they've

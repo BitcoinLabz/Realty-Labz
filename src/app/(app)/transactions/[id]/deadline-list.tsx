@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { CalendarClock, ChevronDown, Plus, Send, X } from "lucide-react";
+import { CalendarClock, ChevronDown, Mail, Plus, Send, X } from "lucide-react";
+import { deadlineEmailHref, type EmailRecipient } from "@/lib/deadline-email";
 import {
   createDeadlineAction,
   deleteDeadlineAction,
@@ -359,14 +360,57 @@ function EditDeadlineRow({
   );
 }
 
+// The context a one-tap email needs: who's on the file (vendors with an
+// email, plus the client) and how to sign off.
+export type DeadlineEmailContext = {
+  recipients: EmailRecipient[];
+  propertyLabel: string;
+  agentName: string;
+};
+
+// "Email" on a deadline: pick who, and the agent's own mail app opens with
+// the message written (see deadlineEmailHref). Hidden when nobody on the
+// file has an email address.
+function EmailAbout({ deadline, context }: { deadline: DealDeadlineDTO; context: DeadlineEmailContext }) {
+  if (context.recipients.length === 0) return null;
+  return (
+    <details className="relative">
+      <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-muted hover:text-foreground [&::-webkit-details-marker]:hidden">
+        <Mail size={14} />
+        Email
+      </summary>
+      <div className="absolute right-0 z-20 mt-2 flex w-60 flex-col gap-1 rounded-xl border border-border bg-background p-2 shadow-lg">
+        {context.recipients.map((r) => (
+          <a
+            key={r.email}
+            href={deadlineEmailHref({
+              to: r,
+              propertyLabel: context.propertyLabel,
+              deadlineLabel: deadline.label,
+              dueDate: deadline.dueDate,
+              agentName: context.agentName,
+            })}
+            className="rounded-lg px-3 py-2 text-sm text-foreground hover:bg-surface"
+          >
+            {r.name}
+            {r.contactName ? <span className="block text-xs text-muted">{r.contactName}</span> : null}
+          </a>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function DeadlineRow({
   deadline: d,
   dealId,
   onEdit,
+  emailContext,
 }: {
   deadline: DealDeadlineDTO;
   dealId: string;
   onEdit: () => void;
+  emailContext?: DeadlineEmailContext;
 }) {
   const isDone = !!d.completedAt;
   const isOverdue = !isDone && isDeadlineOverdue(d.dueDate);
@@ -419,6 +463,7 @@ function DeadlineRow({
         </div>
       </div>
       <div className="flex shrink-0 items-start justify-end gap-4 pl-8 sm:pl-0">
+        {!isDone && emailContext ? <EmailAbout deadline={d} context={emailContext} /> : null}
         {!isDone ? <SendReminderButton deadlineId={d.id} dealId={dealId} /> : null}
         <button type="button" onClick={onEdit} className="text-sm font-medium text-muted hover:text-foreground">
           Edit
@@ -435,10 +480,12 @@ export function DeadlineList({
   dealId,
   deadlines,
   deadlineTemplates,
+  emailContext,
 }: {
   dealId: string;
   deadlines: DealDeadlineDTO[];
   deadlineTemplates: DeadlineTemplateDTO[];
+  emailContext?: DeadlineEmailContext;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -452,7 +499,13 @@ export function DeadlineList({
             editingId === d.id ? (
               <EditDeadlineRow key={d.id} deadline={d} dealId={dealId} onClose={() => setEditingId(null)} />
             ) : (
-              <DeadlineRow key={d.id} deadline={d} dealId={dealId} onEdit={() => setEditingId(d.id)} />
+              <DeadlineRow
+                key={d.id}
+                deadline={d}
+                dealId={dealId}
+                onEdit={() => setEditingId(d.id)}
+                emailContext={emailContext}
+              />
             ),
           )}
         </div>
