@@ -45,6 +45,12 @@ model Team {
   invites       TeamInvite[]
   archivedDeals Deal[]       @relation("ArchivedDeals")
 
+  // The office's own settings (2026-10-02): the paperwork every file needs,
+  // its standard office checklist, and its preferred vendors.
+  requiredDocuments    RequiredDocument[]
+  officeChecklistItems OfficeChecklistItem[]
+  vendors              Vendor[]
+
   @@map("teams")
 }
 
@@ -105,6 +111,9 @@ model User {
   // doesn't silently carry over to the next one.
   shareBusinessFinances Boolean @default(false)
   shareMileage          Boolean @default(false)
+  // The broker/admin morning email (2026-10-02). On by default; only sent to
+  // the oversight roles, and only on days with something in it.
+  dailyDigest           Boolean @default(true)
 
   clients            Client[]
   transactions       Transaction[]
@@ -322,6 +331,12 @@ model Document {
   deal   Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
   dealId String?
 
+  // Which item on the office's paperwork list this satisfies (2026-10-02).
+  // Set by uploading next to the item, or matched later in one tap. No
+  // approval step -- being on file is what counts.
+  requirement   RequiredDocument? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+  requirementId String?
+
   // Set when this Document is the flattened, signed output of a
   // FormSubmission (see src/lib/pdf-finalize.ts) — reverse side of
   // FormSubmission.completedDocumentId, no FK column on this side.
@@ -330,6 +345,7 @@ model Document {
   @@index([userId])
   @@index([clientId])
   @@index([dealId])
+  @@index([requirementId])
   @@map("documents")
 }
 
@@ -439,6 +455,7 @@ model Deal {
   expenses        Transaction[]
   openHouses      OpenHouse[]
   officeTasks     OfficeTask[]
+  vendors         DealVendor[]
 
   @@index([userId])
   @@index([clientId])
@@ -469,6 +486,86 @@ model OfficeTask {
 
   @@index([dealId])
   @@map("office_tasks")
+}
+
+// The paperwork an office needs on every file of a given type (2026-10-02),
+// e.g. purchase agreement, seller's disclosure. No approval workflow: a
+// requirement is met when a document filed against it is on the deal.
+model RequiredDocument {
+  id        String     @id @default(cuid())
+  label     String
+  // Which transaction types need it -- a lead paint disclosure on a listing
+  // but not a lease, say.
+  sides     DealSide[]
+  order     Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String
+
+  documents Document[]
+
+  @@index([teamId])
+  @@map("required_documents")
+}
+
+// The office's standard checklist, copied onto a file automatically when it
+// goes Under contract (see src/lib/office-checklist.ts). A template only --
+// editing it never changes checklists already on files.
+model OfficeChecklistItem {
+  id    String @id @default(cuid())
+  label String
+  order Int    @default(0)
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String
+
+  @@index([teamId])
+  @@map("office_checklist_items")
+}
+
+enum VendorKind {
+  TITLE
+  LENDER
+  INSPECTOR
+  APPRAISER
+  SIGNS
+  OTHER
+}
+
+// The office's preferred vendors (2026-10-02). The office keeps the list;
+// agents and the office attach them to files.
+model Vendor {
+  id          String     @id @default(cuid())
+  kind        VendorKind
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  notes       String?
+  createdAt   DateTime   @default(now())
+
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId String
+
+  deals DealVendor[]
+
+  @@index([teamId])
+  @@map("vendors")
+}
+
+model DealVendor {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  deal     Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId   String
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  vendorId String
+
+  @@unique([dealId, vendorId])
+  @@index([vendorId])
+  @@map("deal_vendors")
 }
 
 // A contact an agent trades referrals with (2026-07-29) -- Deal.referralFeePercent

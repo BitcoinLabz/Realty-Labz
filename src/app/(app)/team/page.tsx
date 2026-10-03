@@ -8,11 +8,18 @@ import {
   FileWarning,
   Home,
   KeyRound,
+  SlidersHorizontal,
   Users,
 } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { isManager, isOversightRole, roleLabel, teamSharedDealsFilter } from "@/lib/authorization";
+import {
+  canManageMembership,
+  isManager,
+  isOversightRole,
+  roleLabel,
+  teamSharedDealsFilter,
+} from "@/lib/authorization";
 import { isDeadlineOverdue, todayInReminderZone } from "@/lib/deadline-reminder-schedule";
 import { formatCurrency } from "@/lib/format";
 import { getSharedTeamFinances } from "@/lib/finance-data";
@@ -123,6 +130,9 @@ export default async function TeamOverviewPage() {
     getSharedTeamFinances(teamId, currentYear),
   ]);
 
+  // Team leads who run their own team (no broker above them) manage it too.
+  const canManageOffice = canManageMembership(session!.user, teammates);
+
   // Brokers and office admins carry no files, so they aren't "agents" here.
   const agents = teammates.filter((t) => !isOversightRole(t.role));
   const hiddenCount = new Map(hiddenByAgent.map((h) => [h.userId, h._count._all]));
@@ -152,6 +162,17 @@ export default async function TeamOverviewPage() {
       <PageHeader
         title={team?.name ?? "Your brokerage"}
         description="Your agents' transactions, deadlines and office work, at a glance."
+        action={
+          canManageOffice ? (
+            <Link
+              href="/team/settings"
+              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
+            >
+              <SlidersHorizontal size={15} />
+              Office settings
+            </Link>
+          ) : undefined
+        }
       />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

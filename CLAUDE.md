@@ -392,7 +392,32 @@ Built so far: project scaffold, Prisma schema + migrations, the full auth/accoun
 - Tax rules are Michigan-specific for now — clearly scope this in the UI so users don't assume multi-state support.
 - No location data is collected in v1 (mileage is manually entered) — revisit privacy/consent/storage requirements when the native app phase adds GPS tracking.
 
+## Product Backlog (living — keep it current)
+Standing founder direction (2026-10-02): **we always keep planning, building, and revolutionizing this app.** Free features get built now; paid ones wait here until the founder says to start adding them. Move items between lists as they ship or change; add new ideas as they come up.
+
+**Building now — free (no new paid service):**
+1. ✅/🚧 Office settings: paperwork list per transaction type, standard office checklist, vendor directory (`/team/settings`).
+2. Paperwork list on every file — counted when uploaded next to an item; **no broker approval step** (founder: agent interaction must stay seamless).
+3. Office uploads into an agent's transaction (brokers don't create transactions, but can file documents).
+4. Office checklist added automatically when a file goes Under contract.
+5. Vendors (title, lender, inspector, signs…) attached to files from the office directory.
+6. Commission disbursement form (CDA) PDF.
+7. Daily broker email from the existing cron (skipped on empty days).
+8. Closing posts the money: closed deal → net commission logged as income + quarterly tax set aside.
+9. 1099 tracking for referral partners.
+10. Template (non-AI) emails on deadlines, e.g. "remind title about closing", prefilled from the file and its vendor.
+11. E-signature back on, polished (built; switched off by `E_SIGNATURE_ENABLED`).
+12. Office reports: agent production, pipeline, year-end totals per agent.
+
+**Later — costs money, wait for the founder's go-ahead:**
+- AI: contract contacts extraction, receipt photo → expense, plain-English transaction summary (Anthropic API, per call).
+- Text-message reminders to clients (per-message provider + A2P 10DLC registration).
+- Mileage from addresses (paid maps/routing at production volume).
+- Email-in address for forwarding contracts (inbound email service).
+- MLS/IDX integration (board membership + data license).
+
 ## Working Style Notes for Claude
+- **Keep improving, every session.** The founder's standing instruction (2026-10-02): keep proactively identifying areas of improvement — features that would save agents or offices time or money, and screens that are **too cluttered** or confusing — and raise them as concrete proposals. Plan before building anything non-trivial, keep the Product Backlog above current, and default to free options unless the founder has said to start on paid ones.
 - **Never make a billed API call without asking first — every single time.** Anything that hits the Anthropic API (contract analysis, or any future AI feature) spends real money on the founder's key. Being handed a key, or having one sit in `.env.local`, is **not** standing permission to spend it: ask immediately before the call that costs money, say roughly what it will cost, and wait. A key given "for testing" authorises the setup, not an unbounded number of runs.
   - Measured cost, so this is concrete rather than abstract: a one-page contract ran 2,915 input + 330 output tokens on `claude-opus-5` — about **2 cents**. A full 10-15 page purchase agreement will be more, likely 5-15 cents, unmeasured so far.
   - Prefer verification that costs nothing: unit tests, `npx tsc --noEmit`, `npm run build`, and static reads of the code. Only reach for a live call when nothing else can answer the question, and say why.

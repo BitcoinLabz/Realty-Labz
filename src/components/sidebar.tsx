@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   PanelLeft,
   Settings,
+  SlidersHorizontal,
   Users,
   Wallet,
   X,
@@ -38,6 +39,7 @@ const teamNavItem = { href: "/team", label: "Team", icon: Building2 };
 const oversightNavItems = [
   { href: "/team", label: "Overview", icon: Building2 },
   { href: "/transactions", label: "Transactions", icon: Home },
+  { href: "/team/settings", label: "Office", icon: SlidersHorizontal },
 ];
 
 const accountNavItem = { href: "/account", label: "Account", icon: Settings };
@@ -61,8 +63,15 @@ export function Sidebar({
       ? [...baseNavItems, teamNavItem, accountNavItem]
       : [...baseNavItems, accountNavItem];
 
+  // The most specific matching item wins, so /team/settings lights up
+  // "Office" rather than both it and "Overview" (/team).
+  const matches = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  const activeHref = navItems
+    .map((item) => item.href)
+    .filter(matches)
+    .sort((a, b) => b.length - a.length)[0];
   function isActive(href: string) {
-    return pathname === href || pathname.startsWith(`${href}/`);
+    return href === activeHref;
   }
 
   const initials =
