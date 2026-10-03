@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isDeadlineOverdue } from "@/lib/deadline-reminder-schedule";
-import { Eye, FileText } from "lucide-react";
+import { Eye, FileDown, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { CountsAsSelect } from "./paperwork-list";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -37,6 +37,7 @@ export function ReadOnlyDealView({
   documents,
   officeChecklist,
   vendors,
+  cdaHref,
   dealId,
   paperwork,
   officeUpload,
@@ -61,6 +62,8 @@ export function ReadOnlyDealView({
   officeChecklist?: React.ReactNode;
   // Vendors on the file (title, lender...), editable by the office.
   vendors?: React.ReactNode;
+  // The commission disbursement form, once the file has a commission.
+  cdaHref?: string | null;
   // The office's paperwork list for this file, and the office's own upload
   // box (office documents are the one thing a manager adds to a file).
   dealId?: string;
@@ -114,7 +117,17 @@ export function ReadOnlyDealView({
         </p>
       </div>
 
-      <Card title="Details">
+      <Card
+        title="Details"
+        action={
+          cdaHref ? (
+            <a href={cdaHref} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm font-medium text-accent hover:opacity-80">
+              <FileDown size={15} />
+              Commission form (PDF)
+            </a>
+          ) : undefined
+        }
+      >
         <dl className="flex flex-col gap-2 text-sm">
           {rows.map((row) => (
             <div key={row.label} className="flex items-baseline justify-between gap-4">

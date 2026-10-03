@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgeDollarSign, Copy } from "lucide-react";
+import { BadgeDollarSign, Copy, FileDown } from "lucide-react";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
@@ -175,6 +175,7 @@ export default async function DealDetailPage({
   if (deal.userId !== session!.user.id) {
     return (
       <ReadOnlyDealView
+        cdaHref={deal.commissionAmount && Number(deal.commissionAmount) > 0 ? `/api/transactions/${deal.id}/cda` : null}
         vendors={
           <DealVendors
             dealId={deal.id}
@@ -363,7 +364,15 @@ export default async function DealDetailPage({
 
           {grossCommission > 0 ? (
             <section className="rounded-2xl border border-border bg-background p-8">
-              <h2 className="mb-6 text-base font-semibold text-foreground">Deal financials</h2>
+              <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
+                <h2 className="text-base font-semibold text-foreground">Deal financials</h2>
+                {/* The form the office sends title so commission is paid out
+                    right at closing. Free: rendered here, no outside service. */}
+                <a href={`/api/transactions/${deal.id}/cda`} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm font-medium text-accent hover:opacity-80">
+                  <FileDown size={15} />
+                  Commission form (PDF)
+                </a>
+              </div>
               <div className="flex flex-col gap-2 text-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-muted">Gross commission</span>
