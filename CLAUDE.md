@@ -396,13 +396,13 @@ Built so far: project scaffold, Prisma schema + migrations, the full auth/accoun
 Standing founder direction (2026-10-02): **we always keep planning, building, and revolutionizing this app.** Free features get built now; paid ones wait here until the founder says to start adding them. Move items between lists as they ship or change; add new ideas as they come up.
 
 **Building now — free (no new paid service):**
-1. ✅/🚧 Office settings: paperwork list per transaction type, standard office checklist, vendor directory (`/team/settings`).
-2. Paperwork list on every file — counted when uploaded next to an item; **no broker approval step** (founder: agent interaction must stay seamless).
-3. Office uploads into an agent's transaction (brokers don't create transactions, but can file documents).
-4. Office checklist added automatically when a file goes Under contract.
-5. Vendors (title, lender, inspector, signs…) attached to files from the office directory.
-6. Commission disbursement form (CDA) PDF.
-7. Daily broker email from the existing cron (skipped on empty days).
+1. ✅ Office settings: paperwork list per transaction type, standard office checklist, vendor directory (`/team/settings`).
+2. ✅ Paperwork list on every file — counted when uploaded next to an item; **no broker approval step** (founder: agent interaction must stay seamless).
+3. ✅ Office uploads into an agent's transaction (brokers don't create transactions, but can file documents).
+4. ✅ Office checklist added automatically when a file goes Under contract.
+5. ✅ Vendors (title, lender, inspector, signs…) attached to files from the office directory.
+6. ✅ Commission disbursement form (CDA) PDF.
+7. ✅ Daily broker email from the existing cron (skipped on empty days).
 8. Closing posts the money: closed deal → net commission logged as income + quarterly tax set aside.
 9. 1099 tracking for referral partners.
 10. Template (non-AI) emails on deadlines, e.g. "remind title about closing", prefilled from the file and its vendor.

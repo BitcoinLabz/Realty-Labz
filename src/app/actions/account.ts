@@ -126,3 +126,14 @@ export async function updateFinanceSharingAction(
   revalidatePath("/team");
   return { success: "Saved." };
 }
+
+// The broker/admin morning email (2026-10-02). Your own preference only.
+export async function setDailyDigestAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+  await prisma.user.update({
+    where: { id: session.user.id },
+    data: { dailyDigest: formData.get("on") === "true" },
+  });
+  revalidatePath("/account");
+}

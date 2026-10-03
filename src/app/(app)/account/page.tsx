@@ -18,6 +18,7 @@ import { InviteByLicenseForm } from "./invite-by-license-form";
 import { LeaveTeamForm } from "./leave-team-form";
 import { FinanceSharingForm } from "./finance-sharing-form";
 import { BrokerageSettingsForm } from "./brokerage-settings-form";
+import { DigestToggle } from "./digest-toggle";
 import { InviteList, type PendingInvite } from "./invite-list";
 import { MemberRow } from "./member-row";
 
@@ -181,6 +182,13 @@ export default async function AccountPage() {
               it, and clients are never shared.
             </p>
           </Card>
+
+          {/* The office's morning email -- only the oversight roles get it. */}
+          {isOversightRole(user.role) ? (
+            <Card title="Morning email">
+              <DigestToggle on={user.dailyDigest} />
+            </Card>
+          ) : null}
 
           {canManage ? (
             <Card

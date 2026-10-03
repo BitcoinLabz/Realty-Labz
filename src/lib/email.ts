@@ -240,3 +240,45 @@ export async function sendTeamInviteEmail(params: {
     `,
   });
 }
+
+// The broker/admin morning email (2026-10-02): what needs the office today.
+// Only sent when there's something in it (see the daily cron), and every
+// line links straight to the transaction.
+export async function sendOfficeDigestEmail(params: {
+  to: string;
+  recipientName: string;
+  officeName: string;
+  appUrl: string;
+  sections: { heading: string; lines: { title: string; detail: string; href: string }[] }[];
+}) {
+  const resend = getResendClient();
+  const nonEmpty = params.sections.filter((s) => s.lines.length > 0);
+  const counts = nonEmpty.map((s) => `${s.lines.length} ${s.heading.toLowerCase()}`).join(", ");
+  const html = nonEmpty
+    .map(
+      (s) => `
+      <h3 style="font-size:15px;margin:20px 0 8px;">${escapeHtml(s.heading)}</h3>
+      ${s.lines
+        .slice(0, 8)
+        .map(
+          (l) =>
+            `<p style="margin:0 0 6px;"><a href="${l.href}">${escapeHtml(l.title)}</a><br><span style="color:#5e6b80;font-size:13px;">${escapeHtml(l.detail)}</span></p>`,
+        )
+        .join("")}
+      ${s.lines.length > 8 ? `<p style="color:#5e6b80;font-size:13px;">and ${s.lines.length - 8} more</p>` : ""}`,
+    )
+    .join("");
+
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: `Today at ${params.officeName}: ${counts}`,
+    html: `
+      <p>Good morning ${escapeHtml(params.recipientName.split(" ")[0] ?? "")},</p>
+      <p>Here's what needs your office today.</p>
+      ${html}
+      <p style="margin-top:24px;"><a href="${params.appUrl}/team">Open your Overview</a></p>
+      <p style="color:#86868b;font-size:12px;">You get this only on days with something to look at. Turn it off in Account → Your brokerage.</p>
+    `,
+  });
+}

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { deadlineInclude, sendRemindersFor } from "@/lib/deadline-reminder-send";
+import { getOfficeSummary, summaryIsEmpty } from "@/lib/office-summary";
+import { sendOfficeDigestEmail } from "@/lib/email";
+import { APP_URL } from "@/lib/app-url";
 import {
   EARLY_REMINDER_DAYS,
   daysUntilDue,
@@ -88,5 +91,45 @@ export async function GET(request: Request) {
     await new Promise((resolve) => setTimeout(resolve, SEND_SPACING_MS));
   }
 
-  return NextResponse.json({ checked: deadlines.length, sent, failed });
+  // The broker/admin morning email (2026-10-02). One per person with it
+  // switched on, skipped entirely on a quiet day so it never nags. A failure
+  // is logged and the run carries on -- one bad send mustn't stop the rest.
+  let digests = 0;
+  const recipients = await prisma.user.findMany({
+    where: { role: { in: ["BROKER", "ADMIN"] }, teamId: { not: null }, dailyDigest: true },
+    select: { name: true, email: true, teamId: true, team: { select: { name: true } } },
+  });
+  const summaries = new Map<string, Awaited<ReturnType<typeof getOfficeSummary>>>();
+  for (const person of recipients) {
+    const teamId = person.teamId!;
+    if (!summaries.has(teamId)) summaries.set(teamId, await getOfficeSummary(teamId));
+    const summary = summaries.get(teamId)!;
+    if (summaryIsEmpty(summary)) continue;
+
+    const link = (dealId: string) => `${APP_URL}/transactions/${dealId}`;
+    const section = (heading: string, lines: { dealId: string; title: string; detail: string }[]) => ({
+      heading,
+      lines: lines.map((l) => ({ title: l.title, detail: l.detail, href: link(l.dealId) })),
+    });
+    try {
+      await sendOfficeDigestEmail({
+        to: person.email,
+        recipientName: person.name ?? "",
+        officeName: person.team?.name ?? "your office",
+        appUrl: APP_URL,
+        sections: [
+          section("Overdue", summary.overdue),
+          section("Office tasks due", summary.officeTasksDue),
+          section("Missing paperwork", summary.missingPaperwork),
+          section("Closing this week", summary.closingsThisWeek),
+        ],
+      });
+      digests++;
+    } catch (err) {
+      console.error("[cron] office digest failed", err);
+    }
+    await new Promise((resolve) => setTimeout(resolve, SEND_SPACING_MS));
+  }
+
+  return NextResponse.json({ checked: deadlines.length, sent, failed, digests });
 }
