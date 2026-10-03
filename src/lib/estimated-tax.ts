@@ -46,3 +46,13 @@ export function estimateQuarterlyTax(
     quarters: quarterlyDueDates(year).map((q) => ({ ...q, amount: perQuarter })),
   };
 }
+
+// How much of one commission to set aside for taxes (2026-10-03): the same
+// self-employment rate plus the agent's own income-tax rate guess that the
+// quarterly estimate uses, applied to this one payment. Rounded to dollars --
+// it's a nudge, not a tax calculation. Null rate counts self-employment only.
+export function taxSetAside(netCommission: number, incomeTaxRatePercent: number | null): number {
+  if (netCommission <= 0) return 0;
+  const rate = SELF_EMPLOYMENT_TAX_RATE + Math.max(0, incomeTaxRatePercent ?? 0) / 100;
+  return Math.round(netCommission * rate);
+}

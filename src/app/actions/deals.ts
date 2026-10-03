@@ -14,6 +14,7 @@ import type { FormState } from "@/app/actions/auth";
 import { deleteDocumentFile, MAX_FILE_SIZE_BYTES, saveDocumentFile } from "@/lib/document-storage";
 import { isAiConfigured } from "@/lib/ai-contract-analysis";
 import { applyOfficeChecklist } from "@/lib/office-checklist";
+import { logCommissionIncome } from "@/lib/commission-income";
 
 function parseDealForm(formData: FormData) {
   return dealSchema.safeParse({
@@ -137,6 +138,15 @@ export async function updateDealAction(
   // Going under contract hands the file to the office: its checklist is
   // added automatically (no-op if already there, or for a solo agent).
   await applyOfficeChecklist(id, session.user.id);
+
+  // Closing posts the money (2026-10-03): the net commission lands in the
+  // agent's income ledger without a second step. Once only, and a no-op
+  // until the transaction actually has a commission.
+  if (await logCommissionIncome(id, session.user.id)) {
+    revalidatePath("/finances");
+    revalidatePath("/finances/income");
+    revalidatePath("/dashboard");
+  }
 
   revalidatePath(`/transactions/${id}`);
   if (clientId) revalidatePath(`/clients/${clientId}`);

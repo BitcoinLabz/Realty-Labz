@@ -4,9 +4,8 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { transactionSchema } from "@/lib/validation";
-import { calculateNetCommission } from "@/lib/finance-data";
-import { dealDisplayName } from "@/app/(app)/transactions/types";
 import type { FormState } from "@/app/actions/auth";
+import { logCommissionIncome } from "@/lib/commission-income";
 import { createRecurringTransactionAction } from "@/app/actions/recurring-transactions";
 
 function parseTransactionForm(formData: FormData) {
@@ -189,55 +188,11 @@ export async function logCommissionAsIncomeAction(formData: FormData) {
   const dealId = formData.get("dealId");
   if (typeof dealId !== "string" || !dealId) return;
 
-  // Plain userId, not teamOrOwnFilter: a ledger entry is strictly personal
-  // (see resolveDealId's comment above), so you only ever log YOUR commission
-  // against YOUR transaction -- a manager viewing a teammate's transaction
-  // must not create a row in their own books.
-  const deal = await prisma.deal.findFirst({
-    where: { id: dealId, userId: session.user.id },
-  });
-  if (!deal || deal.status !== "CLOSED") return;
-
-  // Idempotency: an indexed relational check rather than the CSV importer's
-  // fuzzy date+amount+description heuristic. This one survives the agent
-  // later editing the amount, and there's no unique constraint to lean on.
-  const existing = await prisma.transaction.findFirst({
-    where: { userId: session.user.id, dealId, type: "INCOME" },
-    select: { id: true },
-  });
-  if (existing) return;
-
-  const gross = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
-  const net = calculateNetCommission(gross, {
-    brokerageSplitPercent: deal.brokerageSplitPercent ? Number(deal.brokerageSplitPercent) : null,
-    referralFeePercent: deal.referralFeePercent ? Number(deal.referralFeePercent) : null,
-    teamSplitPercent: deal.teamSplitPercent ? Number(deal.teamSplitPercent) : null,
-    otherDeductionsPercent: deal.otherDeductionsPercent ? Number(deal.otherDeductionsPercent) : null,
-  });
-
-  // calculateNetCommission is neither clamped nor rounded, and an amount must
-  // be positive -- splits can legitimately exceed the gross. Nothing to log in
-  // that case; the page hides the button for it too.
-  const amount = Math.round(net * 100) / 100;
-  if (amount <= 0) return;
-
-  await prisma.transaction.create({
-    data: {
-      userId: session.user.id,
-      type: "INCOME",
-      scope: "BUSINESS",
-      // Null for every INCOME row -- the category enum is expense-only, and
-      // the breakdown/budget code all assumes category implies expense.
-      category: null,
-      amount,
-      description: `Commission — ${dealDisplayName(deal.propertyAddress)}`,
-      date: deal.closingDate ?? new Date(),
-      dealId,
-    },
-  });
-
-  revalidatePath("/finances");
-  revalidatePath("/finances/income");
-  revalidatePath("/dashboard");
+  // Owner-only and idempotent -- see logCommissionIncome.
+  if (await logCommissionIncome(dealId, session.user.id)) {
+    revalidatePath("/finances");
+    revalidatePath("/finances/income");
+    revalidatePath("/dashboard");
+  }
   revalidatePath(`/transactions/${dealId}`);
 }

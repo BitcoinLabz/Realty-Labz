@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimateQuarterlyTax } from "./estimated-tax";
+import { estimateQuarterlyTax, taxSetAside } from "./estimated-tax";
 
 // Avoids toISOString() on a local-time Date, which shifts the calendar day
 // in timezones ahead of UTC (e.g. local midnight in UTC+9 is still the
@@ -37,5 +37,19 @@ describe("estimateQuarterlyTax", () => {
     expect(result.totalEstimated).toBe(0);
     expect(result.selfEmploymentTax).toBe(0);
     expect(result.incomeTax).toBe(0);
+  });
+});
+
+describe("taxSetAside", () => {
+  it("applies self-employment tax plus the agent's own rate", () => {
+    // 15.3% + 22% = 37.3% of $10,000
+    expect(taxSetAside(10000, 22)).toBe(3730);
+  });
+  it("counts self-employment only when no rate is set", () => {
+    expect(taxSetAside(10000, null)).toBe(1530);
+  });
+  it("is zero for a non-positive commission", () => {
+    expect(taxSetAside(0, 22)).toBe(0);
+    expect(taxSetAside(-500, 22)).toBe(0);
   });
 });

@@ -9,6 +9,8 @@ import { PaperworkList, type PaperworkItemDTO } from "./paperwork-list";
 import { DealVendors, type DealVendorDTO } from "./deal-vendors";
 import { OfficeUploadForm } from "./office-upload-form";
 import { paperworkStatus } from "@/lib/paperwork";
+import { taxSetAside } from "@/lib/estimated-tax";
+import { Badge } from "@/components/ui/badge";
 import { ShareWithBrokerage } from "./share-with-brokerage";
 import type { DeadlineTemplateDTO } from "../deadline-sets/types";
 import { formatCurrency } from "@/lib/format";
@@ -28,7 +30,7 @@ import { DetailTabs } from "@/components/ui/detail-tabs";
 import { isAiConfigured } from "@/lib/ai-contract-analysis";
 import { duplicateDealAction } from "@/app/actions/deals";
 import { logCommissionAsIncomeAction } from "@/app/actions/transactions";
-import { dealDisplayName } from "../types";
+import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, DEAL_STATUS_TONES, dealDisplayName } from "../types";
 import type { DealDeadlineDTO, OpenHouseDTO, ReferralPartnerDTO } from "../types";
 import type { DocumentDTO } from "@/app/(app)/clients/types";
 import type { FormSubmissionSummaryDTO } from "../../forms/templates/types";
@@ -276,6 +278,13 @@ export default async function DealDetailPage({
   };
 
   const grossCommission = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
+  const taxSettings = await prisma.user.findUnique({
+    where: { id: session!.user.id },
+    select: { estimatedIncomeTaxRatePercent: true },
+  });
+  const incomeTaxRate = taxSettings?.estimatedIncomeTaxRatePercent
+    ? Number(taxSettings.estimatedIncomeTaxRatePercent)
+    : null;
   const netCommission = calculateNetCommission(grossCommission, {
     brokerageSplitPercent: deal.brokerageSplitPercent ? Number(deal.brokerageSplitPercent) : null,
     referralFeePercent: deal.referralFeePercent ? Number(deal.referralFeePercent) : null,
@@ -344,12 +353,6 @@ export default async function DealDetailPage({
       label: "Overview",
       content: (
         <>
-          {/* Only meaningful for an agent on a team -- a solo agent has no
-              brokerage to share with. */}
-          {session!.user.teamId ? (
-            <ShareWithBrokerage dealId={deal.id} shared={deal.sharedWithBrokerage} />
-          ) : null}
-          <DealVendors dealId={deal.id} attached={attachedVendors} directory={vendorDirectory} canEdit />
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
             <div className="max-w-md">
@@ -403,15 +406,32 @@ export default async function DealDetailPage({
               {deal.status === "CLOSED" && netCommission > 0 ? (
                 <div className="mt-6 border-t border-border pt-6">
                   {loggedCommission ? (
-                    <p className="text-sm text-muted">
-                      Commission logged as income.{" "}
-                      <Link
-                        href="/finances/income"
-                        className="font-medium text-accent hover:opacity-80"
-                      >
-                        View in Income &amp; expenses
-                      </Link>
-                    </p>
+                    <div className="flex flex-col gap-2 text-sm">
+                      <p className="text-muted">
+                        {formatCurrency(netCommission)} was added to your income when this closed.{" "}
+                        <Link href="/finances/income" className="font-medium text-accent hover:opacity-80">
+                          View in Income &amp; expenses
+                        </Link>
+                      </p>
+                      {/* The nudge most agents need at closing: don't spend it all. */}
+                      <p className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl bg-surface px-4 py-3">
+                        <span className="text-foreground">Set aside for taxes (estimate)</span>
+                        <span className="font-semibold text-warning">
+                          {formatCurrency(taxSetAside(netCommission, incomeTaxRate))}
+                        </span>
+                      </p>
+                      <p className="text-xs text-muted">
+                        Self-employment tax
+                        {incomeTaxRate !== null ? ` plus your ${incomeTaxRate}% income-tax rate` : ""}.{" "}
+                        {incomeTaxRate === null ? (
+                          <Link href="/finances/taxes" className="font-medium text-accent hover:opacity-80">
+                            Add your income-tax rate for a fuller estimate
+                          </Link>
+                        ) : (
+                          "Not tax advice."
+                        )}
+                      </p>
+                    </div>
                   ) : (
                     <form action={logCommissionAsIncomeAction}>
                       <input type="hidden" name="dealId" value={deal.id} />
@@ -451,6 +471,12 @@ export default async function DealDetailPage({
               )}
             </section>
           ) : null}
+          {/* Only meaningful for an agent on a team -- a solo agent has no
+              brokerage to share with. */}
+          {session!.user.teamId ? (
+            <ShareWithBrokerage dealId={deal.id} shared={deal.sharedWithBrokerage} />
+          ) : null}
+          <DealVendors dealId={deal.id} attached={attachedVendors} directory={vendorDirectory} canEdit />
         </>
       ),
     },
@@ -570,7 +596,24 @@ export default async function DealDetailPage({
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">
           {dealDisplayName(deal.propertyAddress, deal.client?.name)}
         </h1>
-        <p className="mt-1 text-sm text-muted">Manage this deal&apos;s details and deadlines.</p>
+        {/* The file at a glance: where it stands, when it closes, and who
+            can see it -- before any tab is opened. */}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
+          <Badge tone={DEAL_STATUS_TONES[deal.status]}>{DEAL_STATUS_LABELS[deal.status]}</Badge>
+          <span>{DEAL_SIDE_LABELS[deal.side]}</span>
+          {deal.closingDate ? (
+            <span>
+              · Closing{" "}
+              {deal.closingDate.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                timeZone: "UTC",
+              })}
+            </span>
+          ) : null}
+          {session!.user.teamId && !deal.sharedWithBrokerage ? <span>· Private to you</span> : null}
+        </div>
       </div>
 
       {/* One instance above the tabs, so it never unmounts mid-flow: saving

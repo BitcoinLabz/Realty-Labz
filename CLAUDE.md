@@ -403,7 +403,7 @@ Standing founder direction (2026-10-02): **we always keep planning, building, an
 5. ✅ Vendors (title, lender, inspector, signs…) attached to files from the office directory.
 6. ✅ Commission disbursement form (CDA) PDF.
 7. ✅ Daily broker email from the existing cron (skipped on empty days).
-8. Closing posts the money: closed deal → net commission logged as income + quarterly tax set aside.
+8. ✅ Closing posts the money: marking a transaction Closed logs net commission as income automatically, and Deal financials shows how much to set aside for taxes.
 9. 1099 tracking for referral partners.
 10. Template (non-AI) emails on deadlines, e.g. "remind title about closing", prefilled from the file and its vendor.
 11. E-signature back on, polished (built; switched off by `E_SIGNATURE_ENABLED`).
