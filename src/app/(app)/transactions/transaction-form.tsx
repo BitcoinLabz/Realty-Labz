@@ -270,6 +270,14 @@ export function DealForm({
               </option>
             ))}
           </Select>
+        ) : referralPartners ? (
+          <p className="text-sm text-muted">
+            Paying a referral fee? Add the partner in{" "}
+            <a href="/finances/referrals" className="font-medium text-accent hover:opacity-80">
+              Finances → Referrals
+            </a>{" "}
+            to track it for 1099s.
+          </p>
         ) : null}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field

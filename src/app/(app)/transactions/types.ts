@@ -124,14 +124,6 @@ export type ReferralPartnerOption = {
   name: string;
 };
 
-export type ReferralPartnerDTO = {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  totalOwed: number;
-};
-
 export type OpenHouseDTO = {
   id: string;
   date: string; // yyyy-mm-dd

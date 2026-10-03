@@ -13,6 +13,7 @@ const tabs = [
   { href: "/finances/mileage", label: "Mileage" },
   { href: "/finances/investments", label: "Investments" },
   { href: "/finances/loans", label: "Loans" },
+  { href: "/finances/referrals", label: "Referrals" },
   { href: "/finances/taxes", label: "Taxes & budgets" },
 ];
 

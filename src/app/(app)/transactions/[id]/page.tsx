@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { ShareWithBrokerage } from "./share-with-brokerage";
 import type { DeadlineTemplateDTO } from "../deadline-sets/types";
 import { formatCurrency } from "@/lib/format";
-import { calculateNetCommission, getReferralPartnerTotals } from "@/lib/finance-data";
+import { calculateNetCommission } from "@/lib/finance-data";
 import { DealForm, type DealFormValues } from "../transaction-form";
 import { ContractAssistant } from "./contract-assistant";
 import { E_SIGNATURE_ENABLED } from "@/lib/features";
@@ -23,7 +23,6 @@ import { DealDocuments } from "./deal-documents";
 import { DeleteDealButton } from "./delete-deal-button";
 import { ReadOnlyDealView } from "./read-only-view";
 import { OpenHouseSection } from "./open-house-section";
-import { ReferralPartnerSection } from "./referral-partner-section";
 import { FormSubmissionList } from "@/app/(app)/clients/form-submission-list";
 import { SendFormWidget, type SendableTemplate } from "@/app/(app)/clients/[id]/send-form-widget";
 import { DetailTabs } from "@/components/ui/detail-tabs";
@@ -31,7 +30,7 @@ import { isAiConfigured } from "@/lib/ai-contract-analysis";
 import { duplicateDealAction } from "@/app/actions/deals";
 import { logCommissionAsIncomeAction } from "@/app/actions/transactions";
 import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, DEAL_STATUS_TONES, dealDisplayName } from "../types";
-import type { DealDeadlineDTO, OpenHouseDTO, ReferralPartnerDTO } from "../types";
+import type { DealDeadlineDTO, OpenHouseDTO } from "../types";
 import type { DocumentDTO } from "@/app/(app)/clients/types";
 import type { FormSubmissionSummaryDTO } from "../../forms/templates/types";
 
@@ -84,7 +83,13 @@ export default async function DealDetailPage({
       orderBy: { name: "asc" },
       select: { id: true, name: true },
     }),
-    getReferralPartnerTotals(session!.user.id),
+    // Just names for the "Referral owed to" picker -- the list itself lives
+    // under Finances -> Referrals (2026-10-03).
+    prisma.referralPartner.findMany({
+      where: { userId: session!.user.id },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
     prisma.formSubmission.findMany({
       where: { dealId: id, ...teamOrOwnFilter(session!.user) },
       include: { formTemplate: true, client: { select: { name: true } }, signers: true },
@@ -223,7 +228,7 @@ export default async function DealDetailPage({
     );
   }
 
-  const referralPartnerDtos: ReferralPartnerDTO[] = referralPartners;
+  const referralPartnerDtos = referralPartners;
 
   const documentDtos: DocumentDTO[] = deal.documents.map((d) => ({
     id: d.id,
@@ -582,16 +587,6 @@ export default async function DealDetailPage({
         <section className="rounded-2xl border border-border bg-background p-8">
           <h2 className="mb-6 text-base font-semibold text-foreground">Open houses</h2>
           <OpenHouseSection dealId={deal.id} openHouses={openHouseDtos} />
-        </section>
-      ),
-    },
-    {
-      id: "referral-partners",
-      label: "Referral partners",
-      content: (
-        <section className="rounded-2xl border border-border bg-background p-8">
-          <h2 className="mb-1 text-base font-semibold text-foreground">Referral partners</h2>
-          <ReferralPartnerSection dealId={deal.id} partners={referralPartnerDtos} />
         </section>
       ),
     },

@@ -574,12 +574,15 @@ model DealVendor {
 // (src/lib/finance-data.ts). Deliberately no payment/disbursement workflow --
 // that's a bigger, explicitly out-of-scope feature (see CLAUDE.md).
 model ReferralPartner {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  notes     String?
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  name       String
+  email      String?
+  phone      String?
+  notes      String?
+  // Whether the agent has their W-9 on file (2026-10-03) -- what a 1099 needs.
+  // Deliberately just a yes/no: tax ID numbers are never stored here.
+  w9Received Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // The async DB-aggregation functions below (getBudgetUsage, getPipelineValue,
-// getClosedDealsSummary, getReferralPartnerTotals, getNetWorthSeries) mix a
+// getClosedDealsSummary, getNetWorthSeries) mix a
 // Prisma fetch with real branching/rounding logic, so they can't be tested as
 // pure functions the way the math below already is. There's no separate test
 // database for this project (see CLAUDE.md — local dev and production
@@ -30,7 +30,6 @@ import {
   getHomeOfficeDeduction,
   getNetWorthSeries,
   getPipelineValue,
-  getReferralPartnerTotals,
 } from "./finance-data";
 
 describe("getHomeOfficeDeduction (IRS Simplified method)", () => {
@@ -129,33 +128,6 @@ describe("getClosedDealsSummary", () => {
 
     // Deal 1: 38% of $10,000 taken -> keeps $6,200. Deal 2: no splits -> $5,000.
     expect(result).toEqual({ count: 2, netCommission: 11200 });
-  });
-});
-
-describe("getReferralPartnerTotals", () => {
-  it("converts each deal.s referral percentage into dollars owed", async () => {
-    mockPrisma.referralPartner.findMany.mockResolvedValue([
-      {
-        id: "p1",
-        name: "Jane",
-        email: "jane@example.com",
-        phone: null,
-        // The fee is stored as a percentage, so dollars owed come from each
-        // deal.s own gross: 5% of $10,000 + 3% of $20,000 = $500 + $600.
-        deals: [
-          { referralFeePercent: 5, commissionAmount: 10000 },
-          { referralFeePercent: 3, commissionAmount: 20000 },
-        ],
-      },
-      { id: "p2", name: "Bob", email: null, phone: "555-1234", deals: [] },
-    ]);
-
-    const result = await getReferralPartnerTotals("u1");
-
-    expect(result).toEqual([
-      { id: "p1", name: "Jane", email: "jane@example.com", phone: null, totalOwed: 1100 },
-      { id: "p2", name: "Bob", email: null, phone: "555-1234", totalOwed: 0 },
-    ]);
   });
 });
 

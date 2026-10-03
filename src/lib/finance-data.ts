@@ -213,40 +213,6 @@ export async function getClosedDealsSummary(
   return { count: deals.length, netCommission };
 }
 
-// Running total owed to each referral partner (2026-07-29 audit follow-up) --
-// scoped to CLOSED deals only, since a fee is realistically "owed" once a
-// deal actually closes, not while it's still pending. Deliberately a simple
-// lifetime total, not a per-year breakdown or a payment/disbursement ledger
-// (see CLAUDE.md for why that's out of scope for this pass).
-export async function getReferralPartnerTotals(
-  userId: string,
-): Promise<{ id: string; name: string; email: string | null; phone: string | null; totalOwed: number }[]> {
-  const partners = await prisma.referralPartner.findMany({
-    where: { userId },
-    include: {
-      deals: {
-        where: { status: "CLOSED" },
-        select: { referralFeePercent: true, commissionAmount: true },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return partners.map((p) => ({
-    id: p.id,
-    name: p.name,
-    email: p.email,
-    phone: p.phone,
-    // The referral fee is stored as a percentage of the commission, so the
-    // dollars owed have to be computed from each deal.s gross rather than
-    // summed directly.
-    totalOwed: p.deals.reduce((sum, d) => {
-      const gross = d.commissionAmount ? Number(d.commissionAmount) : 0;
-      const percent = d.referralFeePercent ? Number(d.referralFeePercent) : 0;
-      return sum + gross * (percent / 100);
-    }, 0),
-  }));
-}
 
 // Pure math for a Budget's usage this month — separated from the DB fetch
 // below so the percentage math itself is directly unit-testable.

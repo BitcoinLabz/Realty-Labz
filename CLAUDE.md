@@ -404,7 +404,7 @@ Standing founder direction (2026-10-02): **we always keep planning, building, an
 6. ✅ Commission disbursement form (CDA) PDF.
 7. ✅ Daily broker email from the existing cron (skipped on empty days).
 8. ✅ Closing posts the money: marking a transaction Closed logs net commission as income automatically, and Deal financials shows how much to set aside for taxes.
-9. 1099 tracking for referral partners.
+9. ✅ 1099 tracking for referral partners — Finances → Referrals (moved out of every transaction): fees per year by closing date, W-9 on file, 1099 flag at the year's reporting threshold.
 10. ✅ Template (non-AI) emails on deadlines, e.g. "remind title about closing", prefilled from the file and its vendor.
 11. E-signature back on, polished (built; switched off by `E_SIGNATURE_ENABLED`).
 12. Office reports: agent production, pipeline, year-end totals per agent.
