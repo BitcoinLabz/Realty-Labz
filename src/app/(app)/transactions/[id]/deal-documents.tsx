@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FileDropInput } from "@/components/ui/file-drop-input";
 import { formatFileSize } from "@/lib/format";
 import { E_SIGNATURE_ENABLED } from "@/lib/features";
+import { CountsAsSelect } from "./paperwork-list";
 import type { DocumentDTO } from "@/app/(app)/clients/types";
 
 const initialState: FormState = {};
@@ -86,10 +87,13 @@ export function DealDocuments({
   dealId,
   clientId,
   documents,
+  requirementOptions = [],
 }: {
   dealId: string;
   clientId: string | null;
   documents: DocumentDTO[];
+  // The office's paperwork list for this file, for the "Counts as…" picker.
+  requirementOptions?: { id: string; label: string }[];
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -104,9 +108,18 @@ export function DealDocuments({
             >
               <a href={`/api/documents/${doc.id}`} className="flex min-w-0 flex-col hover:text-accent">
                 <span className="truncate text-sm font-medium text-foreground">{doc.fileName}</span>
-                <span className="text-sm text-muted">{formatFileSize(doc.size)}</span>
+                <span className="text-sm text-muted">
+                  {formatFileSize(doc.size)}
+                  {doc.addedByOffice ? " · Added by your office" : ""}
+                </span>
               </a>
               <div className="flex shrink-0 flex-wrap items-center gap-4">
+                <CountsAsSelect
+                  documentId={doc.id}
+                  dealId={dealId}
+                  current={doc.requirementId ?? null}
+                  options={requirementOptions}
+                />
                 {/* Only a PDF can go through the field designer. Shown per
                     document rather than as one section action, since which
                     file you want signable is the whole question. */}
@@ -122,6 +135,8 @@ export function DealDocuments({
                     </button>
                   </form>
                 ) : null}
+                {doc.addedByOffice ? null : (
+                <>
                 <form action={updateDocumentLinksAction}>
                   <input type="hidden" name="id" value={doc.id} />
                   <input type="hidden" name="clientId" value={doc.clientId ?? ""} />
@@ -141,6 +156,8 @@ export function DealDocuments({
                     Delete
                   </button>
                 </form>
+                </>
+                )}
               </div>
             </div>
           ))}

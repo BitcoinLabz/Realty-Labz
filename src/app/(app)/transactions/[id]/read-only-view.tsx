@@ -2,6 +2,7 @@ import Link from "next/link";
 import { isDeadlineOverdue } from "@/lib/deadline-reminder-schedule";
 import { Eye, FileText } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { CountsAsSelect } from "./paperwork-list";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/format";
 import { DEAL_SIDE_LABELS, DEAL_STATUS_LABELS, dealDisplayName } from "../types";
@@ -35,6 +36,11 @@ export function ReadOnlyDealView({
   deadlines,
   documents,
   officeChecklist,
+  dealId,
+  paperwork,
+  officeUpload,
+  requirementOptions = [],
+  documentRequirements = {},
 }: {
   agentName: string | null;
   propertyAddress: string | null;
@@ -52,6 +58,14 @@ export function ReadOnlyDealView({
   // here (see office-checklist.tsx). Rendered by the page, which decides who
   // may edit it.
   officeChecklist?: React.ReactNode;
+  // The office's paperwork list for this file, and the office's own upload
+  // box (office documents are the one thing a manager adds to a file).
+  dealId?: string;
+  paperwork?: React.ReactNode;
+  officeUpload?: React.ReactNode;
+  // For the "Counts as…" picker on each document (office only).
+  requirementOptions?: { id: string; label: string }[];
+  documentRequirements?: Record<string, string | null>;
 }) {
   const money = (v: number | null) => (v === null ? null : formatCurrency(v));
   const date = (v: string | null) =>
@@ -139,6 +153,8 @@ export function ReadOnlyDealView({
 
       {officeChecklist}
 
+      {paperwork}
+
       <Card title="Documents" icon={FileText} description="Everything filed against this transaction.">
         {documents.length === 0 ? (
           <EmptyState
@@ -149,19 +165,27 @@ export function ReadOnlyDealView({
         ) : (
           <div className="flex flex-col gap-2">
             {documents.map((doc) => (
-              <a
+              <div
                 key={doc.id}
-                href={`/api/documents/${doc.id}`}
-                className="flex flex-col gap-0.5 rounded-xl border border-border px-4 py-3 transition-colors hover:border-accent sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                className="flex flex-col gap-2 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
               >
-                <span className="min-w-0 break-words text-sm font-medium text-foreground">
-                  {doc.fileName}
-                </span>
-                <span className="shrink-0 text-sm text-muted">{date(doc.createdAt)}</span>
-              </a>
+                <a href={`/api/documents/${doc.id}`} className="min-w-0 hover:text-accent">
+                  <span className="block break-words text-sm font-medium text-foreground">{doc.fileName}</span>
+                  <span className="text-sm text-muted">{date(doc.createdAt)}</span>
+                </a>
+                {dealId ? (
+                  <CountsAsSelect
+                    documentId={doc.id}
+                    dealId={dealId}
+                    current={documentRequirements[doc.id] ?? null}
+                    options={requirementOptions}
+                  />
+                ) : null}
+              </div>
             ))}
           </div>
         )}
+        {officeUpload}
       </Card>
     </div>
   );

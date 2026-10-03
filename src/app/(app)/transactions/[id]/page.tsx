@@ -5,6 +5,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { canWorkOfficeChecklist, dealReadFilter, teamOrOwnFilter, teamSharedFilter } from "@/lib/authorization";
 import { OfficeChecklist, type OfficeTaskDTO } from "./office-checklist";
+import { PaperworkList, type PaperworkItemDTO } from "./paperwork-list";
+import { OfficeUploadForm } from "./office-upload-form";
+import { paperworkStatus } from "@/lib/paperwork";
 import { ShareWithBrokerage } from "./share-with-brokerage";
 import type { DeadlineTemplateDTO } from "../deadline-sets/types";
 import { formatCurrency } from "@/lib/format";
@@ -59,7 +62,7 @@ export default async function DealDetailPage({
         deadlines: { orderBy: { dueDate: "asc" } },
         documents: { orderBy: { createdAt: "desc" } },
         client: { select: { id: true, name: true, email: true } },
-        user: { select: { name: true } },
+        user: { select: { name: true, teamId: true } },
         officeTasks: { orderBy: { order: "asc" } },
         expenses: { where: { type: "EXPENSE" }, orderBy: { date: "desc" } },
         openHouses: {
@@ -127,9 +130,30 @@ export default async function DealDetailPage({
     completedAt: t.completedAt ? t.completedAt.toISOString() : null,
   }));
 
+  // The agent's office's paperwork list for this kind of transaction. Empty
+  // for a solo agent, so nothing changes for them.
+  const requirements = deal.user.teamId
+    ? await prisma.requiredDocument.findMany({
+        where: { teamId: deal.user.teamId, sides: { has: deal.side } },
+        orderBy: { order: "asc" },
+      })
+    : [];
+  const paperwork = paperworkStatus(requirements, deal.documents, deal.side);
+  const paperworkItems: PaperworkItemDTO[] = paperwork.items.map((i) => ({
+    requirementId: i.requirement.id,
+    label: i.requirement.label,
+    document: i.document ? { id: i.document.id, fileName: i.document.fileName } : null,
+  }));
+  const requirementOptions = requirements.map((r) => ({ id: r.id, label: r.label }));
+
   if (deal.userId !== session!.user.id) {
     return (
       <ReadOnlyDealView
+        dealId={deal.id}
+        requirementOptions={canWorkOfficeChecklist(session!.user) ? requirementOptions : []}
+        documentRequirements={Object.fromEntries(deal.documents.map((d) => [d.id, d.requirementId]))}
+        paperwork={<PaperworkList dealId={deal.id} clientId={null} items={paperworkItems} mode="office" />}
+        officeUpload={canWorkOfficeChecklist(session!.user) ? <OfficeUploadForm dealId={deal.id} /> : null}
         officeChecklist={
           <OfficeChecklist
             dealId={deal.id}
@@ -172,6 +196,8 @@ export default async function DealDetailPage({
     clientId: d.clientId,
     dealId: d.dealId,
     createdAt: d.createdAt.toISOString(),
+    requirementId: d.requirementId,
+    addedByOffice: d.userId !== deal.userId,
   }));
 
   const formSubmissionDtos: FormSubmissionSummaryDTO[] = formSubmissions.map((s) => ({
@@ -422,10 +448,16 @@ export default async function DealDetailPage({
       label: E_SIGNATURE_ENABLED ? "Documents & Forms" : "Documents",
       content: (
         <>
+          <PaperworkList dealId={deal.id} clientId={deal.clientId} items={paperworkItems} mode="agent" />
 
           <section className="rounded-2xl border border-border bg-background p-8">
             <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
-            <DealDocuments dealId={deal.id} clientId={deal.clientId} documents={documentDtos} />
+            <DealDocuments
+              dealId={deal.id}
+              clientId={deal.clientId}
+              documents={documentDtos}
+              requirementOptions={requirementOptions}
+            />
           </section>
 
           {/* E-signature is switched off (src/lib/features.ts): no new envelopes,

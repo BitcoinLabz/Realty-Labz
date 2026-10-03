@@ -23,6 +23,7 @@ import {
 import { isDeadlineOverdue, todayInReminderZone } from "@/lib/deadline-reminder-schedule";
 import { formatCurrency } from "@/lib/format";
 import { getSharedTeamFinances } from "@/lib/finance-data";
+import { paperworkStatus } from "@/lib/paperwork";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { SummaryCard } from "@/components/ui/summary-card";
@@ -61,17 +62,19 @@ export default async function TeamOverviewPage() {
 
   const [
     team,
+    requirements,
     teammates,
     deals,
     hiddenByAgent,
     deadlines,
-    missingDocDeals,
+    underContractDeals,
     officeTasks,
     closings,
     archivedDeals,
     sharedFinances,
   ] = await Promise.all([
     prisma.team.findUnique({ where: { id: teamId }, select: { name: true } }),
+    prisma.requiredDocument.findMany({ where: { teamId }, orderBy: { order: "asc" } }),
     prisma.user.findMany({
       where: { teamId },
       orderBy: { createdAt: "asc" },
@@ -93,8 +96,15 @@ export default async function TeamOverviewPage() {
       orderBy: { dueDate: "asc" },
     }),
     prisma.deal.findMany({
-      where: { ...shared, status: { in: ["UNDER_CONTRACT", "PENDING"] }, documents: { none: {} } },
-      select: { id: true, status: true, propertyAddress: true, user: { select: { name: true } } },
+      where: { ...shared, status: { in: ["UNDER_CONTRACT", "PENDING"] } },
+      select: {
+        id: true,
+        side: true,
+        status: true,
+        propertyAddress: true,
+        user: { select: { name: true } },
+        documents: { select: { id: true, fileName: true, requirementId: true }, orderBy: { createdAt: "desc" } },
+      },
       orderBy: { createdAt: "desc" },
     }),
     prisma.officeTask.findMany({
@@ -155,6 +165,19 @@ export default async function TeamOverviewPage() {
 
   const overdue = deadlines.filter((d) => isDeadlineOverdue(d.dueDate, now));
   const comingUp = deadlines.filter((d) => !isDeadlineOverdue(d.dueDate, now));
+  // Files missing paperwork. With an office list: anything still missing from
+  // it. Without one (an office that hasn't set it up yet): files with no
+  // documents at all, the old heuristic.
+  const missingDocDeals = underContractDeals
+    .map((deal) => {
+      if (requirements.length === 0) {
+        return { deal, missing: deal.documents.length === 0 ? 1 : 0, total: 0 };
+      }
+      const status = paperworkStatus(requirements, deal.documents, deal.side);
+      return { deal, missing: status.total - status.onFile, total: status.total };
+    })
+    .filter((row) => row.missing > 0);
+
   const attentionCount = overdue.length + missingDocDeals.length + officeTasks.length;
 
   return (
@@ -186,7 +209,7 @@ export default async function TeamOverviewPage() {
         title="Needs attention"
         icon={FileWarning}
         tone="danger"
-        description="Missed dates, files with no paperwork, and office tasks due this week."
+        description="Missed dates, files missing paperwork, and office tasks due this week."
       >
         {attentionCount === 0 ? (
           <p className="text-sm text-muted">Nothing needs you right now.</p>
@@ -224,7 +247,7 @@ export default async function TeamOverviewPage() {
                 </span>
               </Link>
             ))}
-            {missingDocDeals.map((deal) => (
+            {missingDocDeals.map(({ deal, missing, total }) => (
               <Link
                 key={deal.id}
                 href={`/transactions/${deal.id}`}
@@ -235,7 +258,7 @@ export default async function TeamOverviewPage() {
                   <span className="text-muted"> · {deal.user.name}</span>
                 </span>
                 <span className="shrink-0 text-sm font-medium text-danger">
-                  {DEAL_STATUS_LABELS[deal.status]} · No documents
+                  {total > 0 ? `${missing} of ${total} documents missing` : `${DEAL_STATUS_LABELS[deal.status]} · No documents`}
                 </span>
               </Link>
             ))}

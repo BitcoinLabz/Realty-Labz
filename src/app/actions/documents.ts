@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { ownerOnlyFilter } from "@/lib/authorization";
+import { canWorkOfficeChecklist, dealReadFilter, ownerOnlyFilter } from "@/lib/authorization";
 import {
   ALLOWED_MIME_TYPES,
   MAX_FILE_SIZE_BYTES,
@@ -11,6 +11,15 @@ import {
   saveDocumentFile,
 } from "@/lib/document-storage";
 import type { FormState } from "@/app/actions/auth";
+
+// A paperwork-list item id from the browser, accepted only if it belongs to
+// the given office. Anything else is dropped (the upload still succeeds, just
+// isn't counted against an item).
+async function resolveRequirementId(raw: FormDataEntryValue | null, teamId: string | null): Promise<string | null> {
+  if (typeof raw !== "string" || !raw || !teamId) return null;
+  const requirement = await prisma.requiredDocument.findFirst({ where: { id: raw, teamId }, select: { id: true } });
+  return requirement?.id ?? null;
+}
 
 async function resolveClientId(
   clientId: FormDataEntryValue | null,
@@ -68,6 +77,13 @@ export async function uploadDocumentAction(
   const resolvedDeal = await resolveDealId(formData.get("dealId"), session.user);
   if (!resolvedDeal.ok) return { error: resolvedDeal.error };
 
+  // Uploaded next to an item on the office's paperwork list. Only counts on a
+  // transaction, and only against the uploader's own office's list.
+  const requirementId = await resolveRequirementId(
+    formData.get("requirementId"),
+    resolvedDeal.dealId ? session.user.teamId : null,
+  );
+
   // Every failure in here used to be an uncaught throw: a missing Supabase
   // env var on the host, a missing bucket, and a file whose bytes don't match
   // its extension all crashed the action identically, so an upload just
@@ -98,6 +114,7 @@ export async function uploadDocumentAction(
       size: file.size,
       clientId: resolvedClient.clientId,
       dealId: resolvedDeal.dealId,
+      requirementId,
       // Forms that offer the choice send a "visibilityChoice" marker, since an
       // unchecked checkbox submits nothing at all and would be
       // indistinguishable from a form that never asked. Everywhere else keeps
@@ -194,4 +211,85 @@ export async function deleteDocumentAction(formData: FormData) {
   if (doc.clientId) revalidatePath(`/clients/${doc.clientId}`);
   revalidatePath("/dashboard");
   if (doc.dealId) revalidatePath(`/transactions/${doc.dealId}`);
+}
+
+// The office files a document into an agent's transaction (2026-10-02).
+// Brokers don't create transactions, but they keep paperwork organised.
+// The deal must be one this manager can read (dealReadFilter -- never a file
+// the agent hid) on their own team. Stored under the uploader, so the agent
+// sees and downloads it but can't delete it; no clientId, because client
+// files stay the agent's (and so it never appears in the client portal).
+export async function uploadOfficeDocumentAction(_prevState: FormState, formData: FormData): Promise<FormState> {
+  const session = await auth();
+  if (!session?.user) return { error: "You must be signed in" };
+  if (!canWorkOfficeChecklist(session.user)) return { error: "Only your office can add documents here" };
+
+  const dealId = formData.get("dealId");
+  if (typeof dealId !== "string" || !dealId) return { error: "Missing transaction" };
+  const deal = await prisma.deal.findFirst({
+    where: { id: dealId, ...dealReadFilter(session.user), user: { teamId: session.user.teamId } },
+    select: { id: true },
+  });
+  if (!deal) return { error: "Transaction not found" };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { fieldErrors: { file: "Choose a file to upload" } };
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    return { fieldErrors: { file: "Only PDF, Word, and image files are supported" } };
+  }
+  if (file.size > MAX_FILE_SIZE_BYTES) return { fieldErrors: { file: "File must be under 15MB" } };
+
+  let storageKey: string;
+  try {
+    storageKey = await saveDocumentFile(session.user.id, file);
+  } catch (err) {
+    console.error("[documents] office upload failed", err);
+    return { fieldErrors: { file: "Couldn't save the file. Try re-saving it and uploading again." } };
+  }
+
+  await prisma.document.create({
+    data: {
+      userId: session.user.id,
+      fileName: file.name,
+      storageKey,
+      mimeType: file.type,
+      size: file.size,
+      dealId: deal.id,
+      requirementId: await resolveRequirementId(formData.get("requirementId"), session.user.teamId),
+    },
+  });
+
+  revalidatePath(`/transactions/${deal.id}`);
+  revalidatePath("/team");
+  return { success: "Uploaded" };
+}
+
+// "Counts as…": match a document already on a transaction to an item on the
+// office's paperwork list, or clear it. Allowed for the transaction's owner,
+// or for the office on a file it can read -- the two parties who see the list.
+export async function setDocumentRequirementAction(formData: FormData) {
+  const session = await auth();
+  if (!session?.user) return;
+
+  const id = formData.get("id");
+  const dealId = formData.get("dealId");
+  if (typeof id !== "string" || typeof dealId !== "string") return;
+
+  const deal = await prisma.deal.findFirst({
+    where: { id: dealId, ...dealReadFilter(session.user) },
+    select: { id: true, userId: true, user: { select: { teamId: true } } },
+  });
+  if (!deal) return;
+
+  const isOwner = deal.userId === session.user.id;
+  const isOffice =
+    canWorkOfficeChecklist(session.user) && !!deal.user.teamId && deal.user.teamId === session.user.teamId;
+  if (!isOwner && !isOffice) return;
+
+  // The list belongs to the agent's office.
+  const requirementId = await resolveRequirementId(formData.get("requirementId"), deal.user.teamId);
+
+  await prisma.document.updateMany({ where: { id, dealId: deal.id }, data: { requirementId } });
+  revalidatePath(`/transactions/${deal.id}`);
+  revalidatePath("/team");
 }
