@@ -18,6 +18,7 @@ import {
 } from "@/lib/document-storage";
 import { extractAcroFormFields, type DetectedField } from "@/lib/pdf-form-fields";
 import type { FormState } from "@/app/actions/auth";
+import { storageBlockMessage } from "@/lib/user-plan";
 
 // Only PDFs — unlike DocumentTemplate (which also allows Word docs/images),
 // a form template needs a real PDF for pdfjs to render and pdf-lib to
@@ -51,6 +52,9 @@ export async function uploadFormTemplateAction(
   }
 
   let storageKey: string;
+  const overLimit = await storageBlockMessage(session.user.id, file.size);
+  if (overLimit) return { fieldErrors: { file: overLimit } };
+
   try {
     storageKey = await saveDocumentFile(session.user.id, file);
   } catch (err) {

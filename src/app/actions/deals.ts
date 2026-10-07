@@ -13,6 +13,7 @@ const OVERSIGHT_CANNOT_CREATE = "Transactions are created by your agents. Your v
 import type { FormState } from "@/app/actions/auth";
 import { deleteDocumentFile, MAX_FILE_SIZE_BYTES, saveDocumentFile } from "@/lib/document-storage";
 import { isAiConfigured } from "@/lib/ai-contract-analysis";
+import { storageBlockMessage, userIsPro } from "@/lib/user-plan";
 import { applyOfficeChecklist } from "@/lib/office-checklist";
 import { logCommissionIncome } from "@/lib/commission-income";
 
@@ -234,6 +235,11 @@ export async function createFileAction(
     }
   }
 
+  if (startingFromContract) {
+    const overLimit = await storageBlockMessage(session.user.id, (contract as File).size);
+    if (overLimit) return { fieldErrors: { contract: overLimit } };
+  }
+
   let storageKey: string | null = null;
   if (startingFromContract) {
     try {
@@ -291,7 +297,7 @@ export async function createFileAction(
   // Without an API key the contract is still filed; the assistant card then
   // explains reading isn't switched on rather than trying and failing.
   redirect(
-    documentId && isAiConfigured()
+    documentId && isAiConfigured() && (await userIsPro(session.user.id))
       ? `/transactions/${deal.id}?read=${documentId}`
       : `/transactions/${deal.id}`,
   );

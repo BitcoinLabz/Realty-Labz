@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { CreateFileForm } from "./create-transaction-form";
 import { isAiConfigured } from "@/lib/ai-contract-analysis";
+import { userIsPro } from "@/lib/user-plan";
 
 export default async function NewFilePage() {
   const session = await auth();
@@ -28,7 +29,7 @@ export default async function NewFilePage() {
         </p>
       </div>
 
-      <CreateFileForm clients={clients} canRead={isAiConfigured()} />
+      <CreateFileForm clients={clients} canRead={isAiConfigured() && (await userIsPro(session!.user.id))} />
     </div>
   );
 }

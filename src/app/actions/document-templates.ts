@@ -11,6 +11,7 @@ import {
   saveDocumentFile,
 } from "@/lib/document-storage";
 import type { FormState } from "@/app/actions/auth";
+import { storageBlockMessage } from "@/lib/user-plan";
 
 export async function uploadTemplateAction(
   _prevState: FormState,
@@ -41,6 +42,9 @@ export async function uploadTemplateAction(
   }
 
   let storageKey: string;
+  const overLimit = await storageBlockMessage(session.user.id, file.size);
+  if (overLimit) return { fieldErrors: { file: overLimit } };
+
   try {
     storageKey = await saveDocumentFile(session.user.id, file);
   } catch (err) {

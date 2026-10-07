@@ -11,6 +11,7 @@ import {
   saveDocumentFile,
 } from "@/lib/document-storage";
 import type { FormState } from "@/app/actions/auth";
+import { storageBlockMessage } from "@/lib/user-plan";
 
 // A paperwork-list item id from the browser, accepted only if it belongs to
 // the given office. Anything else is dropped (the upload still succeeds, just
@@ -90,6 +91,10 @@ export async function uploadDocumentAction(
   // appeared to do nothing at all. The real reason now goes to the server log
   // (readable in Vercel's function logs) and the user gets something
   // actionable instead of silence.
+  // Free accounts hold 250 MB (src/lib/plan.ts); Pro is unlimited.
+  const overLimit = await storageBlockMessage(session.user.id, file.size);
+  if (overLimit) return { fieldErrors: { file: overLimit } };
+
   let storageKey: string;
   try {
     storageKey = await saveDocumentFile(session.user.id, file);
@@ -238,6 +243,10 @@ export async function uploadOfficeDocumentAction(_prevState: FormState, formData
     return { fieldErrors: { file: "Only PDF, Word, and image files are supported" } };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) return { fieldErrors: { file: "File must be under 15MB" } };
+
+  // Free accounts hold 250 MB (src/lib/plan.ts); Pro is unlimited.
+  const overLimit = await storageBlockMessage(session.user.id, file.size);
+  if (overLimit) return { fieldErrors: { file: overLimit } };
 
   let storageKey: string;
   try {

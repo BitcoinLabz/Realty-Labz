@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { ownerOnlyFilter } from "@/lib/authorization";
 import { readDocumentFile } from "@/lib/document-storage";
 import { applyOfficeChecklist } from "@/lib/office-checklist";
+import { userIsPro } from "@/lib/user-plan";
 import {
   analyzeContractPdf,
   ContractAnalysisError,
@@ -30,6 +31,10 @@ export async function analyzeContractAction(
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
   if (!isAiConfigured()) return { error: "AI analysis isn't set up yet" };
+  // Each read costs real money (Anthropic API), so it's a Pro feature.
+  if (!(await userIsPro(session.user.id))) {
+    return { error: "Contract reading is part of Pro. Upgrade in Account → Plan." };
+  }
 
   const documentId = formData.get("documentId");
   const dealId = formData.get("dealId");

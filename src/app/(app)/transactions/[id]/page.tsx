@@ -10,6 +10,7 @@ import { DealVendors, type DealVendorDTO } from "./deal-vendors";
 import { OfficeUploadForm } from "./office-upload-form";
 import { paperworkStatus } from "@/lib/paperwork";
 import { taxSetAside } from "@/lib/estimated-tax";
+import { userIsPro } from "@/lib/user-plan";
 import { Badge } from "@/components/ui/badge";
 import { ShareWithBrokerage } from "./share-with-brokerage";
 import type { DeadlineTemplateDTO } from "../deadline-sets/types";
@@ -630,6 +631,7 @@ export default async function DealDetailPage({
       <ContractAssistant
         dealId={deal.id}
         enabled={isAiConfigured()}
+        isPro={await userIsPro(session!.user.id)}
         hasDeadlines={deadlineDtos.length > 0}
         dealIsActive={deal.status === "ACTIVE"}
         documents={documentDtos}

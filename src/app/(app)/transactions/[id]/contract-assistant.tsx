@@ -88,6 +88,7 @@ function SavedSummary({ result, dealId }: { result: ApplyResult; dealId: string 
 export function ContractAssistant({
   dealId,
   enabled,
+  isPro = true,
   hasDeadlines,
   dealIsActive,
   documents,
@@ -96,6 +97,9 @@ export function ContractAssistant({
 }: {
   dealId: string;
   enabled: boolean;
+  // Contract reading is a Pro feature (each read costs money). Free users
+  // see what it does and how to get it, instead of the reader.
+  isPro?: boolean;
   hasDeadlines: boolean;
   dealIsActive: boolean;
   documents: DocumentDTO[]; // newest first
@@ -183,7 +187,17 @@ export function ContractAssistant({
         </div>
       </div>
 
-      {!enabled ? (
+      {enabled && !isPro ? (
+        <div className="flex flex-col items-start gap-3 rounded-xl bg-surface p-4">
+          <p className="flex items-center gap-2 text-sm text-foreground">
+            <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">Pro</span>
+            Let Realty Labz read the contract and set up every deadline for you.
+          </p>
+          <a href="/account#plan" className="text-sm font-medium text-accent hover:opacity-80">
+            See Pro — $15/month →
+          </a>
+        </div>
+      ) : !enabled ? (
         <div className="rounded-xl bg-surface p-4 text-sm text-muted">
           Contract reading isn&apos;t switched on for this site yet. It needs an Anthropic API key
           added in Vercel as <span className="font-medium text-foreground">ANTHROPIC_API_KEY</span>,

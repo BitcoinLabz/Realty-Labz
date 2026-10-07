@@ -1,4 +1,4 @@
-import { Eye, KeyRound, User, Users } from "lucide-react";
+import { Eye, KeyRound, Sparkles, User, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -19,10 +19,18 @@ import { LeaveTeamForm } from "./leave-team-form";
 import { FinanceSharingForm } from "./finance-sharing-form";
 import { BrokerageSettingsForm } from "./brokerage-settings-form";
 import { DigestToggle } from "./digest-toggle";
+import { PlanCard } from "./plan-card";
+import { getUserPlan, storageUsedBytes } from "@/lib/user-plan";
+import { formatBytes, PRO_FEATURES, PRO_PRICE } from "@/lib/plan";
 import { InviteList, type PendingInvite } from "./invite-list";
 import { MemberRow } from "./member-row";
 
-export default async function AccountPage() {
+export default async function AccountPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ upgraded?: string }>;
+}) {
+  const { upgraded } = await searchParams;
   const session = await auth();
   const user = await prisma.user.findUnique({
     where: { id: session!.user.id },
@@ -118,6 +126,33 @@ export default async function AccountPage() {
       ),
     },
   ];
+
+  // Plan & storage (2026-10-05). Its id doubles as the #plan link target used
+  // by upgrade prompts around the app.
+  const [plan, used] = await Promise.all([getUserPlan(user.id), storageUsedBytes(user.id)]);
+  const fmt = (d: Date | null | undefined) =>
+    d ? d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : null;
+  tabs.push({
+    id: "plan",
+    label: "Plan",
+    content: (
+      <Card title="Your plan" icon={Sparkles}>
+        <PlanCard
+          isPro={plan?.isPro ?? false}
+          comped={plan?.compedPro ?? false}
+          hasBillingAccount={!!plan?.stripeCustomerId}
+          renewsOn={plan?.isPro && !plan.cancelAtPeriodEnd ? fmt(plan.currentPeriodEnd) : null}
+          cancelsOn={plan?.isPro && plan.cancelAtPeriodEnd ? fmt(plan.currentPeriodEnd) : null}
+          usedLabel={formatBytes(used)}
+          limitLabel={plan?.storageLimit ? formatBytes(plan.storageLimit) : null}
+          usedPercent={plan?.storageLimit ? Math.round((used / plan.storageLimit) * 100) : null}
+          features={PRO_FEATURES}
+          prices={PRO_PRICE}
+          justUpgraded={upgraded === "1"}
+        />
+      </Card>
+    ),
+  });
 
   if (onATeam) {
     // Broker / office Admin: their brokerage is what Account is for, so its

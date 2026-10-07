@@ -115,6 +115,19 @@ model User {
   // the oversight roles, and only on days with something in it.
   dailyDigest           Boolean @default(true)
 
+  // Subscription (2026-10-05): Free for everything manual, Pro ($15/mo or
+  // $150/yr) for what costs money to run -- AI contract reading and unlimited
+  // storage today. Only the Stripe webhook ever sets plan/status (see
+  // src/app/api/stripe/webhook); a checkout redirect proves nothing.
+  plan                 Plan      @default(FREE)
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
+  subscriptionStatus   String?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+  // Pro without paying, set by the founder for testers and partners.
+  compedPro            Boolean   @default(false)
+
   clients            Client[]
   transactions       Transaction[]
   mileageLogs        MileageLog[]
@@ -522,6 +535,11 @@ model OfficeChecklistItem {
 
   @@index([teamId])
   @@map("office_checklist_items")
+}
+
+enum Plan {
+  FREE
+  PRO
 }
 
 enum VendorKind {
