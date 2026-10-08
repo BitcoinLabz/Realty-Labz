@@ -68,6 +68,12 @@ export async function startCheckoutAction(_prev: FormState, formData: FormData):
       line_items: [{ price: priceIdFor(interval), quantity: 1 }],
       subscription_data: { metadata: { userId: session.user.id } },
       allow_promotion_codes: true,
+      // Stripe's "Managed Payments" (Stripe as merchant of record, handling
+      // sales tax) is on by default for new accounts, adds a fee to every
+      // payment, and refuses checkout until the product has a tax code.
+      // Founder's call (2026-10-08): no extra costs yet, so it's off here.
+      // To use it later: set the product's tax code in Stripe and remove this.
+      managed_payments: { enabled: false },
       success_url: `${APP_URL}/account?upgraded=1#plan`,
       cancel_url: `${APP_URL}/account#plan`,
     });
