@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState } from "react";
-import { Check, Sparkles } from "lucide-react";
-import { openBillingPortalAction, startCheckoutAction } from "@/app/actions/billing";
+import { Sparkles } from "lucide-react";
+import { openBillingPortalAction } from "@/app/actions/billing";
+import { PlanTiers } from "@/components/plan-tiers";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 
@@ -18,22 +19,10 @@ export type PlanCardProps = {
   limitLabel: string | null; // null = unlimited
   usedPercent: number | null;
   features: string[];
+  freeFeatures: string[];
   prices: { monthly: number; annual: number };
   justUpgraded: boolean;
 };
-
-function UpgradeButton({ interval, label, primary }: { interval: "monthly" | "annual"; label: string; primary?: boolean }) {
-  const [state, formAction, isPending] = useActionState(startCheckoutAction, initialState);
-  return (
-    <form action={formAction} className="flex flex-col gap-1">
-      <input type="hidden" name="interval" value={interval} />
-      <Button type="submit" variant={primary ? "primary" : "secondary"} disabled={isPending}>
-        {isPending ? "Opening checkout…" : label}
-      </Button>
-      {state.error ? <p className="text-xs text-danger">{state.error}</p> : null}
-    </form>
-  );
-}
 
 function ManageBilling() {
   const [state, formAction, isPending] = useActionState(openBillingPortalAction, initialState);
@@ -99,26 +88,12 @@ export function PlanCard(props: PlanCardProps) {
       </div>
 
       {!isPro ? (
-        <div className="flex flex-col gap-4 rounded-2xl border border-accent/40 bg-accent/5 p-5">
-          <div>
-            <p className="text-base font-semibold text-foreground">Pro</p>
-            <p className="text-sm text-muted">
-              ${props.prices.monthly}/month, or ${props.prices.annual}/year (two months free). Cancel anytime.
-            </p>
-          </div>
-          <ul className="flex flex-col gap-2">
-            {props.features.map((f) => (
-              <li key={f} className="flex items-start gap-2 text-sm text-foreground">
-                <Check size={16} className="mt-0.5 shrink-0 text-accent" />
-                {f}
-              </li>
-            ))}
-          </ul>
-          <div className="flex flex-wrap gap-3">
-            <UpgradeButton interval="annual" label={`Go Pro — $${props.prices.annual}/year`} primary />
-            <UpgradeButton interval="monthly" label={`$${props.prices.monthly}/month`} />
-          </div>
-        </div>
+        <PlanTiers
+          freeFeatures={props.freeFeatures}
+          proFeatures={props.features}
+          prices={props.prices}
+          current="FREE"
+        />
       ) : props.hasBillingAccount && !props.comped ? (
         <div>
           <ManageBilling />

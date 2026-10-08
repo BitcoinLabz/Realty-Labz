@@ -43,5 +43,5 @@ export async function storageBlockMessage(userId: string, addingBytes: number): 
   if (!plan || plan.storageLimit === null) return null;
   const used = await storageUsedBytes(userId);
   if (!wouldExceedStorage(used, addingBytes, plan.storageLimit)) return null;
-  return `You've used ${formatBytes(used)} of your ${formatBytes(FREE_STORAGE_BYTES)} free storage. Upgrade to Pro for unlimited storage, or delete files you no longer need.`;
+  return `You've used ${formatBytes(used)} of your ${formatBytes(FREE_STORAGE_BYTES)} free storage. Storing files costs money, so Free includes 250 MB and Pro includes unlimited storage. Upgrade in Account → Plan, or delete files you no longer need.`;
 }

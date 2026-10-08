@@ -33,7 +33,10 @@ export async function analyzeContractAction(
   if (!isAiConfigured()) return { error: "AI analysis isn't set up yet" };
   // Each read costs real money (Anthropic API), so it's a Pro feature.
   if (!(await userIsPro(session.user.id))) {
-    return { error: "Contract reading is part of Pro. Upgrade in Account → Plan." };
+    return {
+      error:
+        "Contract reading is part of Pro: each read uses a paid AI service. Upgrade in Account → Plan, or add the deadlines by hand for free.",
+    };
   }
 
   const documentId = formData.get("documentId");

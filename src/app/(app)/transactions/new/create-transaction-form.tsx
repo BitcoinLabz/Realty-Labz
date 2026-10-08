@@ -42,7 +42,7 @@ export function CreateFileForm({ clients, canRead }: { clients: ClientOption[]; 
           <span className="text-sm text-muted">
             {canRead
               ? "Drop it in and we'll fill in the property, price, closing and every deadline."
-              : "It's filed on the transaction straight away."}
+              : "It's filed on the transaction straight away. Reading it for deadlines automatically is a Pro feature, because it uses a paid AI service."}
           </span>
         </button>
         <button

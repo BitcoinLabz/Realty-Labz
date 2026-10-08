@@ -157,6 +157,8 @@ export async function joinTeamAction(
         role: invite.role,
         teamId: invite.teamId,
         teamJoinedAt: new Date(),
+        // Office admins get the oversight app and skip the plan picker.
+        planChosen: invite.role === "ADMIN",
       },
     }),
     prisma.teamInvite.update({

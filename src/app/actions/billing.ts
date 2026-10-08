@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import Stripe from "stripe";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { APP_URL } from "@/lib/app-url";
@@ -10,6 +11,20 @@ import type { FormState } from "@/app/actions/auth";
 // Upgrade and billing management (2026-10-05). Both hand off to Stripe's own
 // hosted pages -- checkout and the customer portal -- so no card details ever
 // touch this app. Return URLs use the fixed APP_URL, never a request header.
+
+// Stripe's own reason when it refuses a request -- e.g. an invalid key or a
+// price id that doesn't exist. Safe to show: it describes the account's
+// Stripe setup, never card data. Anything that isn't a Stripe error stays
+// generic.
+function stripeErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Stripe.errors.StripeError) {
+    if (err.type === "StripeAuthenticationError") {
+      return "Billing isn't set up correctly: Stripe rejected the secret key. (Was it rolled after being added?)";
+    }
+    return `Stripe couldn't start this: ${err.message}`;
+  }
+  return fallback;
+}
 
 async function customerFor(userId: string): Promise<string> {
   const user = await prisma.user.findUnique({
@@ -41,6 +56,9 @@ export async function startCheckoutAction(_prev: FormState, formData: FormData):
   if (!isBillingConfigured()) return { error: "Upgrades aren't switched on yet. Check back soon." };
 
   const interval = formData.get("interval") === "annual" ? "annual" : "monthly";
+  // Picking Pro counts as choosing a plan, even if checkout is abandoned --
+  // they land on Account -> Plan, never back in a loop at the picker.
+  await prisma.user.update({ where: { id: session.user.id }, data: { planChosen: true } });
   let url: string | null;
   try {
     const checkout = await getStripe().checkout.sessions.create({
@@ -56,7 +74,7 @@ export async function startCheckoutAction(_prev: FormState, formData: FormData):
     url = checkout.url;
   } catch (err) {
     console.error("[billing] checkout failed", err);
-    return { error: "Couldn't start checkout right now. Try again in a moment." };
+    return { error: stripeErrorMessage(err, "Couldn't start checkout right now. Try again in a moment.") };
   }
   if (!url) return { error: "Couldn't start checkout right now. Try again in a moment." };
   redirect(url);
@@ -82,7 +100,15 @@ export async function openBillingPortalAction(_prev: FormState, _formData: FormD
     url = portal.url;
   } catch (err) {
     console.error("[billing] portal failed", err);
-    return { error: "Couldn't open billing right now. Try again in a moment." };
+    return { error: stripeErrorMessage(err, "Couldn't open billing right now. Try again in a moment.") };
   }
   redirect(url);
+}
+
+// "Start free" on the plan picker after sign-up (2026-10-08).
+export async function chooseFreePlanAction() {
+  const session = await auth();
+  if (!session?.user) return;
+  await prisma.user.update({ where: { id: session.user.id }, data: { planChosen: true } });
+  redirect("/dashboard");
 }

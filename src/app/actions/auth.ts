@@ -97,6 +97,9 @@ export async function signupAction(
         passwordHash,
         licenseNumber,
         role: accountType === "brokerage" ? "BROKER" : "TEAM_LEAD",
+        // A brokerage gets the oversight app (no plan picker -- office plans
+        // come later); a team lead is a working agent and picks a plan.
+        planChosen: accountType === "brokerage",
         teamId: team.id,
         // They created it, so they've been here since it existed.
         teamJoinedAt: new Date(),
@@ -104,7 +107,7 @@ export async function signupAction(
     });
   } else {
     await prisma.user.create({
-      data: { name, email, passwordHash, licenseNumber, role: "AGENT" },
+      data: { name, email, passwordHash, licenseNumber, role: "AGENT", planChosen: false },
     });
   }
 

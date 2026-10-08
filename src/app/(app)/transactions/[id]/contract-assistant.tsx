@@ -189,12 +189,18 @@ export function ContractAssistant({
 
       {enabled && !isPro ? (
         <div className="flex flex-col items-start gap-3 rounded-xl bg-surface p-4">
-          <p className="flex items-center gap-2 text-sm text-foreground">
+          <p className="flex items-center gap-2 text-sm font-medium text-foreground">
             <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-semibold text-accent">Pro</span>
-            Let Realty Labz read the contract and set up every deadline for you.
+            Contract reading is part of Pro
+          </p>
+          {/* Say why, plainly: it isn't a paywall for its own sake. */}
+          <p className="text-sm text-muted">
+            Every contract is read by a paid AI service, which costs money each time it runs, so it&apos;s
+            included with Pro rather than Free. You can still upload and store contracts, and add
+            deadlines by hand, for free.
           </p>
           <a href="/account#plan" className="text-sm font-medium text-accent hover:opacity-80">
-            See Pro — $15/month →
+            See Pro — from $12.50/month →
           </a>
         </div>
       ) : !enabled ? (

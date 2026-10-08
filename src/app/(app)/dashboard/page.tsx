@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
@@ -36,6 +37,11 @@ import { SetupChecklist, type SetupStep } from "./setup-checklist";
 
 export default async function DashboardPage() {
   const session = await auth();
+  const planState = await prisma.user.findUnique({
+    where: { id: session!.user.id },
+    select: { planChosen: true },
+  });
+  if (planState && !planState.planChosen) redirect("/choose-plan");
   const team = session?.user?.teamId
     ? await prisma.team.findUnique({ where: { id: session.user.teamId } })
     : null;

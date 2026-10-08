@@ -67,7 +67,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
       const dbUser =
         (await prisma.user.findUnique({ where: { email } })) ??
         (await prisma.user.create({
-          data: { email, name: user.name ?? "New user", role: "AGENT" },
+          data: { email, name: user.name ?? "New user", role: "AGENT", planChosen: false },
         }));
 
       user.id = dbUser.id;

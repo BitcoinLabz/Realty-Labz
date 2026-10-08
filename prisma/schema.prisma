@@ -127,6 +127,10 @@ model User {
   cancelAtPeriodEnd    Boolean   @default(false)
   // Pro without paying, set by the founder for testers and partners.
   compedPro            Boolean   @default(false)
+  // Whether the account has been through "Choose your plan" (2026-10-08).
+  // Defaults true so existing accounts are never interrupted; new accounts
+  // are created with false and see the plan picker once, after sign-up.
+  planChosen           Boolean   @default(true)
 
   clients            Client[]
   transactions       Transaction[]

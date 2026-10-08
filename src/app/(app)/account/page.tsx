@@ -21,7 +21,7 @@ import { BrokerageSettingsForm } from "./brokerage-settings-form";
 import { DigestToggle } from "./digest-toggle";
 import { PlanCard } from "./plan-card";
 import { getUserPlan, storageUsedBytes } from "@/lib/user-plan";
-import { formatBytes, PRO_FEATURES, PRO_PRICE } from "@/lib/plan";
+import { formatBytes, FREE_FEATURES, PRO_FEATURES, PRO_PRICE } from "@/lib/plan";
 import { InviteList, type PendingInvite } from "./invite-list";
 import { MemberRow } from "./member-row";
 
@@ -147,6 +147,7 @@ export default async function AccountPage({
           limitLabel={plan?.storageLimit ? formatBytes(plan.storageLimit) : null}
           usedPercent={plan?.storageLimit ? Math.round((used / plan.storageLimit) * 100) : null}
           features={PRO_FEATURES}
+          freeFeatures={FREE_FEATURES}
           prices={PRO_PRICE}
           justUpgraded={upgraded === "1"}
         />

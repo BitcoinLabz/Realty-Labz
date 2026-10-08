@@ -10,11 +10,23 @@ export const PRO_PRICE = { monthly: 15, annual: 150 };
 
 export const FREE_STORAGE_BYTES = 250 * 1024 * 1024; // 250 MB
 
-// One source for the upgrade screen.
+// What each tier includes -- one source for the plan picker after sign-up and
+// Account -> Plan, so the two never disagree.
+export const FREE_FEATURES = [
+  "Unlimited transactions, deadlines and clients",
+  "Automatic deadline reminders for you and your clients",
+  "Client portal with their documents and key dates",
+  "Income, expenses, mileage log and tax estimates",
+  "Commission splits and disbursement forms",
+  "250 MB of document storage",
+];
+
 export const PRO_FEATURES = [
+  "Everything in Free",
   "AI contract reading — every deadline found and set up for you",
   "Unlimited document storage",
-  "Everything new that's paid as it ships (automatic mileage is next)",
+  "Automatic mileage tracking (coming soon)",
+  "Every new Pro feature as it ships",
 ];
 
 type PlanFields = {
