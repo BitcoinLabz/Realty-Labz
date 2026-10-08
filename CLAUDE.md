@@ -415,6 +415,8 @@ Standing founder direction (2026-10-02): **we always keep planning, building, an
 - **Pro now:** AI contract reading (server-enforced in `analyzeContractAction`), unlimited storage (every upload path checks `storageBlockMessage`; a completing e-signature never blocks).
 - **Pro later:** automatic mileage (native app), receipt photo → expense, plain-English transaction summaries, contract contacts extraction, text-message reminders, email-in for contracts, bank/card sync (Plaid), branded client portal, office per-seat plans.
 
+**Before taking real payments (founder asked to revisit, 2026-10-08):** sales tax on Pro subscriptions. Checkout runs with Stripe Managed Payments **off** (`managed_payments.enabled = false` in `src/app/actions/billing.ts`), so collecting/reporting any sales tax is the founder's responsibility. Ask an accountant whether Michigan or other states tax software subscriptions; if Stripe should handle it instead, set the product's tax code in Stripe, remove that flag, and accept Managed Payments' extra per-payment fee.
+
 **Later — costs money, wait for the founder's go-ahead:**
 - AI: contract contacts extraction, receipt photo → expense, plain-English transaction summary (Anthropic API, per call).
 - Text-message reminders to clients (per-message provider + A2P 10DLC registration).
