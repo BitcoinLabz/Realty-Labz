@@ -1,12 +1,14 @@
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Scale } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import {
   getBudgetUsage,
   getBusinessExpenseBreakdown,
+  getBusinessNetByYear,
   getMonthlyIncomeExpense,
 } from "@/lib/finance-data";
-import { estimateQuarterlyTax } from "@/lib/estimated-tax";
+import { estimateTaxes, hobbyLossCheck } from "@/lib/estimated-tax";
+import { loadTaxRules } from "@/lib/tax-rules-db";
 import { Card } from "@/components/ui/card";
 import { YearSelect } from "@/components/ui/year-select";
 import { UnfiledDocuments } from "@/app/(app)/clients/unfiled-documents";
@@ -30,13 +32,18 @@ export default async function TaxesAndBudgetsPage({
   const year = Number(yearParam) || currentYear;
   const currentMonth = new Date().getMonth();
 
-  const [businessSeries, expenseBreakdown, user, budgets, taxDocuments, clients] =
+  const [businessSeries, expenseBreakdown, user, budgets, taxDocuments, clients, taxRules, netByYear] =
     await Promise.all([
       getMonthlyIncomeExpense(userId, year, "BUSINESS"),
       getBusinessExpenseBreakdown(userId, year),
       prisma.user.findUnique({
         where: { id: userId },
-        select: { homeOfficeSqFt: true, estimatedIncomeTaxRatePercent: true },
+        select: {
+          homeOfficeSqFt: true,
+          estimatedIncomeTaxRatePercent: true,
+          residenceCity: true,
+          workCity: true,
+        },
       }),
       getBudgetUsage(userId, year, currentMonth),
       prisma.document.findMany({
@@ -48,16 +55,25 @@ export default async function TaxesAndBudgetsPage({
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       }),
+      loadTaxRules(),
+      getBusinessNetByYear(userId, year - 4, year),
     ]);
 
   const businessNet = businessSeries.reduce((sum, m) => sum + m.income - m.expenses, 0);
   const homeOfficeDeduction = expenseBreakdown.find((p) => p.label === "Home office")?.value ?? 0;
   const mileageDeduction = expenseBreakdown.find((p) => p.label === "Mileage")?.value ?? 0;
   const netBusinessIncome = businessNet - homeOfficeDeduction - mileageDeduction;
-  const taxSummary =
-    user?.estimatedIncomeTaxRatePercent != null
-      ? estimateQuarterlyTax(netBusinessIncome, Number(user.estimatedIncomeTaxRatePercent), year)
-      : null;
+  const federalRate =
+    user?.estimatedIncomeTaxRatePercent != null ? Number(user.estimatedIncomeTaxRatePercent) : null;
+  const taxSummary = estimateTaxes({
+    netBusinessIncome,
+    year,
+    federalRatePercent: federalRate,
+    residenceCity: user?.residenceCity,
+    workCity: user?.workCity,
+    rules: taxRules,
+  });
+  const hobby = hobbyLossCheck({ netByYear, currentYear: year, rules: taxRules });
 
   const taxDocumentDtos: DocumentDTO[] = taxDocuments.map((d) => ({
     id: d.id,
@@ -81,13 +97,41 @@ export default async function TaxesAndBudgetsPage({
       <HomeOfficeCard homeOfficeSqFt={user?.homeOfficeSqFt ?? null} deduction={homeOfficeDeduction} />
 
       <TaxEstimateCard
-        estimatedIncomeTaxRatePercent={
-          user?.estimatedIncomeTaxRatePercent != null
-            ? Number(user.estimatedIncomeTaxRatePercent)
-            : null
-        }
+        estimatedIncomeTaxRatePercent={federalRate}
+        residenceCity={user?.residenceCity ?? null}
+        workCity={user?.workCity ?? null}
         summary={taxSummary}
       />
+
+      {/* Only speaks up when there's something to know -- a quiet page in a
+          profitable year is the right answer. */}
+      {hobby.status !== "ok" ? (
+        <Card
+          title="Profit history"
+          icon={Scale}
+          tone="warning"
+          description={
+            hobby.status === "atRisk"
+              ? `Your business shows a loss in ${hobby.lossYears} of the last ${hobby.windowYears} years. The IRS presumes a business is run for profit when it makes money in ${hobby.profitYearsNeeded} of ${hobby.windowYears} years; repeated losses can draw questions about whether it's a business or a hobby. Worth a conversation with your accountant.`
+              : `A loss year is normal, especially early on. The IRS presumes a business is run for profit when it makes money in ${hobby.profitYearsNeeded} of any ${hobby.windowYears} years, so keep good records of the work you put in.`
+          }
+        >
+          <div className="grid grid-cols-5 gap-2 text-center text-xs">
+            {hobby.years.map((y) => (
+              <div key={y.year} className="rounded-xl border border-border px-1 py-2">
+                <p className="font-medium text-muted">{y.year}</p>
+                <p
+                  className={`mt-0.5 font-semibold ${
+                    y.net == null ? "text-muted" : y.net > 0 ? "text-success" : "text-danger"
+                  }`}
+                >
+                  {y.net == null ? "—" : y.net > 0 ? "Profit" : "Loss"}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : null}
 
       <BudgetsSection budgets={budgets} />
 

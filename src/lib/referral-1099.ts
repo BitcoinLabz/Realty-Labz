@@ -6,13 +6,15 @@
 // percentage, rounded to cents per deal (the same rule as the commission
 // form, src/lib/cda.ts).
 
+import { taxYearDate, type TaxRules } from "@/lib/tax-rules";
+
 // The federal 1099-NEC/MISC reporting threshold for payments made in a given
-// year: $600 through 2025, raised to $2,000 for payments made from 2026 by
-// the 2025 federal tax law (indexed for inflation after 2026). Shown to the
-// agent as a prompt to check with their accountant, never as tax advice --
-// update here if it changes.
-export function reportingThreshold(year: number): number {
-  return year >= 2026 ? 2000 : 600;
+// year, from the tax rules table (FORM_1099_THRESHOLD in
+// src/lib/tax-rules-data.ts -- $600 through 2025, $2,000 from 2026). Shown
+// to the agent as a prompt to check with their accountant, never as tax
+// advice.
+export function reportingThreshold(year: number, rules: TaxRules): number {
+  return rules.get("US", "FORM_1099_THRESHOLD", taxYearDate(year));
 }
 
 export type ClosedReferralDeal = {
@@ -36,6 +38,6 @@ export function referralTotalsForYear(deals: ClosedReferralDeal[], year: number)
   return totals;
 }
 
-export function needs1099(totalForYear: number, year: number): boolean {
-  return totalForYear >= reportingThreshold(year);
+export function needs1099(totalForYear: number, year: number, rules: TaxRules): boolean {
+  return totalForYear >= reportingThreshold(year, rules);
 }

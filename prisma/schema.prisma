@@ -78,6 +78,13 @@ model User {
   // in the UI.
   estimatedIncomeTaxRatePercent Decimal? @db.Decimal(5, 2)
 
+  // Michigan city income tax (2026-11-19): the city the agent lives in and
+  // the city their office is in, as codes from MICHIGAN_TAX_CITIES in
+  // src/lib/tax-rules-data.ts. Null means "not a city with an income tax."
+  // Resident rate applies to the first, nonresident rate to the second.
+  residenceCity String?
+  workCity      String?
+
   // Michigan real estate salesperson license number (2026-08-27). Nullable
   // in the database on purpose -- every account that existed before this was
   // added has none, so NOT NULL would fail the migration outright. Required
@@ -1230,6 +1237,24 @@ model MileageRate {
 
   @@unique([state, effectiveFrom])
   @@map("mileage_rates")
+}
+
+// Every tax rate, limit and threshold, versioned by jurisdiction and the
+// date it took effect (2026-11-19). The canonical list, with sources and the
+// yearly human-verification note, is src/lib/tax-rules-data.ts; lookups go
+// through the pure TaxRules class in src/lib/tax-rules.ts. A yearly change
+// is a NEW row -- never edit an old one, or past years change too.
+model TaxRule {
+  id            String   @id @default(cuid())
+  // "US", "MI", or "MI-<CITY>"
+  jurisdiction  String
+  key           String
+  effectiveFrom DateTime @db.Date
+  value         Decimal  @db.Decimal(14, 6)
+  source        String?
+
+  @@unique([jurisdiction, key, effectiveFrom])
+  @@map("tax_rules")
 }
 
 // Basic rate limiting (2026-07-30) -- one row per attempt, keyed by e.g.

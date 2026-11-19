@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MICHIGAN_TAX_CITIES } from "@/lib/tax-rules-data";
 
 // Michigan real estate license numbers are 10 digits, but this stays loose
 // on format: the app is Michigan-first, not Michigan-only (see CLAUDE.md),
@@ -329,12 +330,20 @@ export const homeOfficeSettingsSchema = z.object({
   homeOfficeSqFt: z.coerce.number().int().nonnegative("Must be 0 or more").max(10000).optional(),
 });
 
+// City codes come from the tax rules data, so a new city is one data row.
+const taxCityCode = z
+  .string()
+  .refine((code) => MICHIGAN_TAX_CITIES.some((c) => c.code === code), "Pick a city from the list")
+  .optional();
+
 export const taxSettingsSchema = z.object({
   estimatedIncomeTaxRatePercent: z.coerce
     .number()
     .min(0)
     .max(100, "Enter a percent, e.g. 15")
     .optional(),
+  residenceCity: taxCityCode,
+  workCity: taxCityCode,
 });
 
 // Public, unauthenticated -- the Support page's contact form. A separate

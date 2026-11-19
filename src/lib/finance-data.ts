@@ -6,6 +6,7 @@ import { buildAmortizationSchedule, scheduleAtDate } from "@/lib/loan-calculatio
 import { CATEGORY_LABELS } from "@/lib/transaction-categories";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import { calculateNetCommission } from "@/lib/commission";
+import { upcomingQuarterlyPayment } from "@/lib/estimated-tax";
 
 // Re-exported so existing server-side importers keep working; the definitions
 // live in the prisma-free commission module so client components can use them.
@@ -105,6 +106,38 @@ export async function getBusinessExpenseBreakdown(
   if (mileageDeduction > 0) points.push({ label: "Mileage", value: mileageDeduction });
 
   return points.filter((p) => p.value > 0);
+}
+
+// Business profit per calendar year (income - expenses - mileage), for the
+// hobby-loss check on Taxes (2026-11-19). Only years that have at least one
+// business record are returned -- a year with nothing logged is unknown, not
+// a loss. Home office isn't subtracted: it can't create a loss anyway (see
+// the Form 8829 income limit), so it can't change a profit/loss answer.
+export async function getBusinessNetByYear(
+  userId: string,
+  fromYear: number,
+  toYear: number,
+): Promise<Map<number, number>> {
+  const start = new Date(Date.UTC(fromYear, 0, 1));
+  const end = new Date(Date.UTC(toYear + 1, 0, 1));
+  const [rows, trips] = await Promise.all([
+    prisma.transaction.findMany({
+      where: { userId, scope: "BUSINESS", date: { gte: start, lt: end } },
+      select: { type: true, amount: true, date: true },
+    }),
+    prisma.mileageLog.findMany({
+      where: { userId, isBusiness: true, date: { gte: start, lt: end } },
+      select: { deduction: true, date: true },
+    }),
+  ]);
+  const byYear = new Map<number, number>();
+  const add = (date: Date, amount: number) => {
+    const year = date.getUTCFullYear();
+    byYear.set(year, (byYear.get(year) ?? 0) + amount);
+  };
+  for (const r of rows) add(r.date, r.type === "INCOME" ? Number(r.amount) : -Number(r.amount));
+  for (const t of trips) add(t.date, -Number(t.deduction));
+  return byYear;
 }
 
 export type MileageMonthlyPoint = { month: string; miles: number; deduction: number };
@@ -425,7 +458,7 @@ async function upcomingDeadlinesFor(
 
 export type AttentionItem = {
   id: string;
-  kind: "overdue" | "missingDocs" | "awaitingSignature";
+  kind: "overdue" | "missingDocs" | "awaitingSignature" | "taxDue";
   title: string;
   detail: string;
   href: string;
@@ -447,7 +480,13 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
   const now = new Date();
   const staleAfter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [overdue, missingDocs, awaitingSignature] = await Promise.all([
+  // Michigan's calendar day, as a local-midnight date for the tax calendar.
+  const miToday = todayInReminderZone(now);
+  const taxPayment = upcomingQuarterlyPayment(
+    new Date(miToday.getUTCFullYear(), miToday.getUTCMonth(), miToday.getUTCDate()),
+  );
+
+  const [overdue, missingDocs, awaitingSignature, earnedInTaxYear] = await Promise.all([
     prisma.dealDeadline.findMany({
       // Before today in Michigan, not before this instant: a deadline due
       // today hasn't been missed yet (see isDeadlineOverdue).
@@ -476,6 +515,21 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
       },
       orderBy: { createdAt: "asc" },
     }),
+    // Only remind someone who actually earned business income that year --
+    // a brand-new account with nothing logged owes no estimate.
+    taxPayment
+      ? prisma.transaction.count({
+          where: {
+            userId,
+            scope: "BUSINESS",
+            type: "INCOME",
+            date: {
+              gte: new Date(Date.UTC(taxPayment.taxYear, 0, 1)),
+              lt: new Date(Date.UTC(taxPayment.taxYear + 1, 0, 1)),
+            },
+          },
+        })
+      : Promise.resolve(0),
   ]);
 
   const daysAgo = (date: Date) =>
@@ -505,6 +559,21 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
       detail: `${s.client?.name ?? "Sent"} · ${daysAgo(s.createdAt)} days ago`,
       href: s.clientId ? `/clients/${s.clientId}` : "/transactions",
     })),
+    ...(taxPayment && earnedInTaxYear > 0
+      ? [
+          {
+            id: `tax-${taxPayment.taxYear}-${taxPayment.label}`,
+            kind: "taxDue" as const,
+            title: `${taxPayment.label} estimated tax payment due`,
+            detail: `${taxPayment.taxYear} taxes · ${
+              taxPayment.daysAway === 0
+                ? "due today"
+                : `due in ${taxPayment.daysAway} day${taxPayment.daysAway === 1 ? "" : "s"}`
+            }`,
+            href: "/finances/taxes",
+          },
+        ]
+      : []),
   ];
 }
 

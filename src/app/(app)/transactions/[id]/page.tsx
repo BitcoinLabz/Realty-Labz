@@ -10,6 +10,7 @@ import { DealVendors, type DealVendorDTO } from "./deal-vendors";
 import { OfficeUploadForm } from "./office-upload-form";
 import { paperworkStatus } from "@/lib/paperwork";
 import { taxSetAside } from "@/lib/estimated-tax";
+import { loadTaxRules } from "@/lib/tax-rules-db";
 import { userIsPro } from "@/lib/user-plan";
 import { Badge } from "@/components/ui/badge";
 import { ShareWithBrokerage } from "./share-with-brokerage";
@@ -284,10 +285,13 @@ export default async function DealDetailPage({
   };
 
   const grossCommission = deal.commissionAmount ? Number(deal.commissionAmount) : 0;
-  const taxSettings = await prisma.user.findUnique({
-    where: { id: session!.user.id },
-    select: { estimatedIncomeTaxRatePercent: true },
-  });
+  const [taxSettings, taxRules] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session!.user.id },
+      select: { estimatedIncomeTaxRatePercent: true, residenceCity: true, workCity: true },
+    }),
+    loadTaxRules(),
+  ]);
   const incomeTaxRate = taxSettings?.estimatedIncomeTaxRatePercent
     ? Number(taxSettings.estimatedIncomeTaxRatePercent)
     : null;
@@ -423,15 +427,25 @@ export default async function DealDetailPage({
                       <p className="flex flex-wrap items-baseline justify-between gap-2 rounded-xl bg-surface px-4 py-3">
                         <span className="text-foreground">Set aside for taxes (estimate)</span>
                         <span className="font-semibold text-warning">
-                          {formatCurrency(taxSetAside(netCommission, incomeTaxRate))}
+                          {formatCurrency(
+                            taxSetAside({
+                              netCommission,
+                              // The tax year it lands in: the closing year, else this year.
+                              year: (deal.closingDate ?? new Date()).getUTCFullYear(),
+                              federalRatePercent: incomeTaxRate,
+                              residenceCity: taxSettings?.residenceCity,
+                              workCity: taxSettings?.workCity,
+                              rules: taxRules,
+                            }),
+                          )}
                         </span>
                       </p>
                       <p className="text-xs text-muted">
-                        Self-employment tax
-                        {incomeTaxRate !== null ? ` plus your ${incomeTaxRate}% income-tax rate` : ""}.{" "}
+                        Self-employment and Michigan tax
+                        {incomeTaxRate !== null ? `, plus your ${incomeTaxRate}% federal rate` : ""}.{" "}
                         {incomeTaxRate === null ? (
                           <Link href="/finances/taxes" className="font-medium text-accent hover:opacity-80">
-                            Add your income-tax rate for a fuller estimate
+                            Add your federal tax rate for a fuller estimate
                           </Link>
                         ) : (
                           "Not tax advice."

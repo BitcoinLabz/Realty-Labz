@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { TAX_RULE_SEEDS } from "../src/lib/tax-rules-data";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
@@ -20,6 +21,17 @@ const MILEAGE_RATES = [
 ];
 
 async function main() {
+  // Tax rules (2026-11-19): the migration inserts these too; the upsert keeps
+  // a dev database in step after editing src/lib/tax-rules-data.ts.
+  for (const r of TAX_RULE_SEEDS) {
+    const effectiveFrom = new Date(`${r.effectiveFrom}T00:00:00.000Z`);
+    await prisma.taxRule.upsert({
+      where: { jurisdiction_key_effectiveFrom: { jurisdiction: r.jurisdiction, key: r.key, effectiveFrom } },
+      update: { value: r.value, source: r.source },
+      create: { jurisdiction: r.jurisdiction, key: r.key, effectiveFrom, value: r.value, source: r.source },
+    });
+  }
+
   for (const rate of MILEAGE_RATES) {
     await prisma.mileageRate.upsert({
       where: { state_effectiveFrom: { state: "MI", effectiveFrom: rate.effectiveFrom } },

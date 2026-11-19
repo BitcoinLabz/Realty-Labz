@@ -46,9 +46,16 @@ export async function updateTaxSettingsAction(
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
 
-  const raw = formData.get("estimatedIncomeTaxRatePercent");
+  // An empty field or "no city tax" choice means "not set" -- each is
+  // written back as null below so clearing a value actually clears it.
+  const blankToUndefined = (name: string) => {
+    const value = formData.get(name);
+    return value === "" || value === null ? undefined : value;
+  };
   const parsed = taxSettingsSchema.safeParse({
-    estimatedIncomeTaxRatePercent: raw === "" ? undefined : raw,
+    estimatedIncomeTaxRatePercent: blankToUndefined("estimatedIncomeTaxRatePercent"),
+    residenceCity: blankToUndefined("residenceCity"),
+    workCity: blankToUndefined("workCity"),
   });
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -60,9 +67,15 @@ export async function updateTaxSettingsAction(
 
   await prisma.user.update({
     where: { id: session.user.id },
-    data: { estimatedIncomeTaxRatePercent: parsed.data.estimatedIncomeTaxRatePercent ?? null },
+    data: {
+      estimatedIncomeTaxRatePercent: parsed.data.estimatedIncomeTaxRatePercent ?? null,
+      residenceCity: parsed.data.residenceCity ?? null,
+      workCity: parsed.data.workCity ?? null,
+    },
   });
 
   revalidatePath("/finances");
+  revalidatePath("/finances/taxes");
+  revalidatePath("/dashboard");
   return {};
 }

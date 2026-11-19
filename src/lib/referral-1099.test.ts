@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { needs1099, referralTotalsForYear, reportingThreshold } from "./referral-1099";
+import { TaxRules, seedRowsToRules } from "./tax-rules";
+
+const rules = new TaxRules(seedRowsToRules());
 
 const closed = (partner: string | null, date: string | null, gross: number, pct: number) => ({
   referralPartnerId: partner,
@@ -46,12 +49,12 @@ describe("referralTotalsForYear", () => {
 
 describe("1099 threshold", () => {
   it("is $600 through 2025 and $2,000 from 2026", () => {
-    expect(reportingThreshold(2025)).toBe(600);
-    expect(reportingThreshold(2026)).toBe(2000);
+    expect(reportingThreshold(2025, rules)).toBe(600);
+    expect(reportingThreshold(2026, rules)).toBe(2000);
   });
   it("flags totals at or over the year's threshold", () => {
-    expect(needs1099(2000, 2026)).toBe(true);
-    expect(needs1099(1999.99, 2026)).toBe(false);
-    expect(needs1099(600, 2025)).toBe(true);
+    expect(needs1099(2000, 2026, rules)).toBe(true);
+    expect(needs1099(1999.99, 2026, rules)).toBe(false);
+    expect(needs1099(600, 2025, rules)).toBe(true);
   });
 });

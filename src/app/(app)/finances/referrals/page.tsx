@@ -6,6 +6,7 @@ import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
 import { formatCurrency } from "@/lib/format";
 import { needs1099, referralTotalsForYear, reportingThreshold } from "@/lib/referral-1099";
+import { loadTaxRules } from "@/lib/tax-rules-db";
 import { PartnerList, type PartnerRow } from "./partner-list";
 
 // Referral partners and what you've paid them (2026-10-03). Moved here from a
@@ -43,6 +44,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
     }
   }
 
+  const taxRules = await loadTaxRules();
   const rows: PartnerRow[] = partners.map((p) => {
     const yearTotal = yearTotals.get(p.id) ?? 0;
     return {
@@ -54,7 +56,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
       w9Received: p.w9Received,
       yearTotal,
       lifetimeTotal: lifetime.get(p.id) ?? 0,
-      needs1099: needs1099(yearTotal, year),
+      needs1099: needs1099(yearTotal, year, taxRules),
     };
   });
 
@@ -77,7 +79,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
         <SummaryCard
           label={`1099s likely needed (${year})`}
           value={flagged.length.toString()}
-          hint={`Partners paid ${formatCurrency(reportingThreshold(year))} or more in ${year}. Confirm with your accountant — this isn't tax advice.`}
+          hint={`Partners paid ${formatCurrency(reportingThreshold(year, taxRules))} or more in ${year}. Confirm with your accountant — this isn't tax advice.`}
         />
         <SummaryCard label="Still need a W-9" value={missingW9.toString()} />
       </div>
