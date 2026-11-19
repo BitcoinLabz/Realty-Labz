@@ -1,5 +1,7 @@
 "use client";
 
+import { formatCurrency } from "@/lib/format";
+
 import { useActionState, useEffect, useRef, useState } from "react";
 import { CalendarClock, ChevronDown, Mail, Plus, Send, X } from "lucide-react";
 import { deadlineEmailHref, type EmailRecipient } from "@/lib/deadline-email";
@@ -453,6 +455,13 @@ function DeadlineRow({
                 })}`
               : ""}
           </span>
+          {d.ruleText || d.amount != null ? (
+            <span className="text-xs text-muted">
+              {d.amount != null ? formatCurrency(d.amount) : null}
+              {d.amount != null && d.ruleText ? " · " : null}
+              {d.ruleText}
+            </span>
+          ) : null}
           {d.clientNote && !isDone ? <span className="text-xs text-muted">Client sees: {d.clientNote}</span> : null}
           {d.sourceQuote ? (
             <details className="text-xs text-muted">

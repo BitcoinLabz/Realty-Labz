@@ -21,6 +21,8 @@ import { DealForm, type DealFormValues } from "../transaction-form";
 import { ContractAssistant } from "./contract-assistant";
 import { E_SIGNATURE_ENABLED } from "@/lib/features";
 import { DeadlineList } from "./deadline-list";
+import { ContractTerms, type ExtensionDTO, type ExtensionOptionDTO, type RuleDeadlineDTO } from "./contract-terms";
+import { describeRule } from "@/lib/deadline-rules";
 import { DealDocuments } from "./deal-documents";
 import { DeleteDealButton } from "./delete-deal-button";
 import { ReadOnlyDealView } from "./read-only-view";
@@ -64,6 +66,8 @@ export default async function DealDetailPage({
       where: { id, ...dealReadFilter(session!.user) },
       include: {
         deadlines: { orderBy: { dueDate: "asc" } },
+        extensionOptions: { orderBy: { createdAt: "asc" } },
+        extensions: { orderBy: { appliedAt: "desc" } },
         documents: { orderBy: { createdAt: "desc" } },
         client: { select: { id: true, name: true, email: true } },
         user: { select: { name: true, teamId: true } },
@@ -314,6 +318,55 @@ export default async function DealDetailPage({
     reminderSentAt: d.emailReminderSentAt ? d.emailReminderSentAt.toISOString() : null,
     sourceQuote: d.sourceQuote,
     clientNote: d.clientNote,
+    ruleText:
+      d.baseEvent && d.offsetDays != null
+        ? describeRule(
+            { baseEvent: d.baseEvent, baseDeadlineId: d.baseDeadlineId, offsetDays: d.offsetDays, dayType: d.dayType },
+            (id) => deal.deadlines.find((x) => x.id === id)?.label,
+          ) + (d.extensionDays ? `, extended ${d.extensionDays} day${d.extensionDays === 1 ? "" : "s"}` : "")
+        : null,
+    amount: d.amount != null ? Number(d.amount) : null,
+  }));
+
+  const ruleDeadlineDtos: RuleDeadlineDTO[] = deal.deadlines.map((d) => ({
+    id: d.id,
+    label: d.label,
+    dueDate: d.dueDate.toISOString().slice(0, 10),
+    completed: !!d.completedAt,
+    rule:
+      d.baseEvent && d.offsetDays != null
+        ? { baseEvent: d.baseEvent, baseDeadlineId: d.baseDeadlineId, offsetDays: d.offsetDays, dayType: d.dayType }
+        : null,
+    extensionDays: d.extensionDays,
+    isClosing: d.category === "CLOSING",
+  }));
+  const liveExtensions = deal.extensions.filter((x) => !x.undoneAt);
+  const extensionOptionDtos: ExtensionOptionDTO[] = deal.extensionOptions.map((o) => ({
+    id: o.id,
+    label: o.label,
+    days: o.days,
+    dayType: o.dayType,
+    additionalDeposit: o.additionalDeposit != null ? Number(o.additionalDeposit) : null,
+    cost: o.cost != null ? Number(o.cost) : null,
+    exercisableBy: o.exercisableBy,
+    noticeText: o.noticeText,
+    noticeDate: o.noticeDate ? o.noticeDate.toISOString().slice(0, 10) : null,
+    targetDeadlineIds: o.targetDeadlineIds,
+    sourceQuote: o.sourceQuote,
+    usedBy: liveExtensions.find((x) => x.optionId === o.id)?.id ?? null,
+  }));
+  const extensionDtos: ExtensionDTO[] = deal.extensions.map((x) => ({
+    id: x.id,
+    label: x.label,
+    days: x.days,
+    dayType: x.dayType,
+    additionalDeposit: x.additionalDeposit != null ? Number(x.additionalDeposit) : null,
+    note: x.note,
+    appliedByName: x.appliedByName,
+    appliedAt: x.appliedAt.toISOString(),
+    undoneAt: x.undoneAt ? x.undoneAt.toISOString() : null,
+    undoneByName: x.undoneByName,
+    movedCount: Object.keys((x.shifts ?? {}) as Record<string, number>).length,
   }));
 
   const deadlineTemplateDtos: DeadlineTemplateDTO[] = deadlineTemplateRows.map((t) => ({
@@ -517,6 +570,19 @@ export default async function DealDetailPage({
                 </a>
               ) : null}
             </div>
+            {deadlineDtos.length > 0 || extensionOptionDtos.length > 0 ? (
+              <div className="mb-6 border-b border-border pb-6">
+                <h3 className="mb-3 text-sm font-semibold text-foreground">Contract dates &amp; extensions</h3>
+                <ContractTerms
+                  dealId={deal.id}
+                  acceptanceDate={deal.acceptanceDate ? deal.acceptanceDate.toISOString().slice(0, 10) : null}
+                  closingDate={deal.closingDate ? deal.closingDate.toISOString().slice(0, 10) : null}
+                  deadlines={ruleDeadlineDtos}
+                  options={extensionOptionDtos}
+                  extensions={extensionDtos}
+                />
+              </div>
+            ) : null}
             <DeadlineList
               dealId={deal.id}
               deadlines={deadlineDtos}

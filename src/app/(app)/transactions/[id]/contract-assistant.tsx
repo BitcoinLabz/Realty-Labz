@@ -38,9 +38,12 @@ function SavedSummary({ result, dealId }: { result: ApplyResult; dealId: string 
   if (result.updated > 0) parts.push(`updated ${result.updated}`);
   const total = result.added + result.updated;
   const what =
-    parts.length === 0
+    (parts.length === 0
       ? "Saved the contract details."
-      : `${parts.join(" and ").replace(/^./, (c) => c.toUpperCase())} deadline${total === 1 ? "" : "s"}.`;
+      : `${parts.join(" and ").replace(/^./, (c) => c.toUpperCase())} deadline${total === 1 ? "" : "s"}.`) +
+    (result.options > 0
+      ? ` Saved ${result.options} extension option${result.options === 1 ? "" : "s"} — use ${result.options === 1 ? "it" : "them"} from the Deadlines tab.`
+      : "");
 
   const c = result.client;
   const reminders =
