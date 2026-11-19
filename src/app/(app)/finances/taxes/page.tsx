@@ -1,4 +1,6 @@
-import { FolderOpen, Scale } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, FolderOpen, House, Scale } from "lucide-react";
+import { formatCurrency } from "@/lib/format";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -12,7 +14,6 @@ import { loadTaxRules } from "@/lib/tax-rules-db";
 import { Card } from "@/components/ui/card";
 import { YearSelect } from "@/components/ui/year-select";
 import { UnfiledDocuments } from "@/app/(app)/clients/unfiled-documents";
-import { HomeOfficeCard } from "../home-office-card";
 import { TaxEstimateCard } from "../tax-estimate-card";
 import { BudgetsSection } from "../budgets-section";
 import type { ClientOption, DocumentDTO } from "@/app/(app)/clients/types";
@@ -39,7 +40,6 @@ export default async function TaxesAndBudgetsPage({
       prisma.user.findUnique({
         where: { id: userId },
         select: {
-          homeOfficeSqFt: true,
           estimatedIncomeTaxRatePercent: true,
           residenceCity: true,
           workCity: true,
@@ -94,7 +94,25 @@ export default async function TaxesAndBudgetsPage({
         <YearSelect year={year} options={yearOptions} basePath="/finances/taxes" />
       </div>
 
-      <HomeOfficeCard homeOfficeSqFt={user?.homeOfficeSqFt ?? null} deduction={homeOfficeDeduction} />
+      {/* The home office has its own section now; this row says what it
+          contributes and goes there. */}
+      <Link
+        href={`/home-office?year=${year}`}
+        className="flex items-center gap-4 rounded-2xl border border-border bg-background p-6 transition-colors hover:bg-surface"
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+          <House size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-base font-semibold text-foreground">Home office deduction</span>
+          <span className="block text-sm text-muted">
+            {homeOfficeDeduction > 0
+              ? `${formatCurrency(homeOfficeDeduction)} in ${year} — already counted in the estimate below`
+              : "Set up your home office to see what you can deduct"}
+          </span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-muted" />
+      </Link>
 
       <TaxEstimateCard
         estimatedIncomeTaxRatePercent={federalRate}

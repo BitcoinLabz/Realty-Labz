@@ -7,23 +7,16 @@ import { CATEGORY_LABELS } from "@/lib/transaction-categories";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import { calculateNetCommission } from "@/lib/commission";
 import { upcomingQuarterlyPayment } from "@/lib/estimated-tax";
+import { getHomeOfficeDeductionForYear } from "@/lib/home-office-data";
 
 // Re-exported so existing server-side importers keep working; the definitions
 // live in the prisma-free commission module so client components can use them.
 export { calculateCommissionAmount, calculateNetCommission } from "@/lib/commission";
+export { getBusinessNetByYear } from "@/lib/business-net";
 
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
-
-// IRS Simplified home-office-deduction method: $5 per sq ft, capped at 300 sq
-// ft ($1,500/yr max). Deliberately not the Actual-Expense method (tracking
-// home vs. office sq ft % applied to real utility/insurance/repair costs) —
-// the Simplified method is what most self-employed filers actually use, and
-// needs only the one input already on User.homeOfficeSqFt.
-export function getHomeOfficeDeduction(homeOfficeSqFt: number | null | undefined): number {
-  return Math.min(homeOfficeSqFt ?? 0, 300) * 5;
-}
 
 export const ASSET_TYPE_LABELS: Record<string, string> = {
   STOCKS: "Stocks",
@@ -79,7 +72,7 @@ export async function getBusinessExpenseBreakdown(
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
 
-  const [expenses, mileageAgg, user] = await Promise.all([
+  const [expenses, mileageAgg, homeOfficeDeduction] = await Promise.all([
     prisma.transaction.groupBy({
       by: ["category"],
       where: { userId, scope: "BUSINESS", type: "EXPENSE", date: { gte: start, lt: end } },
@@ -89,7 +82,8 @@ export async function getBusinessExpenseBreakdown(
       where: { userId, isBusiness: true, date: { gte: start, lt: end } },
       _sum: { deduction: true },
     }),
-    prisma.user.findUnique({ where: { id: userId }, select: { homeOfficeSqFt: true } }),
+    // Simplified or regular, after the income limit -- see src/lib/home-office.ts.
+    getHomeOfficeDeductionForYear(userId, year),
   ]);
 
   const points: BreakdownPoint[] = expenses
@@ -99,45 +93,12 @@ export async function getBusinessExpenseBreakdown(
       value: Number(e._sum.amount ?? 0),
     }));
 
-  const homeOfficeDeduction = getHomeOfficeDeduction(user?.homeOfficeSqFt);
   if (homeOfficeDeduction > 0) points.push({ label: "Home office", value: homeOfficeDeduction });
 
   const mileageDeduction = Number(mileageAgg._sum.deduction ?? 0);
   if (mileageDeduction > 0) points.push({ label: "Mileage", value: mileageDeduction });
 
   return points.filter((p) => p.value > 0);
-}
-
-// Business profit per calendar year (income - expenses - mileage), for the
-// hobby-loss check on Taxes (2026-11-19). Only years that have at least one
-// business record are returned -- a year with nothing logged is unknown, not
-// a loss. Home office isn't subtracted: it can't create a loss anyway (see
-// the Form 8829 income limit), so it can't change a profit/loss answer.
-export async function getBusinessNetByYear(
-  userId: string,
-  fromYear: number,
-  toYear: number,
-): Promise<Map<number, number>> {
-  const start = new Date(Date.UTC(fromYear, 0, 1));
-  const end = new Date(Date.UTC(toYear + 1, 0, 1));
-  const [rows, trips] = await Promise.all([
-    prisma.transaction.findMany({
-      where: { userId, scope: "BUSINESS", date: { gte: start, lt: end } },
-      select: { type: true, amount: true, date: true },
-    }),
-    prisma.mileageLog.findMany({
-      where: { userId, isBusiness: true, date: { gte: start, lt: end } },
-      select: { deduction: true, date: true },
-    }),
-  ]);
-  const byYear = new Map<number, number>();
-  const add = (date: Date, amount: number) => {
-    const year = date.getUTCFullYear();
-    byYear.set(year, (byYear.get(year) ?? 0) + amount);
-  };
-  for (const r of rows) add(r.date, r.type === "INCOME" ? Number(r.amount) : -Number(r.amount));
-  for (const t of trips) add(t.date, -Number(t.deduction));
-  return byYear;
 }
 
 export type MileageMonthlyPoint = { month: string; miles: number; deduction: number };

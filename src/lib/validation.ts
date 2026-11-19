@@ -326,10 +326,6 @@ export const recurringTransactionSchema = z.object({
   businessUsePercent: z.coerce.number().min(0).max(100, "Enter a percent, e.g. 60").optional(),
 });
 
-export const homeOfficeSettingsSchema = z.object({
-  homeOfficeSqFt: z.coerce.number().int().nonnegative("Must be 0 or more").max(10000).optional(),
-});
-
 // City codes come from the tax rules data, so a new city is one data row.
 const taxCityCode = z
   .string()
