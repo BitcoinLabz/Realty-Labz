@@ -159,7 +159,7 @@ export async function analyzeContractAction(
   if (!(await userIsPro(session.user.id))) {
     return {
       error:
-        "Contract reading is part of Pro: each read uses a paid AI service. Upgrade in Account → Plan, or add the deadlines by hand for free.",
+        "Contract reading is part of Pro: each read uses a paid AI service. Upgrade in Settings → Plan, or add the deadlines by hand for free.",
     };
   }
 

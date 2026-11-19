@@ -9,8 +9,7 @@ import { usePathname } from "next/navigation";
 // where you'd actually reach for it.
 const tabs = [
   { href: "/finances", label: "Overview" },
-  { href: "/finances/income", label: "Income & expenses" },
-  { href: "/finances/mileage", label: "Mileage" },
+  { href: "/finances/income", label: "Entries" },
   { href: "/finances/investments", label: "Investments" },
   { href: "/finances/loans", label: "Loans" },
   { href: "/finances/referrals", label: "Referrals" },
@@ -23,7 +22,7 @@ export default function FinancesLayout({ children }: { children: React.ReactNode
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Finances</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Income &amp; Expenses</h1>
         <p className="mt-1 text-sm text-muted">
           Your real estate business and personal finances, all in one place.
         </p>

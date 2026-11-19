@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Building2,
+  Car,
+  FileText,
   Home,
   House,
   LayoutDashboard,
@@ -26,12 +28,18 @@ import type { UpcomingDeadline } from "@/lib/finance-data";
 // deep inside "Forms", which meant creating a transaction took six unguided
 // clicks. Every item carries an icon -- a wall of same-weight text is what
 // non-technical users scan worst.
+//
+// Reorganised 2026-11-19 around what a busy agent reaches for: their deals
+// and people first, then money (income & expenses, mileage, home office),
+// then the paperwork they hand an accountant (Reports).
 const baseNavItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Home },
   { href: "/clients", label: "Clients", icon: Users },
-  { href: "/finances", label: "Finances", icon: Wallet },
+  { href: "/finances", label: "Income & Expenses", icon: Wallet },
+  { href: "/mileage", label: "Mileage", icon: Car },
   { href: "/home-office", label: "Home Office", icon: House },
+  { href: "/reports", label: "Reports", icon: FileText },
 ];
 
 const teamNavItem = { href: "/team", label: "Team", icon: Building2 };
@@ -44,7 +52,7 @@ const oversightNavItems = [
   { href: "/team/settings", label: "Office", icon: SlidersHorizontal },
 ];
 
-const accountNavItem = { href: "/account", label: "Account", icon: Settings };
+const accountNavItem = { href: "/account", label: "Settings", icon: Settings };
 
 export function Sidebar({
   userName,
@@ -78,7 +86,7 @@ export function Sidebar({
 
   const initials =
     (userName ?? "")
-      .split(/s+/)
+      .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
       .map((part) => part[0]!.toUpperCase())

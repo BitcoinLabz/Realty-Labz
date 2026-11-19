@@ -100,7 +100,7 @@ export default async function DashboardPage() {
     prisma.transaction.count({ where: { userId: session!.user.id } }),
     prisma.user.findUnique({
       where: { id: session!.user.id },
-      select: { estimatedIncomeTaxRatePercent: true },
+      select: { estimatedIncomeTaxRatePercent: true, homeOffice: { select: { id: true } } },
     }),
   ]);
 
@@ -145,10 +145,18 @@ export default async function DashboardPage() {
     {
       id: "tax",
       title: "Set your tax rate",
-      description: "So we can estimate what you should set aside each quarter.",
+      description: "So we can estimate what you should set aside each quarter, including Michigan and city tax.",
       actionLabel: "Set it",
       href: "/finances/taxes",
       done: taxSettings?.estimatedIncomeTaxRatePercent != null,
+    },
+    {
+      id: "home-office",
+      title: "Set up your home office",
+      description: "Work from home? Measure the room and we'll work out the deduction, the simple way or the detailed way.",
+      actionLabel: "Set it up",
+      href: "/home-office",
+      done: !!taxSettings?.homeOffice,
     },
   ];
 
@@ -176,7 +184,7 @@ export default async function DashboardPage() {
             tone="success"
           />
         </Link>
-        <Link href="/finances/mileage" className="block transition-transform hover:-translate-y-0.5">
+        <Link href="/mileage" className="block transition-transform hover:-translate-y-0.5">
           <SummaryCard label="Mileage saved" value={formatCurrency(mileageSaved)} icon={Car} tone="accent" />
         </Link>
         <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">

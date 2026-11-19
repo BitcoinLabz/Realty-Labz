@@ -115,9 +115,13 @@ function RequirementRow({ item, isFirst, isLast }: { item: RequirementDTO; isFir
   const [editing, setEditing] = useState(false);
   const [state, formAction, isPending] = useActionState(updateRequiredDocumentAction, initialState);
 
-  useEffect(() => {
+  // Close the editor when a save succeeds -- adjusted during render (React's
+  // recommended pattern) rather than in an effect.
+  const [handledState, setHandledState] = useState(state);
+  if (state !== handledState) {
+    setHandledState(state);
     if (state.success) setEditing(false);
-  }, [state]);
+  }
 
   if (editing) {
     return (

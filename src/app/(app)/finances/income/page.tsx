@@ -137,7 +137,7 @@ export default async function FinancesTransactionsPage({
         <SummaryCard label="Overall net" value={formatCurrency(overallNet)} />
       </div>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Money in &amp; out by month</h2>
         {hasMonthlyData ? (
           <MonthlyBarChart data={monthlySeries} />
@@ -148,7 +148,7 @@ export default async function FinancesTransactionsPage({
         )}
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-1 text-base font-semibold text-foreground">Log income or an expense</h2>
         <p className="mb-6 text-sm text-muted">
           A one-time entry by default. If it&apos;s something that repeats every month, tick
@@ -159,7 +159,7 @@ export default async function FinancesTransactionsPage({
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-base font-semibold text-foreground">Latest entries</h2>
           <Link

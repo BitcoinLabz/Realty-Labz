@@ -23,7 +23,7 @@ export function ContactForm() {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-8">
+    <form action={formAction} className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-6 sm:p-8">
       {/* Honeypot: hidden from real visitors via CSS, not just visually
           off-screen with markup a screen reader would still announce. */}
       <div className="hidden" aria-hidden="true">

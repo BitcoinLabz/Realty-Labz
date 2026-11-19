@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useHydrated, useLocalStorageValue } from "@/lib/use-hydrated";
 import { Check, Sparkles } from "lucide-react";
 
 const DISMISS_KEY = "realtylabz:setup-checklist-dismissed";
@@ -26,13 +27,10 @@ export type SetupStep = {
 export function SetupChecklist({ steps }: { steps: SetupStep[] }) {
   // Start hidden and reveal after mount: reading localStorage during render
   // would mismatch the server-rendered HTML and cause a hydration error.
-  const [mounted, setMounted] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    setDismissed(window.localStorage.getItem(DISMISS_KEY) === "true");
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
+  const stored = useLocalStorageValue(DISMISS_KEY);
+  const [dismissedNow, setDismissed] = useState(false);
+  const dismissed = dismissedNow || stored === "true";
 
   const remaining = steps.filter((s) => !s.done);
   if (!mounted || dismissed || remaining.length === 0) return null;

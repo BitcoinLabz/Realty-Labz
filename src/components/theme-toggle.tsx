@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { useHydrated } from "@/lib/use-hydrated";
 import { Moon, Sun } from "lucide-react";
 
 // Standard next-themes pattern: theme/resolvedTheme are undefined during SSR
@@ -10,12 +10,8 @@ import { Moon, Sun } from "lucide-react";
 // render a stable placeholder until mounted instead.
 // `compact`: icon only, for the phone icon rail (see sidebar.tsx).
 export function ThemeToggle({ compact = false }: { compact?: boolean }) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useHydrated();
   const { resolvedTheme, setTheme } = useTheme();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!mounted) {
     return <div className={compact ? "h-10 w-10" : "h-5 w-24"} aria-hidden="true" />;

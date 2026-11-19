@@ -23,20 +23,20 @@ const initialState: FormState = {};
 
 function VendorForm({ vendor, onDone }: { vendor?: VendorDTO; onDone?: () => void }) {
   const [state, formAction, isPending] = useActionState(saveVendorAction, initialState);
-  const [formKey, setFormKey] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
   const lastState = useRef(state);
 
   useEffect(() => {
     if (state !== lastState.current && state.success) {
       if (onDone) onDone();
-      else setFormKey((k) => k + 1); // adding: clear for the next one
+      else formRef.current?.reset(); // adding: clear for the next one
     }
     lastState.current = state;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
-    <form key={formKey} action={formAction} className="flex flex-col gap-3">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
       {vendor ? <input type="hidden" name="id" value={vendor.id} /> : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Select label="Type" name="kind" defaultValue={vendor?.kind ?? "TITLE"} error={state.fieldErrors?.kind}>

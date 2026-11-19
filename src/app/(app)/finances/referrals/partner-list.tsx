@@ -33,20 +33,20 @@ function PartnerForm({ partner, onDone }: { partner?: PartnerRow; onDone?: () =>
     partner ? updateReferralPartnerAction : createReferralPartnerAction,
     initialState,
   );
-  const [formKey, setFormKey] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
   const last = useRef(state);
 
   useEffect(() => {
     if (state !== last.current && state.success) {
       if (onDone) onDone();
-      else setFormKey((k) => k + 1);
+      else formRef.current?.reset();
     }
     last.current = state;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
-    <form key={formKey} action={formAction} className="flex flex-col gap-3">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
       {partner ? <input type="hidden" name="id" value={partner.id} /> : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Name" name="name" defaultValue={partner?.name} required error={state.fieldErrors?.name} />

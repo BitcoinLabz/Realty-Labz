@@ -47,17 +47,19 @@ export function BreakdownDonutChart({ data }: { data: { label: string; value: nu
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="flex flex-1 flex-col gap-2">
+      {/* min-w-0 + wrapping so a seven-figure amount next to a long label
+          drops below it instead of pushing the page sideways (2026-11-19). */}
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
         {data.map((d, i) => (
-          <div key={d.label} className="flex items-center justify-between gap-4 text-sm">
-            <span className="flex items-center gap-2 text-foreground">
+          <div key={d.label} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 text-sm">
+            <span className="flex min-w-0 items-center gap-2 break-words text-foreground">
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
                 style={{ background: COLORS[i % COLORS.length] }}
               />
               {d.label}
             </span>
-            <span className="font-medium text-foreground">
+            <span className="whitespace-nowrap font-medium tabular-nums text-foreground">
               {formatCurrency(d.value)}
               <span className="ml-1.5 text-muted">
                 ({total > 0 ? Math.round((d.value / total) * 100) : 0}%)

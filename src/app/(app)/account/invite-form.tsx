@@ -13,7 +13,7 @@ export function InviteForm({ canInviteAdmin }: { canInviteAdmin: boolean }) {
 
   return (
     <form action={formAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
-      <div className="sm:flex-1">
+      <div className="min-w-0 sm:flex-1">
         <Select label="Role" name="role" defaultValue="AGENT" error={state.fieldErrors?.role}>
           <option value="AGENT">Agent — their own work, shared with the brokerage</option>
           <option value="TEAM_LEAD">Team lead — an agent who also sees shared transactions</option>

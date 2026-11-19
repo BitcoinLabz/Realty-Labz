@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/format";
+import { RowMenu } from "@/components/ui/row-menu";
 
 const CATEGORY_OPTIONS: { value: string; label: string }[] = [
   { value: "MARKETING_ADVERTISING", label: "Marketing & advertising" },
@@ -203,7 +204,7 @@ export function RecurringTemplates({ templates }: { templates: RecurringTemplate
   const [editingId, setEditingId] = useState<string | null>(null);
 
   return (
-    <section className="rounded-2xl border border-border bg-background p-8">
+    <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
       <h2 className="mb-1 text-base font-semibold text-foreground">Recurring costs</h2>
       <p className="mb-6 text-sm text-muted">
         MLS dues, insurance, subscriptions — anything that repeats. Logged automatically on the due
@@ -233,10 +234,10 @@ export function RecurringTemplates({ templates }: { templates: RecurringTemplate
             ) : (
               <div
                 key={t.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3"
+                className="flex items-center gap-3 rounded-xl border border-border py-2 pl-4 pr-1"
               >
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium text-foreground">
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="line-clamp-2 break-words text-sm font-medium text-foreground">
                     {t.description || "Recurring cost"}
                   </span>
                   <span className="text-sm text-muted">
@@ -254,26 +255,19 @@ export function RecurringTemplates({ templates }: { templates: RecurringTemplate
                     })}
                   </span>
                 </div>
-                <div className="flex shrink-0 items-center gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(t.id)}
-                    className="text-sm font-medium text-muted hover:text-foreground"
-                  >
-                    Edit
-                  </button>
-                  <form
-                    action={deleteRecurringTransactionAction}
-                    onSubmit={(e) => {
-                      if (!confirm("Delete this recurring cost?")) e.preventDefault();
-                    }}
-                  >
-                    <input type="hidden" name="id" value={t.id} />
-                    <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                      Delete
-                    </button>
-                  </form>
-                </div>
+                <RowMenu
+                  label={`Actions for ${t.description || "this recurring cost"}`}
+                  items={[
+                    { label: "Edit", onSelect: () => setEditingId(t.id) },
+                    {
+                      label: "Delete",
+                      destructive: true,
+                      confirm: "Delete this recurring cost? Entries already logged stay.",
+                      action: deleteRecurringTransactionAction,
+                      fields: { id: t.id },
+                    },
+                  ]}
+                />
               </div>
             ),
           )}

@@ -12,7 +12,7 @@ export function RecurringReminders({ items }: { items: DueRecurringItem[] }) {
   if (items.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-border bg-background p-8">
+    <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
       <h2 className="mb-1 text-base font-semibold text-foreground">Upcoming recurring costs</h2>
       <p className="mb-6 text-sm text-muted">
         Logged automatically on their due date — nothing to do here.

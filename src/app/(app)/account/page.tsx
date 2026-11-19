@@ -285,7 +285,7 @@ export default async function AccountPage({
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader title="Account" description="Your details, sign-in, and team settings." />
+      <PageHeader title="Settings" description="Your details, sign-in, plan, and team." />
       <DetailTabs tabs={tabs} />
     </div>
   );
