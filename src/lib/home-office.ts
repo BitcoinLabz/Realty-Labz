@@ -433,3 +433,27 @@ export function splitMortgagePayment(params: {
     total: round2(payment + tax + insurance),
   };
 }
+
+/**
+ * Total mortgage interest paid in a calendar year, from the loan terms and
+ * the month of the first payment -- what the splitter offers to add as the
+ * year's mortgage interest expense. (Your lender's Form 1098 is the real
+ * number; this is for when you don't have it yet.)
+ */
+export function mortgageInterestForYear(params: {
+  loanAmount: number;
+  annualRatePercent: number;
+  termMonths: number;
+  firstPaymentMonth: Date; // UTC first of the month
+  year: number;
+}): number {
+  const firstYear = params.firstPaymentMonth.getUTCFullYear();
+  const firstMonth = params.firstPaymentMonth.getUTCMonth();
+  let total = 0;
+  for (let m = 0; m < 12; m++) {
+    const paymentNumber = (params.year - firstYear) * 12 + (m - firstMonth) + 1;
+    if (paymentNumber < 1 || paymentNumber > params.termMonths) continue;
+    total += splitMortgagePayment({ ...params, paymentNumber, annualPropertyTax: 0, annualInsurance: 0 }).interest;
+  }
+  return round2(total);
+}

@@ -99,3 +99,24 @@ body {
     font-size: 16px;
   }
 }
+
+/* Small, quick entrance for menus and popovers (2026-11-19). Off for anyone
+   who has asked their system for less motion. */
+@keyframes rl-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@utility animate-in {
+  animation: rl-pop-in 140ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in {
+    animation: none;
+  }
+}

@@ -47,6 +47,13 @@ export type HomeOfficeData = {
   chain: HomeOfficeYearResult[];
   /** The selected year's result, or null with no setup or a year before business use. */
   current: HomeOfficeYearResult | null;
+  /** "Over time": totals if every year had used one method. */
+  overTime: {
+    simplifiedTotal: number;
+    regularTotal: number;
+    regularCarryOut: number;
+    years: number;
+  } | null;
 };
 
 /**
@@ -57,10 +64,10 @@ export type HomeOfficeData = {
 export const getHomeOfficeData = cache(async (userId: string, year: number): Promise<HomeOfficeData> => {
   const row = await prisma.homeOffice.findUnique({ where: { userId } });
   const profile = row ? toProfile(row) : null;
-  if (!row || !profile) return { row, profile, chain: [], current: null };
+  if (!row || !profile) return { row, profile, chain: [], current: null, overTime: null };
 
   const firstYear = profile.businessUseStart ? profile.businessUseStart.getUTCFullYear() : year;
-  if (firstYear > year) return { row, profile, chain: [], current: null };
+  if (firstYear > year) return { row, profile, chain: [], current: null, overTime: null };
 
   const [expenses, years, netByYear, rules] = await Promise.all([
     prisma.homeOfficeExpense.findMany({
@@ -75,17 +82,33 @@ export const getHomeOfficeData = cache(async (userId: string, year: number): Pro
   const chosenMethods = new Map<number, HomeOfficeMethod>();
   for (const y of years) if (y.method) chosenMethods.set(y.year, y.method);
 
-  const chain = computeHomeOfficeChain({
+  const inputs = {
     profile,
     expenses: expenses.map(
       (e): HomeOfficeExpenseInput => ({ kind: e.kind, scope: e.scope, period: e.period, date: e.date, amount: Number(e.amount) }),
     ),
     netByYear,
-    chosenMethods,
     throughYear: year,
     rules,
-  });
-  return { row, profile, chain, current: chain.find((c) => c.year === year) ?? null };
+  };
+  const chain = computeHomeOfficeChain({ ...inputs, chosenMethods });
+
+  const allOf = (method: HomeOfficeMethod) => {
+    const forced = new Map<number, HomeOfficeMethod>();
+    for (let y = firstYear; y <= year; y++) forced.set(y, method);
+    return computeHomeOfficeChain({ ...inputs, chosenMethods: forced });
+  };
+  const simplifiedChain = allOf("SIMPLIFIED");
+  const regularChain = allOf("REGULAR");
+  const lastRegular = regularChain[regularChain.length - 1];
+  const overTime = {
+    simplifiedTotal: simplifiedChain.reduce((sum, c) => sum + c.allowed, 0),
+    regularTotal: regularChain.reduce((sum, c) => sum + c.allowed, 0),
+    regularCarryOut: lastRegular ? lastRegular.carryOut.operating + lastRegular.carryOut.depreciation : 0,
+    years: chain.length,
+  };
+
+  return { row, profile, chain, current: chain.find((c) => c.year === year) ?? null, overTime };
 });
 
 /** The allowed deduction for a year -- what the finance breakdown, dashboard and PDF use. */

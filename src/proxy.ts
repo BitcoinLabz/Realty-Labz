@@ -6,7 +6,7 @@ import { isOversightRole } from "@/lib/authorization";
 // oversight app instead (2026-10-01) and is sent to their Overview from any
 // of these -- enforced here, before any page renders, rather than by hiding
 // links. /transactions itself stays open: it's their list of agents' files.
-const AGENT_ONLY_PREFIXES = ["/dashboard", "/clients", "/finances", "/transactions/new"];
+const AGENT_ONLY_PREFIXES = ["/dashboard", "/clients", "/finances", "/home-office", "/transactions/new"];
 
 // Two lists that have to agree: `matcher` decides where this proxy runs at
 // all, and `isProtected` decides what it does there. /clients was in the
@@ -19,6 +19,7 @@ const PROTECTED_PREFIXES = [
   "/account",
   "/transactions",
   "/finances",
+  "/home-office",
   "/forms",
   "/team",
   "/clients",
@@ -54,6 +55,7 @@ export const config = {
     "/account/:path*",
     "/transactions/:path*",
     "/finances/:path*",
+    "/home-office/:path*",
     "/forms/:path*",
     "/team/:path*",
     "/clients/:path*",

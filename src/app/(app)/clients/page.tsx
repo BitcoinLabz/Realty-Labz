@@ -17,7 +17,7 @@ export default async function ClientsPage() {
       orderBy: { name: "asc" },
     }),
     prisma.document.findMany({
-      where: { userId: session!.user.id, clientId: null },
+      where: { userId: session!.user.id, clientId: null, homeOfficeExpense: { is: null } },
       orderBy: { createdAt: "desc" },
     }),
   ]);

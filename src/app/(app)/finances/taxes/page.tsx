@@ -47,7 +47,7 @@ export default async function TaxesAndBudgetsPage({
       }),
       getBudgetUsage(userId, year, currentMonth),
       prisma.document.findMany({
-        where: { userId, clientId: null },
+        where: { userId, clientId: null, homeOfficeExpense: { is: null } },
         orderBy: { createdAt: "desc" },
       }),
       prisma.client.findMany({

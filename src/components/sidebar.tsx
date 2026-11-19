@@ -6,6 +6,7 @@ import { useState } from "react";
 import {
   Building2,
   Home,
+  House,
   LayoutDashboard,
   PanelLeft,
   Settings,
@@ -30,6 +31,7 @@ const baseNavItems = [
   { href: "/transactions", label: "Transactions", icon: Home },
   { href: "/clients", label: "Clients", icon: Users },
   { href: "/finances", label: "Finances", icon: Wallet },
+  { href: "/home-office", label: "Home Office", icon: House },
 ];
 
 const teamNavItem = { href: "/team", label: "Team", icon: Building2 };

@@ -7,6 +7,7 @@ import {
   countableAmount,
   depreciationBasis,
   depreciationForYear,
+  mortgageInterestForYear,
   recaptureEstimate,
   simplifiedMonthsInUse,
   splitMortgagePayment,
@@ -273,5 +274,23 @@ describe("splitMortgagePayment", () => {
     const late = splitMortgagePayment({ ...base, paymentNumber: 300 });
     expect(late.principal).toBeGreaterThan(late.interest);
     expect(late.principal + late.interest).toBeCloseTo(1798.65, 1);
+  });
+});
+
+describe("mortgageInterestForYear", () => {
+  const loan = { loanAmount: 300000, annualRatePercent: 6, termMonths: 360 };
+
+  it("adds up the year's twelve interest payments", () => {
+    // Closed form: 12 x 1,798.65 paid, balance falls to ~296,315.5 -> ~17,899 interest.
+    const r = mortgageInterestForYear({ ...loan, firstPaymentMonth: d("2026-01-01"), year: 2026 });
+    expect(r).toBeGreaterThan(17895);
+    expect(r).toBeLessThan(17905);
+  });
+
+  it("counts only the payments made in that year", () => {
+    // First payment in October: Oct, Nov, Dec ~ 1,500 + 1,498.51 + 1,497.01
+    const r = mortgageInterestForYear({ ...loan, firstPaymentMonth: d("2026-10-01"), year: 2026 });
+    expect(r).toBeCloseTo(4495.52, 0);
+    expect(mortgageInterestForYear({ ...loan, firstPaymentMonth: d("2026-10-01"), year: 2025 })).toBe(0);
   });
 });

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { calculateNetCommission } from "@/lib/finance-data";
 import { getHomeOfficeData } from "@/lib/home-office-data";
+import { APP_URL } from "@/lib/app-url";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import { isRateLimited } from "@/lib/rate-limit";
 import {
@@ -172,6 +173,7 @@ export async function GET(request: NextRequest) {
     expenseCategories,
     mileageTrips,
     closedDeals,
+    homeOfficeReportUrl: homeOffice && homeOffice.allowed > 0 ? `${APP_URL}/api/reports/home-office?year=${year}` : null,
     generatedAt: new Date().toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",
