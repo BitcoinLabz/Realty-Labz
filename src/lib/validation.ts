@@ -50,6 +50,20 @@ export const profileSchema = z.object({
   licenseNumber: licenseNumber.optional().or(z.literal("")),
 });
 
+export const emailOnlySchema = z.object({
+  email: z.email("Enter a valid email address").trim().toLowerCase(),
+});
+
+export const newPasswordSchema = z
+  .object({
+    newPassword: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export const passwordChangeSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),

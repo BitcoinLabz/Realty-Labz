@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/office-settings";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { RowMenu } from "@/components/ui/row-menu";
 import { Field } from "@/components/ui/field";
 import { MoveButtons } from "./paperwork-settings";
 
@@ -64,17 +65,18 @@ export function ChecklistSettings({ items, usingStandard }: { items: ChecklistIt
               <span className="min-w-0 text-sm font-medium text-foreground">{item.label}</span>
               <div className="flex shrink-0 items-center gap-1">
                 <MoveButtons id={item.id} list="checklist" isFirst={i === 0} isLast={i === items.length - 1} />
-                <form
-                  action={deleteChecklistItemAction}
-                  onSubmit={(e) => {
-                    if (!confirm(`Remove "${item.label}"? Files that already have it keep it.`)) e.preventDefault();
-                  }}
-                >
-                  <input type="hidden" name="id" value={item.id} />
-                  <button type="submit" className="ml-2 text-sm font-medium text-danger hover:opacity-80">
-                    Remove
-                  </button>
-                </form>
+                <RowMenu
+                  label={`Actions for ${item.label}`}
+                  items={[
+                    {
+                      label: "Remove",
+                      destructive: true,
+                      confirm: `Remove "${item.label}"? Files that already have it keep it.`,
+                      action: deleteChecklistItemAction,
+                      fields: { id: item.id },
+                    },
+                  ]}
+                />
               </div>
             </div>
           ))}

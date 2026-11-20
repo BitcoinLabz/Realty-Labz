@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { changeMemberRoleAction, removeMemberAction } from "@/app/actions/team-members";
 import type { FormState } from "@/app/actions/auth";
+import { RowMenu } from "@/components/ui/row-menu";
 import type { Role } from "@/generated/prisma/enums";
 
 const initialState: FormState = {};
@@ -72,27 +73,18 @@ export function MemberRow({
                 ))}
               </select>
             </form>
-            <form
-              action={removeAction}
-              onSubmit={(e) => {
-                if (
-                  !confirm(
-                    `Remove ${member.name ?? member.email} from your ${orgWord}?\n\nThey keep their account and all of their own data — your ${orgWord} just stops being able to see it.`,
-                  )
-                ) {
-                  e.preventDefault();
-                }
-              }}
-            >
-              <input type="hidden" name="userId" value={member.id} />
-              <button
-                type="submit"
-                disabled={removePending}
-                className="text-sm font-medium text-danger hover:opacity-80 disabled:opacity-50"
-              >
-                {removePending ? "Removing…" : "Remove"}
-              </button>
-            </form>
+            <RowMenu
+              label={`Actions for ${member.name ?? member.email}`}
+              items={[
+                {
+                  label: removePending ? "Removing…" : "Remove",
+                  destructive: true,
+                  confirm: `Remove ${member.name ?? member.email} from your ${orgWord}? They keep their account and all of their own data. Your ${orgWord} just stops being able to see it.`,
+                  action: removeAction,
+                  fields: { userId: member.id },
+                },
+              ]}
+            />
           </div>
         ) : (
           <span className="shrink-0 text-sm text-muted">{roleWord(member.role)}</span>

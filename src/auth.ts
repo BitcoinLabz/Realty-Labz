@@ -64,11 +64,23 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
       if (!user.email || !profile?.email_verified) return false;
 
       const email = user.email.toLowerCase();
+      const existing = await prisma.user.findUnique({ where: { email } });
+      // Google already verified the address. A password signup that later
+      // signs in with the same Google account gets marked confirmed too.
       const dbUser =
-        (await prisma.user.findUnique({ where: { email } })) ??
+        existing ??
         (await prisma.user.create({
-          data: { email, name: user.name ?? "New user", role: "AGENT", planChosen: false },
+          data: {
+            email,
+            name: user.name ?? "New user",
+            role: "AGENT",
+            planChosen: false,
+            emailVerifiedAt: new Date(),
+          },
         }));
+      if (existing && !existing.emailVerifiedAt) {
+        await prisma.user.update({ where: { id: existing.id }, data: { emailVerifiedAt: new Date() } });
+      }
 
       user.id = dbUser.id;
       user.role = dbUser.role;

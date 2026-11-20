@@ -40,6 +40,11 @@ function LoginForm() {
           autoComplete="current-password"
           required
         />
+        <div className="-mt-1 flex justify-end">
+          <Link href="/forgot-password" className="text-sm font-medium text-accent hover:opacity-80">
+            Forgot password?
+          </Link>
+        </div>
 
         {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 

@@ -1,24 +1,19 @@
 "use client";
 
 import { deleteLoanAction } from "@/app/actions/loans";
+import { ConfirmSubmit } from "@/components/ui/confirm-submit";
+
+const buttonClass =
+  "rounded-full border border-danger px-5 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10";
 
 export function DeleteLoanButton({ loanId, loanName }: { loanId: string; loanName: string }) {
   return (
-    <form
+    <ConfirmSubmit
       action={deleteLoanAction}
-      onSubmit={(e) => {
-        if (!confirm(`Delete "${loanName}"? This also deletes its logged extra payments.`)) {
-          e.preventDefault();
-        }
-      }}
-    >
-      <input type="hidden" name="id" value={loanId} />
-      <button
-        type="submit"
-        className="rounded-full border border-danger px-5 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-danger/10"
-      >
-        Delete loan
-      </button>
-    </form>
+      fields={{ id: loanId }}
+      label="Delete loan"
+      confirm={`Delete "${loanName}"? This also deletes its logged extra payments.`}
+      buttonClassName={buttonClass}
+    />
   );
 }

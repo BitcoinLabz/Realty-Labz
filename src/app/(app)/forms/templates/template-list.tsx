@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { deleteFormTemplateAction } from "@/app/actions/form-templates";
+import { RowMenu } from "@/components/ui/row-menu";
 import { formatFileSize } from "@/lib/format";
 import type { FormTemplateDTO } from "./types";
 
@@ -27,10 +28,10 @@ export function TemplateList({
       {templates.map((t) => (
         <div
           key={t.id}
-          className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
+          className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 hover:border-accent sm:flex-row sm:items-center sm:justify-between"
         >
-          <Link href={`/forms/templates/${t.id}`} className="flex flex-col">
-            <span className="text-sm font-medium text-foreground">{t.name}</span>
+          <Link href={`/forms/templates/${t.id}`} className="flex min-w-0 flex-col">
+            <span className="break-words text-sm font-medium text-foreground">{t.name}</span>
             <span className="text-sm text-muted">
               {formatFileSize(t.size)} · {t.fieldCount} field{t.fieldCount === 1 ? "" : "s"} ·{" "}
               {t.signerCount} signer{t.signerCount === 1 ? "" : "s"}
@@ -38,17 +39,18 @@ export function TemplateList({
             </span>
           </Link>
           {canManage ? (
-            <form
-              action={deleteFormTemplateAction}
-              onSubmit={(e) => {
-                if (!confirm(`Delete the "${t.name}" template?`)) e.preventDefault();
-              }}
-            >
-              <input type="hidden" name="id" value={t.id} />
-              <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                Delete
-              </button>
-            </form>
+            <RowMenu
+              label={`Actions for ${t.name}`}
+              items={[
+                {
+                  label: "Delete",
+                  destructive: true,
+                  confirm: `Delete the "${t.name}" template?`,
+                  action: deleteFormTemplateAction,
+                  fields: { id: t.id },
+                },
+              ]}
+            />
           ) : null}
         </div>
       ))}

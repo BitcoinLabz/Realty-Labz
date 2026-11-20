@@ -2,6 +2,7 @@
 
 import { contactMessageSchema } from "@/lib/validation";
 import { sendContactFormEmail } from "@/lib/email";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import type { FormState } from "@/app/actions/auth";
 
 // Public, unauthenticated -- the Support page's contact form.
@@ -14,6 +15,11 @@ export async function submitContactFormAction(
   // signal back to the bot that it was caught) rather than erroring.
   if (formData.get("company")) return {};
 
+  const ip = await getClientIp();
+  if (await isRateLimited(`contact:${ip}`, { max: 5, windowMinutes: 60 })) {
+    return { error: "Too many messages — please wait a while and try again." };
+  }
+
   const parsed = contactMessageSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
@@ -25,6 +31,10 @@ export async function submitContactFormAction(
       fieldErrors[String(issue.path[0])] = issue.message;
     }
     return { fieldErrors };
+  }
+
+  if (await isRateLimited(`contact-email:${parsed.data.email}`, { max: 5, windowMinutes: 60 })) {
+    return { error: "Too many messages — please wait a while and try again." };
   }
 
   try {

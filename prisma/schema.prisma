@@ -58,6 +58,11 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String?
+  // Null until the address is confirmed. The migration backfills every
+  // account that already existed, so nobody is nagged or locked out for an
+  // email they typed before this shipped. New signups leave it null.
+  // Google sign-in sets it, because Google already verified the address.
+  emailVerifiedAt DateTime?
   name         String?
   role         Role     @default(AGENT)
   createdAt    DateTime @default(now())
@@ -163,6 +168,8 @@ model User {
   financialGoals     FinancialGoal[]
   recurringTemplates RecurringTransactionTemplate[]
   referralPartners   ReferralPartner[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   // Backs every teamOrOwnFilter()/teamSharedFilter() manager-view query
   // (src/lib/authorization.ts), which joins through user: { teamId } —
@@ -1486,6 +1493,38 @@ model TaxRule {
 
   @@unique([jurisdiction, key, effectiveFrom])
   @@map("tax_rules")
+}
+
+// Single-use password reset (2026-11-20). tokenHash is SHA-256 of the
+// secret in the email link. usedAt is set when the link is consumed and
+// when the password changes any other way, so an old email stops working.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// Same shape as a password reset, for "confirm this is your email" on a
+// new signup. Clicking the link sets User.emailVerifiedAt. Existing
+// accounts are already verified by the migration that adds that column.
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("email_verification_tokens")
 }
 
 // Basic rate limiting (2026-07-30) -- one row per attempt, keyed by e.g.
