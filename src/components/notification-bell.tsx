@@ -23,9 +23,7 @@ export function NotificationBell({
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         aria-label="Upcoming deadlines"
-        className={`relative text-muted hover:text-foreground ${
-          placement === "rail" ? "flex h-10 w-10 items-center justify-center rounded-xl hover:bg-surface" : ""
-        }`}
+        className="relative flex h-11 w-11 items-center justify-center rounded-xl text-muted hover:bg-surface hover:text-foreground"
       >
         <Bell size={20} />
         {deadlines.length > 0 ? (

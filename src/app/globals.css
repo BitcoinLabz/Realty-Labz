@@ -88,16 +88,23 @@ body {
 }
 
 /* iOS Safari zooms into any field whose text is under 16px and never zooms
-   back out, leaving the page stuck magnified after typing. 16px on touch
-   screens means it never zooms in the first place, while pinch-zoom still
-   works. Unlayered on purpose: it has to beat the text-sm utility on every
-   input in the app, including the raw ones outside components/ui. */
-@media (pointer: coarse) {
+   back out. Phone-width and touch screens stay at 16px; desktop keeps the
+   smaller type. Unlayered so it beats text-sm on raw inputs too. */
+@media (pointer: coarse), (max-width: 767px) {
   input,
   select,
   textarea {
     font-size: 16px;
   }
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* Small, quick entrance for menus and popovers (2026-11-19). Off for anyone

@@ -21,7 +21,7 @@ export default function AppError({
       <p className="max-w-sm text-sm text-muted">
         An unexpected error occurred. You can try again, or head back to your dashboard.
       </p>
-      <div className="flex gap-3">
+      <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
         <Button onClick={() => reset()}>Try again</Button>
         <Link href="/dashboard">
           <Button variant="secondary">Back to dashboard</Button>

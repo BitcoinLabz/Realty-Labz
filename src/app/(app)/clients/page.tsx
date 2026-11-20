@@ -55,7 +55,7 @@ export default async function ClientsPage() {
         <ClientList clients={dtos} />
       </Card>
 
-      <Card title="Add a client" icon={UserPlus}>
+      <Card id="add-client" title="Add a client" icon={UserPlus}>
         <div className="max-w-md">
           <ClientForm />
         </div>

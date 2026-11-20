@@ -19,8 +19,13 @@ import {
 //
 // `rounded`: iOS applies its own mask, so the iPhone icon must be a full,
 // square tile; everywhere else draws its own corners.
-export function renderAppIcon(size: number, { rounded = false }: { rounded?: boolean } = {}) {
-  const mark = Math.round(size * 0.78);
+// `maskable`: Android adaptive icons crop to a circle. The mark sits in the
+// center 52% so the crop never clips the house.
+export function renderAppIcon(
+  size: number,
+  { rounded = false, maskable = false }: { rounded?: boolean; maskable?: boolean } = {},
+) {
+  const mark = Math.round(size * (maskable ? 0.52 : 0.78));
   return new ImageResponse(
     (
       <div
@@ -31,7 +36,7 @@ export function renderAppIcon(size: number, { rounded = false }: { rounded?: boo
           alignItems: "center",
           justifyContent: "center",
           background: `linear-gradient(135deg, ${LOGO_TILE_FROM} 0%, ${LOGO_TILE_TO} 100%)`,
-          borderRadius: rounded ? Math.round(size * 0.22) : 0,
+          borderRadius: maskable ? 0 : rounded ? Math.round(size * 0.22) : 0,
         }}
       >
         <svg width={mark} height={mark} viewBox="0 0 100 100">

@@ -5,6 +5,7 @@ import { saveHomeOfficeSetupAction } from "@/app/actions/home-office";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Toast } from "@/components/ui/toast";
 import { HelpTip } from "@/components/ui/help-tip";
 import { PillGroup } from "@/components/ui/pill-group";
 
@@ -199,6 +200,10 @@ export function SetupForm({ values }: { values: SetupValues }) {
       ) : null}
 
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
+      <Toast
+        message={!state.error && !state.fieldErrors && state !== initialState ? "Office details saved." : null}
+        signal={state}
+      />
       <div>
         <Button type="submit" disabled={isPending}>
           {isPending ? "Saving…" : "Save setup"}

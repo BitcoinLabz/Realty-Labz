@@ -7,6 +7,7 @@ import { TONE_CHIP, type Tone } from "./tone";
 // optional right-aligned action link -- all three of which were previously
 // spelled slightly differently on every page.
 export function Card({
+  id,
   title,
   description,
   action,
@@ -18,6 +19,7 @@ export function Card({
   // With a tone the icon sits in a tinted chip; without one it stays a quiet
   // grey glyph, which is right for most cards.
   tone?: Tone;
+  id?: string;
   title?: string;
   description?: React.ReactNode;
   // Right-aligned control on the heading row (a link, a button, a select).
@@ -29,7 +31,7 @@ export function Card({
   const hasHeader = !!title || !!action;
 
   return (
-    <section className={`rounded-2xl border border-border bg-background p-6 sm:p-8 ${className}`}>
+    <section id={id} className={`rounded-2xl border border-border bg-background p-6 sm:p-8 ${className}`}>
       {hasHeader ? (
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">

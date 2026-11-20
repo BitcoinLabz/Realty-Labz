@@ -14,7 +14,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
   const { resolvedTheme, setTheme } = useTheme();
 
   if (!mounted) {
-    return <div className={compact ? "h-10 w-10" : "h-5 w-24"} aria-hidden="true" />;
+    return <div className={compact ? "h-11 w-11" : "h-5 w-24"} aria-hidden="true" />;
   }
 
   const isDark = resolvedTheme === "dark";
@@ -25,7 +25,7 @@ export function ThemeToggle({ compact = false }: { compact?: boolean }) {
         type="button"
         onClick={() => setTheme(isDark ? "light" : "dark")}
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
-        className="flex h-10 w-10 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-foreground"
+        className="flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-surface hover:text-foreground"
       >
         {isDark ? <Moon size={18} /> : <Sun size={18} />}
       </button>

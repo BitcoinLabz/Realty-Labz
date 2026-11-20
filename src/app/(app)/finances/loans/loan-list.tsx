@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Landmark } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { formatCurrency } from "@/lib/format";
 import type { LoanDTO } from "./types";
 
@@ -11,9 +13,13 @@ const typeLabels: Record<string, string> = {
 export function LoanList({ loans }: { loans: LoanDTO[] }) {
   if (loans.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-        No loans yet. Add a mortgage, car loan, or anything else you are paying off using the form above.
-      </div>
+      <EmptyState
+        icon={Landmark}
+        title="No loans yet"
+        description="Add a mortgage, a car loan, or anything else you're paying off. The monthly payment, balance, and payoff date are worked out for you."
+        actionLabel="Add a loan"
+        actionHref="#add-loan"
+      />
     );
   }
 
