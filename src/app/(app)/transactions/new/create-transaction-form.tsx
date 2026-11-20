@@ -58,7 +58,7 @@ export function CreateFileForm({ clients, canRead }: { clients: ClientOption[]; 
         </button>
       </div>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Representation</h2>
         <div className="max-w-md">
           <Select
@@ -76,7 +76,7 @@ export function CreateFileForm({ clients, canRead }: { clients: ClientOption[]; 
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Who is the client?</h2>
         <div className="flex max-w-md flex-col gap-4">
           {clients.length > 0 ? (
@@ -149,10 +149,10 @@ export function CreateFileForm({ clients, canRead }: { clients: ClientOption[]; 
       </section>
 
       {startMode === "contract" ? (
-        <section className="rounded-2xl border border-border bg-background p-8">
+        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
           <h2 className="mb-1 text-base font-semibold text-foreground">The signed contract</h2>
           <p className="mb-6 text-sm text-muted">
-            The purchase agreement as a PDF. You'll review everything before it's saved.
+            The purchase agreement as a PDF. You&apos;ll review everything before it&apos;s saved.
           </p>
           <div className="max-w-md">
             <FileDropInput
@@ -167,7 +167,7 @@ export function CreateFileForm({ clients, canRead }: { clients: ClientOption[]; 
           </div>
         </section>
       ) : (
-        <section className="rounded-2xl border border-border bg-background p-8">
+        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
           <h2 className="mb-1 text-base font-semibold text-foreground">Is there a property yet?</h2>
           <p className="mb-6 text-sm text-muted">
             Optional — add this later once one is found.

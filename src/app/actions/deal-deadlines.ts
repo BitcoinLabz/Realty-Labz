@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { recalculateDealDeadlines } from "@/lib/deal-deadline-recalc";
 import { dealDeadlineSchema } from "@/lib/validation";
 import { ownerOnlyFilter } from "@/lib/authorization";
 import type { FormState } from "@/app/actions/auth";
@@ -89,6 +90,12 @@ export async function deleteDeadlineAction(formData: FormData) {
   const deal = await assertDealAccess(dealId, session.user);
   if (!deal) return;
 
+  // Deadlines counted from this one keep their current date as a fixed date
+  // rather than pointing at nothing.
+  await prisma.dealDeadline.updateMany({
+    where: { baseDeadlineId: id, dealId },
+    data: { baseEvent: null, offsetDays: null, baseDeadlineId: null },
+  });
   // Same cross-tenant guard as toggleDeadlineAction above -- id alone isn't
   // enough, dealId must be part of the actual where clause.
   await prisma.dealDeadline.deleteMany({ where: { id, dealId } });
@@ -144,9 +151,22 @@ export async function updateDeadlineAction(
       label: parsed.data.label,
       dueDate,
       clientNote,
-      ...(dateMoved ? { autoReminderEarlySentAt: null, autoReminderFinalSentAt: null } : {}),
+      // Typing a date over a rule makes it a fixed date: it stops moving
+      // with the acceptance date, and its extensions are folded into it.
+      ...(dateMoved
+        ? {
+            autoReminderEarlySentAt: null,
+            autoReminderFinalSentAt: null,
+            baseEvent: null,
+            offsetDays: null,
+            baseDeadlineId: null,
+            extensionDays: 0,
+          }
+        : {}),
     },
   });
+  // Anything counted from this deadline follows it.
+  if (dateMoved) await recalculateDealDeadlines(dealId);
 
   revalidatePath(`/transactions/${dealId}`);
   revalidatePath("/dashboard");

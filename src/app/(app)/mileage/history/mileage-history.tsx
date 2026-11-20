@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Car } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { MileageList } from "../mileage-list";
 import type { MileageLogDTO } from "../types";
 
@@ -40,8 +42,14 @@ export function MileageHistory({
 
   if (logs.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-        No trips yet. Log your first one on the Mileage page.
+      <div className="rounded-2xl border border-border bg-background">
+        <EmptyState
+          icon={Car}
+          title="No trips yet"
+          description="Each trip is saved with the mileage rate for that year, so the deduction is ready when you export for your accountant."
+          actionLabel="Log a trip"
+          actionHref="/mileage"
+        />
       </div>
     );
   }

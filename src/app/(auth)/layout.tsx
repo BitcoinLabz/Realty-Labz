@@ -7,9 +7,9 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
         <div className="mb-8 flex justify-center">
           <Logo size="md" href="/" />
         </div>
-        <div className="rounded-2xl border border-border bg-background p-8 shadow-sm">
+        <main className="rounded-2xl border border-border bg-background p-8 shadow-sm">
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

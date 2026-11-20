@@ -1,5 +1,8 @@
 "use client";
 
+import { formatCurrency } from "@/lib/format";
+import { RowMenu } from "@/components/ui/row-menu";
+
 import { useActionState, useEffect, useRef, useState } from "react";
 import { CalendarClock, ChevronDown, Mail, Plus, Send, X } from "lucide-react";
 import { deadlineEmailHref, type EmailRecipient } from "@/lib/deadline-email";
@@ -343,19 +346,6 @@ function EditDeadlineRow({
           </Button>
         </div>
       </form>
-      <form
-        action={deleteDeadlineAction}
-        onSubmit={(e) => {
-          if (!confirm(`Delete "${deadline.label}"?`)) e.preventDefault();
-        }}
-        className="border-t border-border pt-3"
-      >
-        <input type="hidden" name="id" value={deadline.id} />
-        <input type="hidden" name="dealId" value={dealId} />
-        <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-          Delete this deadline
-        </button>
-      </form>
     </div>
   );
 }
@@ -453,6 +443,13 @@ function DeadlineRow({
                 })}`
               : ""}
           </span>
+          {d.ruleText || d.amount != null ? (
+            <span className="text-xs text-muted">
+              {d.amount != null ? formatCurrency(d.amount) : null}
+              {d.amount != null && d.ruleText ? " · " : null}
+              {d.ruleText}
+            </span>
+          ) : null}
           {d.clientNote && !isDone ? <span className="text-xs text-muted">Client sees: {d.clientNote}</span> : null}
           {d.sourceQuote ? (
             <details className="text-xs text-muted">
@@ -465,9 +462,19 @@ function DeadlineRow({
       <div className="flex shrink-0 items-start justify-end gap-4 pl-8 sm:pl-0">
         {!isDone && emailContext ? <EmailAbout deadline={d} context={emailContext} /> : null}
         {!isDone ? <SendReminderButton deadlineId={d.id} dealId={dealId} /> : null}
-        <button type="button" onClick={onEdit} className="text-sm font-medium text-muted hover:text-foreground">
-          Edit
-        </button>
+        <RowMenu
+          label={`Actions for ${d.label}`}
+          items={[
+            { label: "Edit", onSelect: onEdit },
+            {
+              label: "Delete",
+              destructive: true,
+              confirm: `Delete "${d.label}"?`,
+              action: deleteDeadlineAction,
+              fields: { id: d.id, dealId },
+            },
+          ]}
+        />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { deleteTransactionAction } from "@/app/actions/transactions";
 import { formatCurrency } from "@/lib/format";
+import { RowMenu } from "@/components/ui/row-menu";
 import { TransactionForm } from "./transaction-form";
 import type { DealOption, TransactionDTO } from "./types";
 
@@ -61,15 +62,17 @@ export function TransactionList({
             />
           </div>
         ) : (
+          // Text wraps instead of squeezing; the amount and the one "..." menu
+          // never get pushed off a phone screen (2026-11-19).
           <div
             key={t.id}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-background px-6 py-4"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-background py-3 pl-4 pr-1 sm:pl-6"
           >
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-foreground">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="line-clamp-2 break-words text-sm font-medium text-foreground">
                 {t.description || (t.category ? categoryLabels[t.category] : "Personal")}
               </span>
-              <span className="text-sm text-muted">
+              <span className="truncate text-sm text-muted">
                 {new Date(t.date + "T00:00:00").toLocaleDateString("en-US", {
                   month: "short",
                   day: "numeric",
@@ -80,32 +83,25 @@ export function TransactionList({
                 {t.category ? ` · ${categoryLabels[t.category]}` : ""}
               </span>
             </div>
-            <div className="flex items-center gap-4">
-              <span
-                className={`text-sm font-semibold ${t.type === "INCOME" ? "text-accent" : "text-foreground"}`}
-              >
-                {t.type === "INCOME" ? "+" : "-"}
-                {formatCurrency(t.amount)}
-              </span>
-              <button
-                type="button"
-                onClick={() => setEditingId(t.id)}
-                className="text-sm font-medium text-muted hover:text-foreground"
-              >
-                Edit
-              </button>
-              <form
-                action={deleteTransactionAction}
-                onSubmit={(e) => {
-                  if (!confirm("Delete this transaction?")) e.preventDefault();
-                }}
-              >
-                <input type="hidden" name="id" value={t.id} />
-                <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                  Delete
-                </button>
-              </form>
-            </div>
+            <span
+              className={`shrink-0 text-sm font-semibold tabular-nums ${t.type === "INCOME" ? "text-accent" : "text-foreground"}`}
+            >
+              {t.type === "INCOME" ? "+" : "-"}
+              {formatCurrency(t.amount)}
+            </span>
+            <RowMenu
+              label={`Actions for ${t.description || "this entry"}`}
+              items={[
+                { label: "Edit", onSelect: () => setEditingId(t.id) },
+                {
+                  label: "Delete",
+                  destructive: true,
+                  confirm: "Delete this entry?",
+                  action: deleteTransactionAction,
+                  fields: { id: t.id },
+                },
+              ]}
+            />
           </div>
         ),
       )}

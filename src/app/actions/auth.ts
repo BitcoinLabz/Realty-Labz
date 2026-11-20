@@ -6,6 +6,7 @@ import { auth, signIn, signOut } from "@/auth";
 import { prisma } from "@/lib/db";
 import { loginSchema, signupSchema } from "@/lib/validation";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
+import { issueEmailVerification } from "@/lib/account-access";
 
 const TOO_MANY_ATTEMPTS = "Too many attempts — please wait a few minutes and try again.";
 
@@ -86,11 +87,14 @@ export async function signupAction(
   // in the creator's role -- and that role is the whole difference: a BROKER
   // can change who is on the roster, a TEAM_LEAD can only see its work.
   // See canManageMembership in src/lib/authorization.ts.
+  // emailVerifiedAt stays null until they open the link. The account is
+  // usable immediately; the banner is the only reminder.
+  let userId: string;
   if (accountType === "team" || accountType === "brokerage") {
     const team = await prisma.team.create({
       data: { name: teamName!, brokerageNumber: brokerageNumber ?? null },
     });
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
         name,
         email,
@@ -104,11 +108,21 @@ export async function signupAction(
         // They created it, so they've been here since it existed.
         teamJoinedAt: new Date(),
       },
+      select: { id: true },
     });
+    userId = created.id;
   } else {
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: { name, email, passwordHash, licenseNumber, role: "AGENT", planChosen: false },
+      select: { id: true },
     });
+    userId = created.id;
+  }
+
+  try {
+    await issueEmailVerification(userId);
+  } catch (err) {
+    console.error("[signup] verification email failed", err);
   }
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });

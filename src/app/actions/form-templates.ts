@@ -102,7 +102,10 @@ export async function deleteFormTemplateAction(formData: FormData) {
   });
   if (!template) return;
 
-  await prisma.formTemplate.delete({ where: { id: template.id } });
+  const removed = await prisma.formTemplate.deleteMany({
+    where: { id: template.id, ...teamSharedFilter(session.user) },
+  });
+  if (removed.count !== 1) return;
   await deleteDocumentFile(template.storageKey);
 
   revalidatePath("/forms/templates");
@@ -115,31 +118,37 @@ export async function deleteFormTemplateAction(formData: FormData) {
 // pointing the new template at the library file's own key, so the two rows
 // stay fully independent — deleting the library original later can't break
 // a template already built from it, and vice versa.
-export async function createFormTemplateFromLibraryAction(formData: FormData) {
+export async function createFormTemplateFromLibraryAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const session = await auth();
-  if (!session?.user) return;
-  if (!canManageSharedResources(session.user)) return;
+  if (!session?.user) return { error: "You must be signed in" };
+  if (!canManageSharedResources(session.user)) return { error: "You can't add templates" };
 
   const documentTemplateId = formData.get("documentTemplateId");
-  if (typeof documentTemplateId !== "string" || !documentTemplateId) return;
+  if (typeof documentTemplateId !== "string" || !documentTemplateId) return { error: "Missing file" };
 
   const libraryDoc = await prisma.documentTemplate.findFirst({
     where: { id: documentTemplateId, ...teamSharedFilter(session.user) },
   });
-  if (!libraryDoc) return;
+  if (!libraryDoc) return { error: "File not found" };
   // Only a PDF can go through the pdfjs/pdf-lib field designer — the
   // "Create fillable template" button is already hidden for non-PDF rows,
   // this is a defensive server-side re-check of the same rule.
-  if (libraryDoc.mimeType !== "application/pdf") return;
+  if (libraryDoc.mimeType !== "application/pdf") return { error: "Only a PDF can become a fillable template" };
+
+  // The copy is a new stored file under the person creating it. Skipping
+  // this let a Free account duplicate library PDFs past the 250 MB cap.
+  const overLimit = await storageBlockMessage(session.user.id, libraryDoc.size);
+  if (overLimit) return { error: overLimit };
 
   let storageKey: string;
   try {
     storageKey = await copyDocumentFile(libraryDoc.storageKey, session.user.id, libraryDoc.mimeType);
   } catch (err) {
-    // A void action, so there is nowhere to show a message -- but logging
-    // beats an unhandled crash, and the page simply stays put.
     console.error("[form-template-from-library] copy failed", err);
-    return;
+    return { error: "Couldn't copy that file. Try again." };
   }
 
   const template = await prisma.formTemplate.create({
@@ -405,26 +414,38 @@ export async function detectTemplateFieldsAction(
  * transaction's document later can't pull the file out from under a
  * submission that's already been sent.
  */
-export async function createFormTemplateFromDocumentAction(formData: FormData) {
+export async function createFormTemplateFromDocumentAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
   const session = await auth();
-  if (!session?.user) return;
+  if (!session?.user) return { error: "You must be signed in" };
 
   const documentId = formData.get("documentId");
-  if (typeof documentId !== "string" || !documentId) return;
+  if (typeof documentId !== "string" || !documentId) return { error: "Missing document" };
 
-  // Cross-checked through the deal, not by document id alone -- the same
-  // verify-the-parent-then-the-child guard used everywhere else here.
+  // The agent's own file, or a PDF the office filed onto a transaction the
+  // agent owns. Office uploads are stored under the broker, so an owner-only
+  // check on the document made "Make signable" a silent no-op for those.
+  // A broker still cannot turn an agent's own paperwork into a template:
+  // ownerOnlyFilter does not widen for managers.
   const doc = await prisma.document.findFirst({
-    where: { id: documentId, ...ownerOnlyFilter(session.user) },
+    where: {
+      id: documentId,
+      OR: [ownerOnlyFilter(session.user), { deal: ownerOnlyFilter(session.user) }],
+    },
   });
-  if (!doc || doc.mimeType !== "application/pdf") return;
+  if (!doc || doc.mimeType !== "application/pdf") return { error: "That PDF isn't on a transaction you own" };
+
+  const overLimit = await storageBlockMessage(session.user.id, doc.size);
+  if (overLimit) return { error: overLimit };
 
   let storageKey: string;
   try {
     storageKey = await copyDocumentFile(doc.storageKey, session.user.id, doc.mimeType);
   } catch (err) {
     console.error("[form-template-from-document] copy failed", err);
-    return;
+    return { error: "Couldn't copy that file. Try again." };
   }
 
   const template = await prisma.formTemplate.create({

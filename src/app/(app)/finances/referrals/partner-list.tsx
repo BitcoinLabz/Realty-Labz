@@ -11,6 +11,7 @@ import {
 import type { FormState } from "@/app/actions/auth";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { RowMenu } from "@/components/ui/row-menu";
 import { Field } from "@/components/ui/field";
 import { formatCurrency } from "@/lib/format";
 
@@ -33,20 +34,20 @@ function PartnerForm({ partner, onDone }: { partner?: PartnerRow; onDone?: () =>
     partner ? updateReferralPartnerAction : createReferralPartnerAction,
     initialState,
   );
-  const [formKey, setFormKey] = useState(0);
+  const formRef = useRef<HTMLFormElement>(null);
   const last = useRef(state);
 
   useEffect(() => {
     if (state !== last.current && state.success) {
       if (onDone) onDone();
-      else setFormKey((k) => k + 1);
+      else formRef.current?.reset();
     }
     last.current = state;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
 
   return (
-    <form key={formKey} action={formAction} className="flex flex-col gap-3">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
       {partner ? <input type="hidden" name="id" value={partner.id} /> : null}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Name" name="name" defaultValue={partner?.name} required error={state.fieldErrors?.name} />
@@ -98,19 +99,6 @@ function PartnerItem({ partner, year }: { partner: PartnerRow; year: number }) {
     return (
       <div className="flex flex-col gap-3 rounded-xl border border-accent p-4">
         <PartnerForm partner={partner} onDone={() => setEditing(false)} />
-        <form
-          action={deleteReferralPartnerAction}
-          onSubmit={(e) => {
-            if (!confirm(`Remove ${partner.name}? Transactions keep their referral fee; they just won't name a partner.`))
-              e.preventDefault();
-          }}
-          className="border-t border-border pt-3"
-        >
-          <input type="hidden" name="id" value={partner.id} />
-          <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-            Remove partner
-          </button>
-        </form>
       </div>
     );
   }
@@ -138,9 +126,19 @@ function PartnerItem({ partner, year }: { partner: PartnerRow; year: number }) {
           ) : null}
           <W9Switch id={partner.id} received={partner.w9Received} />
         </div>
-        <button type="button" onClick={() => setEditing(true)} className="text-sm font-medium text-muted hover:text-foreground">
-          Edit
-        </button>
+        <RowMenu
+          label={`Actions for ${partner.name}`}
+          items={[
+            { label: "Edit", onSelect: () => setEditing(true) },
+            {
+              label: "Remove",
+              destructive: true,
+              confirm: `Remove ${partner.name}? Transactions keep their referral fee; they just won't name a partner.`,
+              action: deleteReferralPartnerAction,
+              fields: { id: partner.id },
+            },
+          ]}
+        />
       </div>
     </div>
   );

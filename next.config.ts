@@ -39,6 +39,9 @@ const nextConfig: NextConfig = {
       // now live under Transactions. Temporary, in case Forms comes back.
       { source: "/forms/deadline-sets", destination: "/transactions/deadline-sets", permanent: false },
       { source: "/forms/library", destination: "/transactions/library", permanent: false },
+      // Mileage became its own section (2026-11-19).
+      { source: "/finances/mileage", destination: "/mileage", permanent: true },
+      { source: "/finances/mileage/:path*", destination: "/mileage/:path*", permanent: true },
     ];
   },
 };

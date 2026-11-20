@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Link, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
 import { formatCurrency } from "@/lib/format";
 
 const colors = {
@@ -171,6 +171,8 @@ export type FinancialReportData = {
   mileageTrips: FinancialReportMileageTrip[];
   closedDeals: FinancialReportDeal[];
   generatedAt: string;
+  /** Set when there's a home office deduction: the separate detailed report. */
+  homeOfficeReportUrl?: string | null;
 };
 
 function formatDate(iso: string): string {
@@ -283,6 +285,12 @@ export function FinancialReport({ data }: { data: FinancialReportData }) {
             </View>
           </>
         )}
+        {data.homeOfficeReportUrl ? (
+          <Text style={styles.emptyNote}>
+            Home office workings (Form 8829, depreciation, carryovers, receipts) are in the separate{" "}
+            <Link src={data.homeOfficeReportUrl}>Home Office Report</Link>.
+          </Text>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Mileage</Text>
         {data.mileageTrips.length === 0 ? (

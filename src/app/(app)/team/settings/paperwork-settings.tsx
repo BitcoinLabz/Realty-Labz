@@ -12,6 +12,7 @@ import {
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { RowMenu } from "@/components/ui/row-menu";
 import { DEAL_SIDE_SHORT } from "@/lib/vendor-kinds";
 
 export type RequirementDTO = { id: string; label: string; sides: string[] };
@@ -115,9 +116,13 @@ function RequirementRow({ item, isFirst, isLast }: { item: RequirementDTO; isFir
   const [editing, setEditing] = useState(false);
   const [state, formAction, isPending] = useActionState(updateRequiredDocumentAction, initialState);
 
-  useEffect(() => {
+  // Close the editor when a save succeeds -- adjusted during render (React's
+  // recommended pattern) rather than in an effect.
+  const [handledState, setHandledState] = useState(state);
+  if (state !== handledState) {
+    setHandledState(state);
     if (state.success) setEditing(false);
-  }, [state]);
+  }
 
   if (editing) {
     return (
@@ -136,19 +141,6 @@ function RequirementRow({ item, isFirst, isLast }: { item: RequirementDTO; isFir
             </Button>
           </div>
         </form>
-        <form
-          action={deleteRequiredDocumentAction}
-          onSubmit={(e) => {
-            if (!confirm(`Remove "${item.label}" from the list? Documents already filed stay on their transactions.`))
-              e.preventDefault();
-          }}
-          className="border-t border-border pt-3"
-        >
-          <input type="hidden" name="id" value={item.id} />
-          <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-            Remove from the list
-          </button>
-        </form>
       </div>
     );
   }
@@ -161,9 +153,19 @@ function RequirementRow({ item, isFirst, isLast }: { item: RequirementDTO; isFir
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <MoveButtons id={item.id} list="paperwork" isFirst={isFirst} isLast={isLast} />
-        <button type="button" onClick={() => setEditing(true)} className="ml-2 text-sm font-medium text-muted hover:text-foreground">
-          Edit
-        </button>
+        <RowMenu
+          label={`Actions for ${item.label}`}
+          items={[
+            { label: "Edit", onSelect: () => setEditing(true) },
+            {
+              label: "Remove",
+              destructive: true,
+              confirm: `Remove "${item.label}" from the list? Documents already filed stay on their transactions.`,
+              action: deleteRequiredDocumentAction,
+              fields: { id: item.id },
+            },
+          ]}
+        />
       </div>
     </div>
   );

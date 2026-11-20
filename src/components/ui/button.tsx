@@ -20,7 +20,7 @@ export function Button({
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
   return (
     <button
-      className={`inline-flex items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-opacity duration-150 disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`}
+      className={`inline-flex min-h-11 items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium transition-opacity duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed ${variantClasses[variant]} ${className}`}
       {...props}
     />
   );

@@ -15,6 +15,7 @@ export type PlanCardProps = {
   hasBillingAccount: boolean;
   renewsOn: string | null; // formatted
   cancelsOn: string | null; // formatted, when cancel-at-period-end
+  paymentPastDue: boolean;
   usedLabel: string;
   limitLabel: string | null; // null = unlimited
   usedPercent: number | null;
@@ -24,12 +25,12 @@ export type PlanCardProps = {
   justUpgraded: boolean;
 };
 
-function ManageBilling() {
+function ManageBilling({ urgent }: { urgent: boolean }) {
   const [state, formAction, isPending] = useActionState(openBillingPortalAction, initialState);
   return (
     <form action={formAction} className="flex flex-col gap-1">
-      <Button type="submit" variant="secondary" disabled={isPending}>
-        {isPending ? "Opening…" : "Manage billing"}
+      <Button type="submit" variant={urgent ? "primary" : "secondary"} disabled={isPending}>
+        {isPending ? "Opening…" : urgent ? "Update payment method" : "Manage billing"}
       </Button>
       {state.error ? <p className="text-xs text-danger">{state.error}</p> : null}
     </form>
@@ -42,12 +43,18 @@ export function PlanCard(props: PlanCardProps) {
     <div className="flex flex-col gap-6">
       {props.justUpgraded && isPro ? (
         <p className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">
-          Welcome to Pro. Everything below is switched on.
+          Welcome to Pro. Everything below is ready to use.
         </p>
       ) : props.justUpgraded ? (
         // Stripe's confirmation can take a few seconds to reach us.
         <p className="rounded-xl bg-surface px-4 py-3 text-sm text-muted">
-          Payment received — Pro switches on in a few seconds. Refresh if it hasn&apos;t yet.
+          Payment received. Pro turns on in a few seconds. Refresh if it hasn&apos;t yet.
+        </p>
+      ) : null}
+
+      {props.paymentPastDue ? (
+        <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
+          Your last payment didn&apos;t go through. Update your card to keep Pro. It stays on while the payment is retried.
         </p>
       ) : null}
 
@@ -60,11 +67,13 @@ export function PlanCard(props: PlanCardProps) {
           {props.comped
             ? "Pro, on the house."
             : isPro
-              ? props.cancelsOn
-                ? `Ends ${props.cancelsOn}. You keep Pro until then.`
-                : props.renewsOn
-                  ? `Renews ${props.renewsOn}.`
-                  : "Active."
+              ? props.paymentPastDue
+                ? "Payment past due."
+                : props.cancelsOn
+                  ? `Ends ${props.cancelsOn}. You keep Pro until then.`
+                  : props.renewsOn
+                    ? `Renews ${props.renewsOn}.`
+                    : "Active."
               : "Everything you do by hand is free, forever."}
         </p>
       </div>
@@ -96,7 +105,7 @@ export function PlanCard(props: PlanCardProps) {
         />
       ) : props.hasBillingAccount && !props.comped ? (
         <div>
-          <ManageBilling />
+          <ManageBilling urgent={props.paymentPastDue} />
           <p className="mt-2 text-xs text-muted">Change your card, switch monthly/annual, see invoices, or cancel.</p>
         </div>
       ) : null}

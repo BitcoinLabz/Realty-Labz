@@ -27,30 +27,9 @@ import {
   calculateBudgetPercentUsed,
   getBudgetUsage,
   getClosedDealsSummary,
-  getHomeOfficeDeduction,
   getNetWorthSeries,
   getPipelineValue,
 } from "./finance-data";
-
-describe("getHomeOfficeDeduction (IRS Simplified method)", () => {
-  it("computes $5/sq ft under the cap", () => {
-    expect(getHomeOfficeDeduction(150)).toBe(750);
-  });
-
-  it("caps at 300 sq ft ($1,500 max)", () => {
-    expect(getHomeOfficeDeduction(400)).toBe(1500);
-  });
-
-  it("returns 0 for null/undefined", () => {
-    expect(getHomeOfficeDeduction(null)).toBe(0);
-    expect(getHomeOfficeDeduction(undefined)).toBe(0);
-  });
-
-  it("returns 0 for 0 sq ft", () => {
-    expect(getHomeOfficeDeduction(0)).toBe(0);
-  });
-});
-
 
 describe("calculateBudgetPercentUsed", () => {
   it("computes a normal percentage", () => {

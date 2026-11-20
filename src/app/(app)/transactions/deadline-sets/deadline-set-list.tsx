@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { deleteDeadlineTemplateAction } from "@/app/actions/deadline-templates";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RowMenu } from "@/components/ui/row-menu";
 import { DeadlineSetForm } from "./deadline-set-form";
 import type { DeadlineTemplateDTO } from "./types";
 
@@ -56,29 +57,19 @@ export function DeadlineSetList({
                     </p>
                   </div>
                   {canManage ? (
-                    <div className="flex shrink-0 items-center gap-4">
-                      <button
-                        type="button"
-                        onClick={() => setEditingId(t.id)}
-                        className="text-sm font-medium text-muted hover:text-foreground"
-                      >
-                        Edit
-                      </button>
-                      <form
-                        action={deleteDeadlineTemplateAction}
-                        onSubmit={(e) => {
-                          if (!confirm(`Delete the "${t.name}" set?`)) e.preventDefault();
-                        }}
-                      >
-                        <input type="hidden" name="id" value={t.id} />
-                        <button
-                          type="submit"
-                          className="text-sm font-medium text-danger hover:opacity-80"
-                        >
-                          Delete
-                        </button>
-                      </form>
-                    </div>
+                    <RowMenu
+                      label={`Actions for ${t.name}`}
+                      items={[
+                        { label: "Edit", onSelect: () => setEditingId(t.id) },
+                        {
+                          label: "Delete",
+                          destructive: true,
+                          confirm: `Delete the "${t.name}" set?`,
+                          action: deleteDeadlineTemplateAction,
+                          fields: { id: t.id },
+                        },
+                      ]}
+                    />
                   ) : null}
                 </div>
 

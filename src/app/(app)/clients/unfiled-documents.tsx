@@ -5,6 +5,7 @@ import { deleteDocumentAction, updateDocumentLinksAction, uploadDocumentAction }
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { FileDropInput } from "@/components/ui/file-drop-input";
+import { RowMenu } from "@/components/ui/row-menu";
 import { formatFileSize } from "@/lib/format";
 import type { ClientOption, DocumentDTO } from "./types";
 
@@ -60,21 +61,21 @@ export function UnfiledDocuments({
           {documents.map((doc) => (
             <div
               key={doc.id}
-              className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3"
+              className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
             >
-              <a href={`/api/documents/${doc.id}`} className="flex flex-col hover:text-accent">
-                <span className="text-sm font-medium text-foreground">{doc.fileName}</span>
+              <a href={`/api/documents/${doc.id}`} className="flex min-w-0 flex-col hover:text-accent">
+                <span className="break-words text-sm font-medium text-foreground">{doc.fileName}</span>
                 <span className="text-sm text-muted">{formatFileSize(doc.size)}</span>
               </a>
-              <div className="flex shrink-0 items-center gap-3">
-                <form action={updateDocumentLinksAction}>
+              <div className="flex min-w-0 items-center gap-2">
+                <form action={updateDocumentLinksAction} className="min-w-0 flex-1">
                   <input type="hidden" name="id" value={doc.id} />
                   <input type="hidden" name="dealId" value={doc.dealId ?? ""} />
                   <select
                     name="clientId"
                     defaultValue=""
                     onChange={(e) => e.currentTarget.form?.requestSubmit()}
-                    className="rounded-xl border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+                    className="w-full min-w-0 rounded-xl border border-border bg-background px-3 py-1.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
                   >
                     <option value="" disabled>
                       Assign to client…
@@ -86,17 +87,18 @@ export function UnfiledDocuments({
                     ))}
                   </select>
                 </form>
-                <form
-                  action={deleteDocumentAction}
-                  onSubmit={(e) => {
-                    if (!confirm(`Delete ${doc.fileName}?`)) e.preventDefault();
-                  }}
-                >
-                  <input type="hidden" name="id" value={doc.id} />
-                  <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                    Delete
-                  </button>
-                </form>
+                <RowMenu
+                  label={`Actions for ${doc.fileName}`}
+                  items={[
+                    {
+                      label: "Delete",
+                      destructive: true,
+                      confirm: `Delete ${doc.fileName}?`,
+                      action: deleteDocumentAction,
+                      fields: { id: doc.id },
+                    },
+                  ]}
+                />
               </div>
             </div>
           ))}

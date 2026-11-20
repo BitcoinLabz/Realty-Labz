@@ -102,48 +102,47 @@ export function FieldDesigner({
     initialDetectState,
   );
   const [importSummary, setImportSummary] = useState<string | null>(null);
-  const importedRef = useRef<DetectedField[] | null>(null);
 
   const signerName = signers.find((s) => s.id === selectedSignerId)?.label ?? "";
 
   // Merges a detection result into the working field list exactly once per
   // result. Keyed on object identity rather than a boolean, so a second
   // Import click on a different result still lands while re-renders in
-  // between don't duplicate the fields.
-  useEffect(() => {
-    const detected = detectState.detected;
-    if (!detected || importedRef.current === detected) return;
-    importedRef.current = detected;
-
+  // between don't duplicate the fields. Adjusted during render (React's
+  // recommended pattern for reacting to a new prop/state value) rather than
+  // in an effect, which rendered twice.
+  const [handledDetected, setHandledDetected] = useState<DetectedField[] | null>(null);
+  const detected = detectState.detected ?? null;
+  if (detected && detected !== handledDetected) {
+    setHandledDetected(detected);
     if (!selectedSignerId) {
       setImportSummary(null);
-      return;
+    } else {
+      setFields((prev) => {
+        const imported: DesignerField[] = detected.map((f, i) => ({
+          key: `imported-${prev.length}-${i}`,
+          page: f.page,
+          x: f.x,
+          y: f.y,
+          width: f.width,
+          height: f.height,
+          type: f.type as FieldType,
+          label: f.label,
+          required: true,
+          order: prev.length + i,
+          // The PDF says where a box is and roughly what it holds, but never
+          // WHO fills it -- there's nothing in the format for that. Everything
+          // lands on the currently selected signer for the agent to reassign.
+          signerId: selectedSignerId,
+          autoFillSource: null,
+        }));
+        return [...prev, ...imported];
+      });
+      setImportSummary(
+        `Added ${detected.length} ${detected.length === 1 ? "field" : "fields"}. Check each one's signer and type before saving.`,
+      );
     }
-
-    setFields((prev) => {
-      const imported: DesignerField[] = detected.map((f, i) => ({
-        key: `imported-${Date.now()}-${i}`,
-        page: f.page,
-        x: f.x,
-        y: f.y,
-        width: f.width,
-        height: f.height,
-        type: f.type as FieldType,
-        label: f.label,
-        required: true,
-        order: prev.length + i,
-        // The PDF says where a box is and roughly what it holds, but never
-        // WHO fills it -- there's nothing in the format for that. Everything
-        // lands on the currently selected signer for the agent to reassign.
-        signerId: selectedSignerId,
-        autoFillSource: null,
-      }));
-      return [...prev, ...imported];
-    });
-    setImportSummary(
-      `Added ${detected.length} ${detected.length === 1 ? "field" : "fields"}. Check each one's signer and type before saving.`,
-    );
-  }, [detectState.detected, selectedSignerId]);
+  }
 
   useEffect(() => {
     if (signers[0] && !signers.some((s) => s.id === selectedSignerId)) {

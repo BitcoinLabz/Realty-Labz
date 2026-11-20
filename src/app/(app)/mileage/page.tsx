@@ -6,12 +6,13 @@ import { formatMileageRate } from "@/lib/mileage-rate";
 import { getMileageMonthlySeries } from "@/lib/finance-data";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
+import { PageHeader } from "@/components/ui/page-header";
 import { MileageTrendChart } from "@/components/charts/mileage-trend-chart";
 import { MileageForm } from "./mileage-form";
 import { MileageList } from "./mileage-list";
 import type { MileageLogDTO } from "./types";
 
-export default async function FinancesMileagePage({
+export default async function MileagePage({
   searchParams,
 }: {
   searchParams: Promise<{ year?: string }>;
@@ -57,29 +58,27 @@ export default async function FinancesMileagePage({
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted">
-          {businessMiles.toLocaleString()} business miles in {year}
-          {ratesUsed.length > 0
-            ? ` · IRS rate ${ratesUsed.map(formatMileageRate).join(" and ")}`
-            : ""}
-        </p>
-        <YearSelect year={year} options={yearOptions} basePath="/finances/mileage" />
-      </div>
+      <PageHeader
+        title="Mileage"
+        description={`${businessMiles.toLocaleString()} business miles in ${year}${
+          ratesUsed.length > 0 ? ` · IRS rate ${ratesUsed.map(formatMileageRate).join(" and ")}` : ""
+        }`}
+        action={<YearSelect year={year} options={yearOptions} basePath="/mileage" />}
+      />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <SummaryCard label="Business miles" value={businessMiles.toLocaleString()} />
         <SummaryCard label="Mileage deduction" value={formatCurrency(mileageDeduction)} />
       </div>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Log a trip</h2>
         <div className="max-w-md">
           <MileageForm />
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Deduction by month</h2>
         {hasData ? (
           <MileageTrendChart data={monthlySeries} />
@@ -88,11 +87,11 @@ export default async function FinancesMileagePage({
         )}
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-base font-semibold text-foreground">Recent trips</h2>
           <Link
-            href={`/finances/mileage/history?year=${year}`}
+            href={`/mileage/history?year=${year}`}
             className="text-sm font-medium text-accent hover:opacity-80"
           >
             View all trips →

@@ -1,7 +1,10 @@
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { isManager, isOversightRole } from "@/lib/authorization";
 import { getTeamUpcomingDeadlines, getUpcomingDeadlines } from "@/lib/finance-data";
 import { Sidebar } from "@/components/sidebar";
+import { MobileNav } from "@/components/mobile-nav";
+import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { autoLogDueRecurringTransactions } from "@/app/actions/recurring-transactions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -47,20 +50,43 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
+  let showVerifyBanner = false;
+  if (session?.user) {
+    try {
+      const account = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { emailVerifiedAt: true },
+      });
+      showVerifyBanner = !!account && !account.emailVerifiedAt;
+    } catch (err) {
+      console.error("[app-layout] email verification lookup failed", err);
+    }
+  }
+
   return (
-    <div className="flex min-h-screen bg-surface">
+    <div className="flex min-h-dvh bg-surface">
       <Sidebar
         userName={session?.user?.name}
         showTeamLink={showTeamLink}
         oversight={oversight}
         upcomingDeadlines={upcomingDeadlines}
       />
-      {/* min-w-0 lets wide content scroll inside the page instead of pushing
-          past the screen; pl-[4.5rem] is the 56px phone icon rail (sidebar.tsx)
-          plus a 16px gutter. */}
-      <main className="min-w-0 flex-1 py-8 pl-[4.5rem] pr-4 sm:pr-6 md:px-10 md:py-10">
-        <div className="mx-auto max-w-5xl">{children}</div>
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <MobileNav
+          oversight={oversight}
+          showTeamLink={showTeamLink}
+          userName={session?.user?.name}
+          upcomingDeadlines={upcomingDeadlines}
+          homeHref={oversight ? "/team" : "/dashboard"}
+        />
+        {/* Bottom padding clears the phone tab bar and the home-indicator inset. */}
+        <main className="min-w-0 flex-1 px-4 pb-[calc(4.75rem+env(safe-area-inset-bottom))] pt-6 md:px-10 md:py-10 md:pb-10">
+          <div className="mx-auto max-w-5xl">
+            {showVerifyBanner ? <VerifyEmailBanner /> : null}
+            {children}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { passwordChangeSchema, profileSchema } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
+import { invalidatePasswordResetTokens } from "@/lib/account-access";
 
 export async function updateProfileAction(
   _prevState: FormState,
@@ -89,6 +90,7 @@ export async function changePasswordAction(
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash } });
+  await invalidatePasswordResetTokens(user.id);
 
   return {};
 }

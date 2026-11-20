@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { deleteMileageLogAction } from "@/app/actions/mileage";
 import { formatCurrency } from "@/lib/format";
+import { RowMenu } from "@/components/ui/row-menu";
 import { formatMileageRate } from "@/lib/mileage-rate";
 import { MileageForm } from "./mileage-form";
 import type { MileageLogDTO } from "./types";
@@ -37,10 +38,10 @@ export function MileageList({ logs }: { logs: MileageLogDTO[] }) {
         ) : (
           <div
             key={log.id}
-            className="flex items-center justify-between gap-4 rounded-2xl border border-border bg-background px-6 py-4"
+            className="flex items-center gap-3 rounded-2xl border border-border bg-background py-3 pl-4 pr-1 sm:pl-6"
           >
-            <div className="flex flex-col">
-              <span className="text-sm font-medium text-foreground">
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="line-clamp-2 break-words text-sm font-medium text-foreground">
                 {log.note || (log.isBusiness ? "Business trip" : "Personal trip")}
               </span>
               <span className="text-sm text-muted">
@@ -61,33 +62,26 @@ export function MileageList({ logs }: { logs: MileageLogDTO[] }) {
                 </span>
               ) : null}
             </div>
-            <div className="flex items-center gap-4">
-              {log.isBusiness ? (
-                <span className="text-sm font-semibold text-accent">
-                  +{formatCurrency(log.deduction)}
-                </span>
-              ) : (
-                <span className="text-sm text-muted">Not deductible</span>
-              )}
-              <button
-                type="button"
-                onClick={() => setEditingId(log.id)}
-                className="text-sm font-medium text-muted hover:text-foreground"
-              >
-                Edit
-              </button>
-              <form
-                action={deleteMileageLogAction}
-                onSubmit={(e) => {
-                  if (!confirm("Delete this trip?")) e.preventDefault();
-                }}
-              >
-                <input type="hidden" name="id" value={log.id} />
-                <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                  Delete
-                </button>
-              </form>
-            </div>
+            {log.isBusiness ? (
+              <span className="shrink-0 text-sm font-semibold tabular-nums text-accent">
+                +{formatCurrency(log.deduction)}
+              </span>
+            ) : (
+              <span className="shrink-0 text-right text-xs text-muted sm:text-sm">Not deductible</span>
+            )}
+            <RowMenu
+              label={`Actions for ${log.note || "this trip"}`}
+              items={[
+                { label: "Edit", onSelect: () => setEditingId(log.id) },
+                {
+                  label: "Delete",
+                  destructive: true,
+                  confirm: "Delete this trip?",
+                  action: deleteMileageLogAction,
+                  fields: { id: log.id },
+                },
+              ]}
+            />
           </div>
         ),
       )}

@@ -3,7 +3,9 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { calculateNetCommission, getHomeOfficeDeduction } from "@/lib/finance-data";
+import { calculateNetCommission } from "@/lib/finance-data";
+import { getHomeOfficeData } from "@/lib/home-office-data";
+import { APP_URL } from "@/lib/app-url";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import { isRateLimited } from "@/lib/rate-limit";
 import {
@@ -102,20 +104,25 @@ export async function GET(request: NextRequest) {
     })
     .filter((cat) => cat.items.length > 0);
 
-  // The computed Simplified-method deduction (see getHomeOfficeDeduction) is
-  // a single number, not individual transactions — added as its own
-  // one-line synthetic category, distinct from any real HOME_OFFICE-tagged
-  // rows above, so nothing gets double-counted or merged incorrectly.
-  const homeOfficeDeduction = getHomeOfficeDeduction(user?.homeOfficeSqFt);
-  if (homeOfficeDeduction > 0) {
+  // The computed home office deduction (src/lib/home-office.ts) is one
+  // number, not individual transactions -- added as its own synthetic
+  // category, distinct from any old HOME_OFFICE-tagged rows above, so nothing
+  // is double-counted. The full workings are in the separate Home Office
+  // report (/api/reports/home-office), which this line points to.
+  const homeOffice = (await getHomeOfficeData(session.user.id, year)).current;
+  if (homeOffice && homeOffice.allowed > 0) {
+    const s = homeOffice.simplified;
     expenseCategories.push({
-      label: "Home Office (Simplified method)",
-      total: homeOfficeDeduction,
+      label: `Home Office (${homeOffice.method === "REGULAR" ? "Regular method, Form 8829" : "Simplified method"})`,
+      total: homeOffice.allowed,
       items: [
         {
           date: `${year}-12-31`,
-          description: `${Math.min(user?.homeOfficeSqFt ?? 0, 300)} sq ft × $5/sq ft`,
-          amount: homeOfficeDeduction,
+          description:
+            homeOffice.method === "REGULAR"
+              ? "Allowed after the income limit; full workings in the Home Office report"
+              : `${s.sqFtUsed} sq ft × $${s.ratePerSqFt}/sq ft × ${s.monthsInUse}/12 months; see the Home Office report`,
+          amount: homeOffice.allowed,
         },
       ],
     });
@@ -166,6 +173,7 @@ export async function GET(request: NextRequest) {
     expenseCategories,
     mileageTrips,
     closedDeals,
+    homeOfficeReportUrl: homeOffice && homeOffice.allowed > 0 ? `${APP_URL}/api/reports/home-office?year=${year}` : null,
     generatedAt: new Date().toLocaleDateString("en-US", {
       month: "long",
       day: "numeric",

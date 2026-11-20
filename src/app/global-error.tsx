@@ -22,16 +22,20 @@ export default function GlobalError({
   return (
     <html lang="en">
       <body>
-        <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 py-24 text-center">
+        <div
+          className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 py-24 text-center"
+          style={{ background: "#ffffff", color: "#16192e", fontFamily: "system-ui, sans-serif" }}
+        >
           <h1 className="text-xl font-semibold">Something went wrong</h1>
-          <p className="max-w-sm text-sm text-gray-500">
-            An unexpected error occurred. You can try again, or head back to the homepage.
+          <p className="max-w-sm text-sm" style={{ color: "#5c6178" }}>
+            Something unexpected happened. Try again, or go back to the homepage.
           </p>
-          <div className="flex gap-3">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
             <button
               type="button"
               onClick={() => reset()}
-              className="rounded-full bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
+              className="inline-flex min-h-11 items-center justify-center rounded-full px-5 py-2.5 text-sm font-medium text-white"
+              style={{ background: "#0b6fb8" }}
             >
               Try again
             </button>
@@ -40,7 +44,8 @@ export default function GlobalError({
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
-              className="rounded-full border border-gray-300 px-5 py-2.5 text-sm font-medium hover:bg-gray-50"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border px-5 py-2.5 text-sm font-medium"
+              style={{ borderColor: "#e4e6ee", color: "#16192e" }}
             >
               Back to homepage
             </a>

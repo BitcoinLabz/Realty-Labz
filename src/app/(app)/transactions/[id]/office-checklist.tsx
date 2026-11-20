@@ -11,6 +11,7 @@ import {
 } from "@/app/actions/office-tasks";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { RowMenu } from "@/components/ui/row-menu";
 import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { isDeadlineOverdue } from "@/lib/deadline-reminder-schedule";
@@ -96,19 +97,6 @@ function EditTaskRow({ task, dealId, onClose }: { task: OfficeTaskDTO; dealId: s
           </Button>
         </div>
       </form>
-      <form
-        action={deleteOfficeTaskAction}
-        onSubmit={(e) => {
-          if (!confirm(`Delete "${task.label}"?`)) e.preventDefault();
-        }}
-        className="border-t border-border pt-3"
-      >
-        <input type="hidden" name="id" value={task.id} />
-        <input type="hidden" name="dealId" value={dealId} />
-        <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-          Delete this task
-        </button>
-      </form>
     </div>
   );
 }
@@ -169,9 +157,19 @@ function TaskRow({
         </div>
       </div>
       {canEdit ? (
-        <button type="button" onClick={onEdit} className="shrink-0 text-sm font-medium text-muted hover:text-foreground">
-          Edit
-        </button>
+        <RowMenu
+          label={`Actions for ${task.label}`}
+          items={[
+            { label: "Edit", onSelect: onEdit },
+            {
+              label: "Delete",
+              destructive: true,
+              confirm: `Delete "${task.label}"?`,
+              action: deleteOfficeTaskAction,
+              fields: { id: task.id, dealId },
+            },
+          ]}
+        />
       ) : null}
     </div>
   );

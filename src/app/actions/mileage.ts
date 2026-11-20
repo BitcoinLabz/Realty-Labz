@@ -50,7 +50,7 @@ export async function createMileageLogAction(
     },
   });
 
-  revalidatePath("/finances/mileage");
+  revalidatePath("/mileage");
   revalidatePath("/finances");
   revalidatePath("/dashboard");
   return {};
@@ -87,7 +87,7 @@ export async function updateMileageLogAction(
 
   if (result.count === 0) return { error: "Mileage log not found" };
 
-  revalidatePath("/finances/mileage");
+  revalidatePath("/mileage");
   revalidatePath("/finances");
   revalidatePath("/dashboard");
   return {};
@@ -102,7 +102,7 @@ export async function deleteMileageLogAction(formData: FormData) {
 
   await prisma.mileageLog.deleteMany({ where: { id, userId: session.user.id } });
 
-  revalidatePath("/finances/mileage");
+  revalidatePath("/mileage");
   revalidatePath("/finances");
   revalidatePath("/dashboard");
 }

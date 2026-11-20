@@ -67,7 +67,7 @@ export default async function FormTemplateDetailPage({
       </div>
 
       {!hasSubmissions && canManage ? (
-        <section className="rounded-2xl border border-border bg-background p-8">
+        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
           <h2 className="mb-4 text-base font-semibold text-foreground">Signers</h2>
           <div className="max-w-sm">
             <SignerManager templateId={template.id} signers={signerDtos} />
@@ -75,7 +75,7 @@ export default async function FormTemplateDetailPage({
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-4 text-base font-semibold text-foreground">Fields</h2>
         {editable ? (
           <FieldDesigner

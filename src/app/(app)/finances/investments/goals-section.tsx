@@ -86,7 +86,7 @@ function GoalForm({ assets }: { assets: AssetOption[] }) {
 
 export function GoalsSection({ goals, assets }: { goals: FinancialGoalDTO[]; assets: AssetOption[] }) {
   return (
-    <section className="rounded-2xl border border-border bg-background p-8">
+    <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
       <h2 className="mb-1 text-base font-semibold text-foreground">Goals</h2>
       <p className="mb-6 text-sm text-muted">
         Savings targets or debt payoff goals — optionally tracked against one of your assets above.

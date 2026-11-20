@@ -6,23 +6,17 @@ import { buildAmortizationSchedule, scheduleAtDate } from "@/lib/loan-calculatio
 import { CATEGORY_LABELS } from "@/lib/transaction-categories";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import { calculateNetCommission } from "@/lib/commission";
+import { upcomingQuarterlyPayment } from "@/lib/estimated-tax";
+import { getHomeOfficeDeductionForYear } from "@/lib/home-office-data";
 
 // Re-exported so existing server-side importers keep working; the definitions
 // live in the prisma-free commission module so client components can use them.
 export { calculateCommissionAmount, calculateNetCommission } from "@/lib/commission";
+export { getBusinessNetByYear } from "@/lib/business-net";
 
 const MONTH_LABELS = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 ];
-
-// IRS Simplified home-office-deduction method: $5 per sq ft, capped at 300 sq
-// ft ($1,500/yr max). Deliberately not the Actual-Expense method (tracking
-// home vs. office sq ft % applied to real utility/insurance/repair costs) —
-// the Simplified method is what most self-employed filers actually use, and
-// needs only the one input already on User.homeOfficeSqFt.
-export function getHomeOfficeDeduction(homeOfficeSqFt: number | null | undefined): number {
-  return Math.min(homeOfficeSqFt ?? 0, 300) * 5;
-}
 
 export const ASSET_TYPE_LABELS: Record<string, string> = {
   STOCKS: "Stocks",
@@ -78,7 +72,7 @@ export async function getBusinessExpenseBreakdown(
   const start = new Date(Date.UTC(year, 0, 1));
   const end = new Date(Date.UTC(year + 1, 0, 1));
 
-  const [expenses, mileageAgg, user] = await Promise.all([
+  const [expenses, mileageAgg, homeOfficeDeduction] = await Promise.all([
     prisma.transaction.groupBy({
       by: ["category"],
       where: { userId, scope: "BUSINESS", type: "EXPENSE", date: { gte: start, lt: end } },
@@ -88,7 +82,8 @@ export async function getBusinessExpenseBreakdown(
       where: { userId, isBusiness: true, date: { gte: start, lt: end } },
       _sum: { deduction: true },
     }),
-    prisma.user.findUnique({ where: { id: userId }, select: { homeOfficeSqFt: true } }),
+    // Simplified or regular, after the income limit -- see src/lib/home-office.ts.
+    getHomeOfficeDeductionForYear(userId, year),
   ]);
 
   const points: BreakdownPoint[] = expenses
@@ -98,7 +93,6 @@ export async function getBusinessExpenseBreakdown(
       value: Number(e._sum.amount ?? 0),
     }));
 
-  const homeOfficeDeduction = getHomeOfficeDeduction(user?.homeOfficeSqFt);
   if (homeOfficeDeduction > 0) points.push({ label: "Home office", value: homeOfficeDeduction });
 
   const mileageDeduction = Number(mileageAgg._sum.deduction ?? 0);
@@ -425,7 +419,7 @@ async function upcomingDeadlinesFor(
 
 export type AttentionItem = {
   id: string;
-  kind: "overdue" | "missingDocs" | "awaitingSignature";
+  kind: "overdue" | "missingDocs" | "awaitingSignature" | "taxDue" | "paymentFailed";
   title: string;
   detail: string;
   href: string;
@@ -447,7 +441,13 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
   const now = new Date();
   const staleAfter = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const [overdue, missingDocs, awaitingSignature] = await Promise.all([
+  // Michigan's calendar day, as a local-midnight date for the tax calendar.
+  const miToday = todayInReminderZone(now);
+  const taxPayment = upcomingQuarterlyPayment(
+    new Date(miToday.getUTCFullYear(), miToday.getUTCMonth(), miToday.getUTCDate()),
+  );
+
+  const [overdue, missingDocs, awaitingSignature, earnedInTaxYear, billing] = await Promise.all([
     prisma.dealDeadline.findMany({
       // Before today in Michigan, not before this instant: a deadline due
       // today hasn't been missed yet (see isDeadlineOverdue).
@@ -476,12 +476,42 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
       },
       orderBy: { createdAt: "asc" },
     }),
+    // Only remind someone who actually earned business income that year --
+    // a brand-new account with nothing logged owes no estimate.
+    taxPayment
+      ? prisma.transaction.count({
+          where: {
+            userId,
+            scope: "BUSINESS",
+            type: "INCOME",
+            date: {
+              gte: new Date(Date.UTC(taxPayment.taxYear, 0, 1)),
+              lt: new Date(Date.UTC(taxPayment.taxYear + 1, 0, 1)),
+            },
+          },
+        })
+      : Promise.resolve(0),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscriptionStatus: true, compedPro: true },
+    }),
   ]);
 
   const daysAgo = (date: Date) =>
     Math.max(1, Math.round((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000)));
 
   return [
+    ...(billing?.subscriptionStatus === "past_due" && !billing.compedPro
+      ? [
+          {
+            id: "billing-past-due",
+            kind: "paymentFailed" as const,
+            title: "Pro payment didn't go through",
+            detail: "Update your card in Settings. Pro stays on while the payment is retried.",
+            href: "/account#plan",
+          },
+        ]
+      : []),
     ...overdue.map((d) => ({
       id: `overdue-${d.id}`,
       kind: "overdue" as const,
@@ -505,6 +535,21 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
       detail: `${s.client?.name ?? "Sent"} · ${daysAgo(s.createdAt)} days ago`,
       href: s.clientId ? `/clients/${s.clientId}` : "/transactions",
     })),
+    ...(taxPayment && earnedInTaxYear > 0
+      ? [
+          {
+            id: `tax-${taxPayment.taxYear}-${taxPayment.label}`,
+            kind: "taxDue" as const,
+            title: `${taxPayment.label} estimated tax payment due`,
+            detail: `${taxPayment.taxYear} taxes · ${
+              taxPayment.daysAway === 0
+                ? "due today"
+                : `due in ${taxPayment.daysAway} day${taxPayment.daysAway === 1 ? "" : "s"}`
+            }`,
+            href: "/finances/taxes",
+          },
+        ]
+      : []),
   ];
 }
 

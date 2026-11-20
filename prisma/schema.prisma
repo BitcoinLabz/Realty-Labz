@@ -58,6 +58,11 @@ model User {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String?
+  // Null until the address is confirmed. The migration backfills every
+  // account that already existed, so nobody is nagged or locked out for an
+  // email they typed before this shipped. New signups leave it null.
+  // Google sign-in sets it, because Google already verified the address.
+  emailVerifiedAt DateTime?
   name         String?
   role         Role     @default(AGENT)
   createdAt    DateTime @default(now())
@@ -66,9 +71,9 @@ model User {
   team   Team?   @relation(fields: [teamId], references: [id])
   teamId String?
 
-  // IRS Simplified home-office-deduction input (2026-07-24) -- annual
-  // deduction = min(homeOfficeSqFt, 300) * $5, computed in
-  // src/lib/finance-data.ts, not stored. Null means no deduction shown.
+  // DEPRECATED 2026-11-19 -- replaced by HomeOffice.officeSqFt (copied
+  // across by the home_office migration). No longer read anywhere; kept
+  // only so that migration isn't destructive. Safe to drop later.
   homeOfficeSqFt Int?
 
   // The user's own single "federal + state combined" income tax rate guess
@@ -77,6 +82,13 @@ model User {
   // real bracket calculation; see the "estimate, not tax advice" disclaimer
   // in the UI.
   estimatedIncomeTaxRatePercent Decimal? @db.Decimal(5, 2)
+
+  // Michigan city income tax (2026-11-19): the city the agent lives in and
+  // the city their office is in, as codes from MICHIGAN_TAX_CITIES in
+  // src/lib/tax-rules-data.ts. Null means "not a city with an income tax."
+  // Resident rate applies to the first, nonresident rate to the second.
+  residenceCity String?
+  workCity      String?
 
   // Michigan real estate salesperson license number (2026-08-27). Nullable
   // in the database on purpose -- every account that existed before this was
@@ -125,6 +137,10 @@ model User {
   subscriptionStatus   String?
   currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean   @default(false)
+  // When the Stripe event last written here was created. A retried or
+  // out-of-order webhook older than this is ignored (see the webhook route).
+  // Null until the first event lands, so existing accounts are unchanged.
+  stripeEventAt        DateTime?
   // Pro without paying, set by the founder for testers and partners.
   compedPro            Boolean   @default(false)
   // Whether the account has been through "Choose your plan" (2026-10-08).
@@ -135,6 +151,10 @@ model User {
   clients            Client[]
   transactions       Transaction[]
   mileageLogs        MileageLog[]
+  homeOffice         HomeOffice?
+  extensionsApplied  DealExtension[]                @relation("ExtensionsApplied")
+  homeOfficeExpenses HomeOfficeExpense[]
+  homeOfficeYears    HomeOfficeYear[]
   documents          Document[]
   sentInvites        TeamInvite[]
   deals              Deal[]
@@ -148,6 +168,8 @@ model User {
   financialGoals     FinancialGoal[]
   recurringTemplates RecurringTransactionTemplate[]
   referralPartners   ReferralPartner[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   // Backs every teamOrOwnFilter()/teamSharedFilter() manager-view query
   // (src/lib/authorization.ts), which joins through user: { teamId } —
@@ -357,7 +379,10 @@ model Document {
   // Set when this Document is the flattened, signed output of a
   // FormSubmission (see src/lib/pdf-finalize.ts) — reverse side of
   // FormSubmission.completedDocumentId, no FK column on this side.
-  formSubmission FormSubmission?
+  formSubmission    FormSubmission?
+  // Set when this file is the receipt for a home office expense; such files
+  // stay out of the "unfiled" lists (they're filed -- under Home Office).
+  homeOfficeExpense HomeOfficeExpense?
 
   @@index([userId])
   @@index([clientId])
@@ -433,12 +458,19 @@ model Deal {
   teamSplitPercent       Decimal?   @db.Decimal(5, 2)
   otherDeductionsPercent Decimal?   @db.Decimal(5, 2)
   closingDate            DateTime?
+  // When the contract became binding (2026-11-19). Deadlines written as
+  // "N days after acceptance" are counted from this; changing it
+  // recalculates them (src/lib/deadline-rules.ts).
+  acceptanceDate         DateTime?  @db.Date
   notes                  String?
   createdAt              DateTime   @default(now())
   updatedAt              DateTime   @updatedAt
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
+
+  extensionOptions DealExtensionOption[]
+  extensions       DealExtension[]
 
   client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
   clientId String?
@@ -685,11 +717,111 @@ model DealDeadline {
   sourceQuote             String?
   clientNote              String?
 
+  // The deadline as a rule (2026-11-19): base event + number of days + day
+  // type. All null for a fixed date typed in by hand. dueDate stays the
+  // stored result -- every reader keeps working -- and is recomputed by
+  // recalculateDealDeadlines whenever an input changes.
+  baseEvent      DeadlineBaseEvent?
+  baseDeadline   DealDeadline?      @relation("DeadlineBase", fields: [baseDeadlineId], references: [id], onDelete: SetNull)
+  baseDeadlineId String?
+  dependents     DealDeadline[]     @relation("DeadlineBase")
+  offsetDays     Int?
+  dayType        DeadlineDayType    @default(CALENDAR)
+  // Calendar days added by extensions (rule deadlines; fixed ones move dueDate).
+  extensionDays  Int                @default(0)
+  category       DeadlineCategory?
+  // Earnest money deposits: how much is due on this date.
+  amount         Decimal?           @db.Decimal(12, 2)
+
   deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
   dealId String
 
   @@index([dealId])
   @@map("deal_deadlines")
+}
+
+enum DeadlineBaseEvent {
+  ACCEPTANCE
+  CLOSING
+  DEADLINE
+}
+
+enum DeadlineDayType {
+  CALENDAR
+  BUSINESS
+}
+
+enum DeadlineCategory {
+  INSPECTION
+  FINANCING
+  APPRAISAL
+  TITLE
+  SALE_OF_BUYERS_HOME
+  DUE_DILIGENCE
+  EARNEST_MONEY
+  CLOSING
+  OTHER
+}
+
+// An optional extension the contract allows (2026-11-19), e.g. "Buyer may
+// extend the due diligence period by 60 days by depositing an additional
+// $5,000". Shown on the transaction as a one-tap button.
+model DealExtensionOption {
+  id                String          @id @default(cuid())
+  label             String
+  days              Int
+  dayType           DeadlineDayType @default(CALENDAR)
+  additionalDeposit Decimal?        @db.Decimal(12, 2)
+  cost              Decimal?        @db.Decimal(12, 2)
+  exercisableBy     String?
+  // When notice must be given to use it, in the contract's words and as a date.
+  noticeText        String?
+  noticeDate        DateTime?       @db.Date
+  // Deadline ids it moves. Postgres array: no join table for a short list.
+  targetDeadlineIds String[]
+  sourceQuote       String?
+  createdAt         DateTime        @default(now())
+
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId String
+
+  extensions DealExtension[]
+
+  @@index([dealId])
+  @@map("deal_extension_options")
+}
+
+// An extension or amendment actually applied (2026-11-19): the exact shift
+// given to each deadline, so undo reverses precisely what was done, plus who
+// did it and when. Undo stamps undoneAt rather than deleting the row, so the
+// history stays.
+model DealExtension {
+  id                String          @id @default(cuid())
+  label             String
+  days              Int
+  dayType           DeadlineDayType @default(CALENDAR)
+  // { [deadlineId]: calendar days } for the deadlines moved directly.
+  shifts            Json
+  additionalDeposit Decimal?        @db.Decimal(12, 2)
+  // The deposit deadline this created, removed again on undo.
+  depositDeadlineId String?
+  note              String?
+  appliedByName     String
+  appliedAt         DateTime        @default(now())
+  undoneAt          DateTime?
+  undoneByName      String?
+
+  appliedBy   User   @relation("ExtensionsApplied", fields: [appliedById], references: [id], onDelete: Cascade)
+  appliedById String
+
+  deal   Deal   @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  dealId String
+
+  option   DealExtensionOption? @relation(fields: [optionId], references: [id], onDelete: SetNull)
+  optionId String?
+
+  @@index([dealId])
+  @@map("deal_extensions")
 }
 
 // A reusable, named set of contingency deadlines an agent applies to a
@@ -1230,6 +1362,169 @@ model MileageRate {
 
   @@unique([state, effectiveFrom])
   @@map("mileage_rates")
+}
+
+// ---------------------------------------------------------------------------
+// Home office (2026-11-19). The calculation lives in src/lib/home-office.ts
+// (pure, unit-tested); these tables hold only what the agent enters plus a
+// per-year snapshot. Personal, userId-only like Asset/Loan: never
+// team-visible, no sharing setting.
+// ---------------------------------------------------------------------------
+
+enum HomeOwnership {
+  OWN
+  RENT
+}
+
+enum HomeOfficeMethod {
+  SIMPLIFIED
+  REGULAR
+}
+
+enum HomeOfficeExpenseKind {
+  MORTGAGE_INTEREST
+  REAL_ESTATE_TAX
+  INSURANCE
+  UTILITIES
+  RENT
+  REPAIRS
+  HOA
+  OTHER
+}
+
+enum HomeOfficeExpenseScope {
+  DIRECT
+  INDIRECT
+}
+
+enum HomeOfficeExpensePeriod {
+  MONTH
+  YEAR
+}
+
+model HomeOffice {
+  id                     String        @id @default(cuid())
+  // Length x width when entered (officeSqFt is then their product), or just
+  // officeSqFt for an irregular room. Migrated accounts have only officeSqFt,
+  // copied from the old User.homeOfficeSqFt.
+  officeLengthFt         Decimal?      @db.Decimal(7, 2)
+  officeWidthFt          Decimal?      @db.Decimal(7, 2)
+  officeSqFt             Int?
+  homeSqFt               Int?
+  // Null means "in use all year" (how migrated accounts behaved before).
+  businessUseStart       DateTime?     @db.Date
+  ownership              HomeOwnership @default(OWN)
+  purchasePrice          Decimal?      @db.Decimal(12, 2)
+  landValue              Decimal?      @db.Decimal(12, 2)
+  improvementsCost       Decimal?      @db.Decimal(12, 2)
+  fairMarketValueAtStart Decimal?      @db.Decimal(12, 2)
+  // Eligibility checklist answers; null means "not answered yet".
+  regularUse             Boolean?
+  exclusiveUse           Boolean?
+  principalPlace         Boolean?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @unique
+
+  @@map("home_offices")
+}
+
+model HomeOfficeExpense {
+  id          String                  @id @default(cuid())
+  kind        HomeOfficeExpenseKind
+  scope       HomeOfficeExpenseScope  @default(INDIRECT)
+  period      HomeOfficeExpensePeriod @default(MONTH)
+  // The month's 1st for a monthly bill, Jan 1 for a full-year amount.
+  date        DateTime                @db.Date
+  amount      Decimal                 @db.Decimal(12, 2)
+  description String?
+  createdAt   DateTime                @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  receipt   Document? @relation(fields: [receiptId], references: [id], onDelete: SetNull)
+  receiptId String?   @unique
+
+  @@index([userId, date])
+  @@map("home_office_expenses")
+}
+
+// One row per tax year: the method the agent chose (null = follow the
+// recommendation) and a snapshot of what was computed -- the running
+// carryover balance. The numbers are always recomputed from the records on
+// view, so editing a past expense flows forward; the snapshot is what the
+// agent and their accountant saw last.
+model HomeOfficeYear {
+  id                       String            @id @default(cuid())
+  year                     Int
+  method                   HomeOfficeMethod?
+  appliedMethod            HomeOfficeMethod?
+  allowedDeduction         Decimal?          @db.Decimal(12, 2)
+  operatingCarryoverIn     Decimal?          @db.Decimal(12, 2)
+  depreciationCarryoverIn  Decimal?          @db.Decimal(12, 2)
+  operatingCarryoverOut    Decimal?          @db.Decimal(12, 2)
+  depreciationCarryoverOut Decimal?          @db.Decimal(12, 2)
+  depreciationTaken        Decimal?          @db.Decimal(12, 2)
+  computedAt               DateTime?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+
+  @@unique([userId, year])
+  @@map("home_office_years")
+}
+
+// Every tax rate, limit and threshold, versioned by jurisdiction and the
+// date it took effect (2026-11-19). The canonical list, with sources and the
+// yearly human-verification note, is src/lib/tax-rules-data.ts; lookups go
+// through the pure TaxRules class in src/lib/tax-rules.ts. A yearly change
+// is a NEW row -- never edit an old one, or past years change too.
+model TaxRule {
+  id            String   @id @default(cuid())
+  // "US", "MI", or "MI-<CITY>"
+  jurisdiction  String
+  key           String
+  effectiveFrom DateTime @db.Date
+  value         Decimal  @db.Decimal(14, 6)
+  source        String?
+
+  @@unique([jurisdiction, key, effectiveFrom])
+  @@map("tax_rules")
+}
+
+// Single-use password reset (2026-11-20). tokenHash is SHA-256 of the
+// secret in the email link. usedAt is set when the link is consumed and
+// when the password changes any other way, so an old email stops working.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// Same shape as a password reset, for "confirm this is your email" on a
+// new signup. Clicking the link sets User.emailVerifiedAt. Existing
+// accounts are already verified by the migration that adds that column.
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("email_verification_tokens")
 }
 
 // Basic rate limiting (2026-07-30) -- one row per attempt, keyed by e.g.

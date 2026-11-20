@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -17,10 +17,26 @@ const geistMono = Geist_Mono({
 
 const title = "Realty Labz";
 const description =
-  "Transactions, contract deadlines, clients, and full personal + business finances for real estate agents and their teams.";
+  "Transactions, contract deadlines, e-sign, and Michigan income, mileage, and home-office records for real estate agents.";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d17" },
+  ],
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.realtylabz.com"),
+  applicationName: "Realty Labz",
+  appleWebApp: {
+    capable: true,
+    title: "Realty Labz",
+    statusBarStyle: "default",
+  },
   title: {
     default: title,
     template: `%s — ${title}`,

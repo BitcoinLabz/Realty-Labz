@@ -25,6 +25,8 @@ export function ClientList({ clients }: { clients: ClientDTO[] }) {
         icon={Users}
         title="No clients yet"
         description="Add the people you're working with. Their transactions, documents, and deadlines all live on their page."
+        actionLabel="Add a client"
+        actionHref="#add-client"
       />
     );
   }

@@ -35,7 +35,7 @@ export default async function MileageHistoryPage({
     <div className="flex flex-col gap-6">
       <div>
         <Link
-          href="/finances/mileage"
+          href="/mileage"
           className="mb-2 inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-foreground"
         >
           ← Back to Mileage

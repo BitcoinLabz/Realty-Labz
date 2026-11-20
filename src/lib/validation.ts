@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MICHIGAN_TAX_CITIES } from "@/lib/tax-rules-data";
 
 // Michigan real estate license numbers are 10 digits, but this stays loose
 // on format: the app is Michigan-first, not Michigan-only (see CLAUDE.md),
@@ -48,6 +49,20 @@ export const profileSchema = z.object({
   // so nobody gets trapped behind a field they mistyped.
   licenseNumber: licenseNumber.optional().or(z.literal("")),
 });
+
+export const emailOnlySchema = z.object({
+  email: z.email("Enter a valid email address").trim().toLowerCase(),
+});
+
+export const newPasswordSchema = z
+  .object({
+    newPassword: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export const passwordChangeSchema = z
   .object({
@@ -325,9 +340,11 @@ export const recurringTransactionSchema = z.object({
   businessUsePercent: z.coerce.number().min(0).max(100, "Enter a percent, e.g. 60").optional(),
 });
 
-export const homeOfficeSettingsSchema = z.object({
-  homeOfficeSqFt: z.coerce.number().int().nonnegative("Must be 0 or more").max(10000).optional(),
-});
+// City codes come from the tax rules data, so a new city is one data row.
+const taxCityCode = z
+  .string()
+  .refine((code) => MICHIGAN_TAX_CITIES.some((c) => c.code === code), "Pick a city from the list")
+  .optional();
 
 export const taxSettingsSchema = z.object({
   estimatedIncomeTaxRatePercent: z.coerce
@@ -335,6 +352,8 @@ export const taxSettingsSchema = z.object({
     .min(0)
     .max(100, "Enter a percent, e.g. 15")
     .optional(),
+  residenceCity: taxCityCode,
+  workCity: taxCityCode,
 });
 
 // Public, unauthenticated -- the Support page's contact form. A separate
@@ -358,4 +377,43 @@ export const csvImportRowSchema = z.object({
   type: z.enum(["INCOME", "EXPENSE"]),
   scope: z.enum(["BUSINESS", "PERSONAL"]),
   category: z.enum(SELECTABLE_TRANSACTION_CATEGORIES).optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Home office (2026-11-19)
+// ---------------------------------------------------------------------------
+
+const optionalMoney = z.coerce.number().min(0, "Must be 0 or more").max(100_000_000).optional();
+const optionalFeet = z.coerce.number().positive("Must be more than 0").max(1000).optional();
+
+export const homeOfficeSetupSchema = z
+  .object({
+    officeLengthFt: optionalFeet,
+    officeWidthFt: optionalFeet,
+    officeSqFt: z.coerce.number().int().positive("Must be more than 0").max(100_000).optional(),
+    homeSqFt: z.coerce.number().int().positive("Must be more than 0").max(100_000).optional(),
+    businessUseStart: z.iso.date("Pick a date").optional(),
+    ownership: z.enum(["OWN", "RENT"]),
+    purchasePrice: optionalMoney,
+    landValue: optionalMoney,
+    improvementsCost: optionalMoney,
+    fairMarketValueAtStart: optionalMoney,
+  })
+  .refine((v) => !v.homeSqFt || !v.officeSqFt || v.officeSqFt <= v.homeSqFt, {
+    path: ["officeSqFt"],
+    message: "The office can't be bigger than the home",
+  })
+  .refine((v) => v.landValue == null || v.purchasePrice == null || v.landValue < v.purchasePrice, {
+    path: ["landValue"],
+    message: "Land is usually a part of the price, not more than it",
+  });
+
+export const homeOfficeExpenseSchema = z.object({
+  kind: z.enum(["MORTGAGE_INTEREST", "REAL_ESTATE_TAX", "INSURANCE", "UTILITIES", "RENT", "REPAIRS", "HOA", "OTHER"]),
+  scope: z.enum(["DIRECT", "INDIRECT"]),
+  period: z.enum(["MONTH", "YEAR"]),
+  month: z.string().regex(/^\d{4}-\d{2}$/, "Pick a month").optional(),
+  year: z.coerce.number().int().min(2000).max(2100).optional(),
+  amount: z.coerce.number().positive("Enter an amount").max(10_000_000),
+  description: z.string().trim().max(200).optional(),
 });

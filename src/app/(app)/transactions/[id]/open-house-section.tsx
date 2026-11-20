@@ -10,6 +10,7 @@ import {
 } from "@/app/actions/open-houses";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { RowMenu } from "@/components/ui/row-menu";
 import { Field } from "@/components/ui/field";
 import { Textarea } from "@/components/ui/textarea";
 import type { OpenHouseDTO } from "../types";
@@ -101,22 +102,20 @@ export function OpenHouseSection({
                     {oh.visitors.length} sign-in{oh.visitors.length === 1 ? "" : "s"}
                   </span>
                 </div>
-                <div className="flex shrink-0 items-center gap-4">
+                <div className="flex shrink-0 items-center gap-2">
                   <CopyLinkButton openHouseId={oh.id} />
-                  <form
-                    action={deleteOpenHouseAction}
-                    onSubmit={(e) => {
-                      if (!confirm("Delete this open house? Sign-ins will be deleted too.")) {
-                        e.preventDefault();
-                      }
-                    }}
-                  >
-                    <input type="hidden" name="id" value={oh.id} />
-                    <input type="hidden" name="dealId" value={dealId} />
-                    <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                      Delete
-                    </button>
-                  </form>
+                  <RowMenu
+                    label="Open house actions"
+                    items={[
+                      {
+                        label: "Delete",
+                        destructive: true,
+                        confirm: "Delete this open house? Sign-ins will be deleted too.",
+                        action: deleteOpenHouseAction,
+                        fields: { id: oh.id, dealId },
+                      },
+                    ]}
+                  />
                 </div>
               </div>
 

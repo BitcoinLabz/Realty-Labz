@@ -5,7 +5,7 @@ export function Footer() {
     <footer className="border-t border-border">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-6 py-8 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
         <p>&copy; {new Date().getFullYear()} Realty Labz. Built for Michigan real estate agents.</p>
-        <nav className="flex gap-6">
+        <nav className="flex flex-wrap gap-x-6 gap-y-2">
           <Link href="/changelog" className="hover:text-foreground">
             Changelog
           </Link>

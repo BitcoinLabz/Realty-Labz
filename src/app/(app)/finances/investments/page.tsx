@@ -85,14 +85,14 @@ export default async function FinancesInvestmentsPage() {
       <SummaryCard label="Total value" value={formatCurrency(total)} />
 
       {breakdown.length > 0 ? (
-        <section className="rounded-2xl border border-border bg-background p-8">
+        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
           <h2 className="mb-6 text-base font-semibold text-foreground">Where your money is</h2>
           <BreakdownDonutChart data={breakdown} />
         </section>
       ) : null}
 
       {netWorthSeries.length > 1 ? (
-        <section className="rounded-2xl border border-border bg-background p-8">
+        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
           <h2 className="mb-1 text-base font-semibold text-foreground">Net worth over time</h2>
           <p className="mb-6 text-sm text-muted">
             What you own, minus what you still owe on your loans. This starts from the first day
@@ -102,7 +102,7 @@ export default async function FinancesInvestmentsPage() {
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-border bg-background p-8">
+      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Add something you own</h2>
         <div className="max-w-md">
           <AssetForm />

@@ -103,6 +103,11 @@ export type DealDeadlineDTO = {
   // From the contract reader, when it created this deadline.
   sourceQuote: string | null;
   clientNote: string | null;
+  // How the date is worked out, e.g. "3 business days after acceptance";
+  // null for a fixed date (2026-11-19).
+  ruleText?: string | null;
+  // Earnest money deposits: the amount due.
+  amount?: number | null;
 };
 
 export type OpenHouseVisitorDTO = {

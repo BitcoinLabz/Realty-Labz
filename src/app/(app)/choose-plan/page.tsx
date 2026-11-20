@@ -36,7 +36,7 @@ export default async function ChoosePlanPage() {
       />
 
       <p className="text-center text-xs text-muted">
-        Secure checkout by Stripe. Switch or cancel anytime in Account → Plan.
+        Secure checkout by Stripe. Switch or cancel anytime in Settings → Plan.
       </p>
     </div>
   );

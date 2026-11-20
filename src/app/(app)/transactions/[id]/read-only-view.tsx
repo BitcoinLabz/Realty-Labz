@@ -149,13 +149,13 @@ export function ReadOnlyDealView({
               return (
                 <div
                   key={d.id}
-                  className="flex items-baseline justify-between gap-4 rounded-xl border border-border px-4 py-3 text-sm"
+                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-xl border border-border px-4 py-3 text-sm"
                 >
-                  <span className={done ? "text-muted line-through" : "text-foreground"}>
+                  <span className={`min-w-0 break-words ${done ? "text-muted line-through" : "text-foreground"}`}>
                     {d.label}
                   </span>
                   <span
-                    className={`shrink-0 ${overdue ? "text-danger" : "text-muted"}`}
+                    className={`whitespace-nowrap ${overdue ? "text-danger" : "text-muted"}`}
                   >
                     {date(d.dueDate)}
                     {done ? " · Done" : overdue ? " · Overdue" : ""}
