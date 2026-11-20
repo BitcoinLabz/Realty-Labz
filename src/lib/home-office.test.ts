@@ -7,7 +7,9 @@ import {
   countableAmount,
   depreciationBasis,
   depreciationForYear,
+  formatDateOnlyUtc,
   mortgageInterestForYear,
+  parseDateOnlyUtc,
   recaptureEstimate,
   simplifiedMonthsInUse,
   splitMortgagePayment,
@@ -16,6 +18,7 @@ import {
   type HomeOfficeProfile,
 } from "./home-office";
 import { TaxRules, seedRowsToRules } from "./tax-rules";
+import { homeOfficeStatus } from "./home-office-status";
 
 const rules = new TaxRules(seedRowsToRules());
 const d = (s: string) => new Date(`${s}T00:00:00.000Z`);
@@ -51,6 +54,15 @@ const DEP_2026 = 527.78; // 26,000 / 39 x 9.5/12
 const DEP_FULL = 666.67; // 26,000 / 39
 
 const noCarry = { operating: 0, depreciation: 0 };
+
+describe("date-only values", () => {
+  it("saves and reloads the same calendar day", () => {
+    const stored = parseDateOnlyUtc("2026-03-10");
+    expect(stored.toISOString()).toBe("2026-03-10T00:00:00.000Z");
+    expect(formatDateOnlyUtc(stored)).toBe("2026-03-10");
+    expect(formatDateOnlyUtc(new Date("2026-01-01T00:00:00.000Z"))).toBe("2026-01-01");
+  });
+});
 
 describe("basics", () => {
   it("computes business-use percent from square footage", () => {
@@ -244,10 +256,58 @@ describe("multi-year chain", () => {
     expect(y.recommendationReason).toMatch(/simplified method deducts \$750 more/);
   });
 
+  it("says the office size is saved when home costs are still missing", () => {
+    const [y] = computeHomeOfficeChain({
+      profile: {
+        ...profile,
+        ownership: "RENT",
+        businessUseStart: d("2025-01-01"),
+        purchasePrice: null,
+        landValue: null,
+        improvementsCost: null,
+        fairMarketValueAtStart: null,
+      },
+      expenses: [],
+      netByYear: new Map([[2026, 0]]),
+      chosenMethods: new Map(),
+      throughYear: 2026,
+      rules,
+    });
+    expect(y.simplified.tentative).toBe(900);
+    expect(y.recommendationReason).toMatch(/office size is saved/i);
+    expect(y.recommendationReason).not.toMatch(/Add your office size/);
+  });
+
   it("recommends regular when it deducts more, and says by how much", () => {
     const [y] = chain([[2026, 50000]], 2026);
     expect(y.recommended).toBe("REGULAR");
     expect(y.recommendationReason).toMatch(/\$1,588 more/); // 2,337.78 - 750
+  });
+});
+
+describe("home office status", () => {
+  const year = (profit: number) =>
+    computeHomeOfficeChain({
+      profile: { ...profile, businessUseStart: d("2025-01-01"), ownership: "RENT", purchasePrice: null },
+      expenses: [],
+      netByYear: new Map([[2026, profit]]),
+      chosenMethods: new Map([[2026, "SIMPLIFIED"]]),
+      throughYear: 2026,
+      rules,
+    }).find((c) => c.year === 2026)!;
+
+  it("does not call zero income a loss or a lost deduction", () => {
+    const status = homeOfficeStatus(year(0));
+    expect(status.tone).toBe("neutral");
+    expect(status.text).toMatch(/limited to business income/);
+    expect(status.text.toLowerCase()).not.toMatch(/loss/);
+    expect(status.text).not.toMatch(/can't be used/);
+  });
+
+  it("still names a real loss", () => {
+    const status = homeOfficeStatus(year(-4000));
+    expect(status.tone).toBe("warning");
+    expect(status.text).toMatch(/loss/);
   });
 });
 

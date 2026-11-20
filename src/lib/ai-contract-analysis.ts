@@ -2,14 +2,21 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 
-// The one place that decides whether the AI features are available at all.
-// Every AI entry point checks this first, and the UI only renders the
-// "Analyze with AI" button when it's true -- so the feature is completely
-// inert (no dead buttons, no runtime errors) until ANTHROPIC_API_KEY is
-// actually configured. Same lazy-config philosophy as getResendClient()
-// in src/lib/email.ts and getSupabaseAdmin() in src/lib/supabase.ts.
+// The one place that decides whether contract reading is available. Every
+// entry point checks this first. The key itself stays in the server log --
+// the page tells the agent the feature isn't available, not how to configure
+// the host.
+let loggedMissingKey = false;
+
 export function isAiConfigured(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+  const on = !!process.env.ANTHROPIC_API_KEY;
+  if (!on && !loggedMissingKey) {
+    loggedMissingKey = true;
+    console.error(
+      "[contract-reading] ANTHROPIC_API_KEY is not set. Contract reading stays unavailable until the key is added and the app is redeployed.",
+    );
+  }
+  return on;
 }
 
 export class ContractAnalysisError extends Error {}
@@ -209,7 +216,7 @@ Rules:
 // over hand-rolling something fragile.
 export async function analyzeContractPdf(pdfBuffer: Buffer): Promise<ExtractedContractData> {
   if (!isAiConfigured()) {
-    throw new ContractAnalysisError("AI analysis isn't set up yet");
+    throw new ContractAnalysisError("Contract reading isn't available right now.");
   }
 
   const client = new Anthropic();

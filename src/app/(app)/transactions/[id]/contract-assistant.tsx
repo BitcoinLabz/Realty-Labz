@@ -86,8 +86,8 @@ function SavedSummary({ result, dealId }: { result: ApplyResult; dealId: string 
 // is where files go in. This card picks one of those PDFs, newest first,
 // and opens the review right here.
 //
-// Shown even when AI reading isn't configured, as a calm "not switched on"
-// card, so the feature is discoverable rather than silently absent.
+// Shown even when reading isn't configured, with a plain "not available"
+// line. How to turn it on (the API key) stays in the server log.
 export function ContractAssistant({
   dealId,
   enabled,
@@ -208,9 +208,8 @@ export function ContractAssistant({
         </div>
       ) : !enabled ? (
         <div className="rounded-xl bg-surface p-4 text-sm text-muted">
-          Contract reading isn&apos;t switched on for this site yet. It needs an Anthropic API key
-          added in Vercel as <span className="font-medium text-foreground">ANTHROPIC_API_KEY</span>,
-          then a redeploy.
+          Contract reading isn&apos;t available right now. You can still upload the agreement and add
+          deadlines by hand.
         </div>
       ) : reviewing ? (
         <ReviewPanel
