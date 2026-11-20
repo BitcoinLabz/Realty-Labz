@@ -340,8 +340,32 @@ export default async function HomeOfficePage({ searchParams }: { searchParams: P
             <Line label="Basis (the lower of the two)" value={basis.basis} />
             <Line label={`Office share (${(basis.businessPercent * 100).toFixed(1)}%)`} value={basis.businessBasis} strong />
           </div>
-          <div className="mt-5 overflow-x-auto">
-            <table className="w-full min-w-[420px] text-sm">
+          <ul className="mt-5 flex flex-col gap-2 md:hidden">
+            {chain.map((c) => (
+              <li key={c.year} className="rounded-xl border border-border px-4 py-3 text-sm">
+                <p className="font-medium text-foreground">
+                  {c.year}
+                  {c.method === "SIMPLIFIED" ? <span className="ml-1 text-xs text-muted">Simplified</span> : null}
+                </p>
+                <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <dt className="text-muted">Depreciation</dt>
+                    <dd className="tabular-nums text-foreground">{formatCurrency(c.regular.tierThree.depreciation)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Deducted</dt>
+                    <dd className="tabular-nums text-foreground">{formatCurrency(c.depreciationTaken)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Total</dt>
+                    <dd className="tabular-nums text-foreground">{formatCurrency(c.accumulatedDepreciation)}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-5 hidden overflow-x-auto md:block">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted">
                   <th className="pb-2 font-medium">Year</th>
@@ -381,8 +405,32 @@ export default async function HomeOfficePage({ searchParams }: { searchParams: P
           icon={Calculator}
           description="Amounts your income couldn't cover are saved and used automatically in your next profitable year (regular method only)."
         >
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[460px] text-sm">
+          <ul className="flex flex-col gap-2 md:hidden">
+            {chain.map((c) => (
+              <li key={c.year} className={`rounded-xl border border-border px-4 py-3 text-sm ${c.year === year ? "border-accent" : ""}`}>
+                <p className="font-medium text-foreground">
+                  {c.year}
+                  <span className="ml-2 text-xs font-normal text-muted">{c.method === "REGULAR" ? "Regular" : "Simplified"}</span>
+                </p>
+                <dl className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                  <div>
+                    <dt className="text-muted">Deducted</dt>
+                    <dd className="tabular-nums text-foreground">{formatCurrency(c.allowed)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Carried in</dt>
+                    <dd className="tabular-nums text-foreground">{formatCurrency(c.carryIn.operating + c.carryIn.depreciation)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted">Carried out</dt>
+                    <dd className="tabular-nums text-foreground">{formatCurrency(c.carryOut.operating + c.carryOut.depreciation)}</dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted">
                   <th className="pb-2 font-medium">Year</th>

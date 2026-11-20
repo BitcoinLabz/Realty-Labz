@@ -5,8 +5,9 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Realty Labz",
     short_name: "Realty Labz",
     description:
-      "Transactions, contract deadlines, clients, and your full financial picture — business and personal — for real estate agents and their teams.",
+      "Transactions, deadlines, e-sign, and Michigan income, mileage, and home-office records for real estate agents.",
     start_url: "/dashboard",
+    scope: "/",
     display: "standalone",
     background_color: "#ffffff",
     // Brand navy, from the logo (globals.css / logo-mark.ts).
