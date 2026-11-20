@@ -208,7 +208,10 @@ export async function deleteDocumentAction(formData: FormData) {
   const doc = await prisma.document.findFirst({ where: { id, userId: session.user.id } });
   if (!doc) return;
 
-  await prisma.document.delete({ where: { id: doc.id } });
+  // The write itself is scoped, not just the read above. deleteMany with the
+  // owner's userId is a no-op if the row changed hands between the two calls.
+  const removed = await prisma.document.deleteMany({ where: { id: doc.id, userId: session.user.id } });
+  if (removed.count !== 1) return;
   await deleteDocumentFile(doc.storageKey);
 
   revalidatePath("/clients");

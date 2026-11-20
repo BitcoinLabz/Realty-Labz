@@ -143,6 +143,7 @@ export default async function AccountPage({
           hasBillingAccount={!!plan?.stripeCustomerId}
           renewsOn={plan?.isPro && !plan.cancelAtPeriodEnd ? fmt(plan.currentPeriodEnd) : null}
           cancelsOn={plan?.isPro && plan.cancelAtPeriodEnd ? fmt(plan.currentPeriodEnd) : null}
+          paymentPastDue={!plan?.compedPro && plan?.subscriptionStatus === "past_due"}
           usedLabel={formatBytes(used)}
           limitLabel={plan?.storageLimit ? formatBytes(plan.storageLimit) : null}
           usedPercent={plan?.storageLimit ? Math.round((used / plan.storageLimit) * 100) : null}

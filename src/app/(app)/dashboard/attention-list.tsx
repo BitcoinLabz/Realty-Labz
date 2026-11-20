@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, CalendarX, FileWarning, Landmark, PenLine } from "lucide-react";
+import { AlertTriangle, CalendarX, CreditCard, FileWarning, Landmark, PenLine } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import type { AttentionItem } from "@/lib/finance-data";
 
@@ -8,6 +8,7 @@ const KIND_ICON = {
   missingDocs: FileWarning,
   awaitingSignature: PenLine,
   taxDue: Landmark,
+  paymentFailed: CreditCard,
 } as const;
 
 // Only overdue dates get the alarm colour. Missing paperwork and a quiet
@@ -18,6 +19,7 @@ const KIND_TONE = {
   missingDocs: "text-muted",
   awaitingSignature: "text-muted",
   taxDue: "text-warning",
+  paymentFailed: "text-danger",
 } as const;
 
 // Long lists stop being triage and start being a backlog to scroll past.
@@ -39,7 +41,7 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
     <Card
       title="Needs your attention"
       icon={AlertTriangle}
-      description="Dates that have passed, paperwork and signatures still missing, and tax payments coming up."
+      description="Dates that have passed, paperwork and signatures still missing, a card that failed, and tax payments coming up."
     >
       <div className="flex flex-col gap-2">
         {shown.map((item) => {

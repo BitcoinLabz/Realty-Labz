@@ -13,6 +13,7 @@ import {
 } from "@/lib/email";
 import { readDocumentFile } from "@/lib/document-storage";
 import { finalizeFormSubmission } from "@/lib/pdf-finalize";
+import { storageBlockMessage } from "@/lib/user-plan";
 import { formSignerSchema } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
 import type { Client, Deal } from "@/generated/prisma/client";
@@ -83,6 +84,14 @@ export async function sendFormSubmissionAction(
   if (template.fields.length === 0) {
     return { error: "This template has no fields yet — add fields to it before sending" };
   }
+
+  // The signed PDF is a new stored file: the template plus a certificate
+  // page. Refuse the send when that copy would push a Free account over its
+  // limit. Completion still saves the file afterwards -- discarding a
+  // finished signature is worse than landing a little over.
+  const SIGNED_PDF_OVERHEAD_BYTES = 256 * 1024;
+  const overLimit = await storageBlockMessage(session.user.id, template.size + SIGNED_PDF_OVERHEAD_BYTES);
+  if (overLimit) return { error: overLimit };
 
   const clientIdRaw = formData.get("clientId");
   const dealIdRaw = formData.get("dealId");

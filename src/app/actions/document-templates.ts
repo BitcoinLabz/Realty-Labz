@@ -89,7 +89,12 @@ export async function deleteTemplateAction(formData: FormData) {
   });
   if (!template) return;
 
-  await prisma.documentTemplate.delete({ where: { id: template.id } });
+  // Same filter on the delete: id alone would remove a template this caller
+  // can no longer see if membership changed between the read and the write.
+  const removed = await prisma.documentTemplate.deleteMany({
+    where: { id: template.id, ...teamSharedFilter(session.user) },
+  });
+  if (removed.count !== 1) return;
   await deleteDocumentFile(template.storageKey);
 
   revalidatePath("/transactions/library");

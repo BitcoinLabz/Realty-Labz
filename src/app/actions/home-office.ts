@@ -205,7 +205,10 @@ export async function deleteHomeOfficeExpenseAction(formData: FormData): Promise
   });
   if (!expense) return;
 
-  await prisma.homeOfficeExpense.delete({ where: { id: expense.id } });
+  const removed = await prisma.homeOfficeExpense.deleteMany({
+    where: { id: expense.id, userId: session.user.id },
+  });
+  if (removed.count !== 1) return;
   // The receipt only existed for this expense; remove it too.
   if (expense.receipt) {
     await prisma.document.deleteMany({ where: { id: expense.receipt.id, userId: session.user.id } });

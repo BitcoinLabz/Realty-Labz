@@ -132,6 +132,10 @@ model User {
   subscriptionStatus   String?
   currentPeriodEnd     DateTime?
   cancelAtPeriodEnd    Boolean   @default(false)
+  // When the Stripe event last written here was created. A retried or
+  // out-of-order webhook older than this is ignored (see the webhook route).
+  // Null until the first event lands, so existing accounts are unchanged.
+  stripeEventAt        DateTime?
   // Pro without paying, set by the founder for testers and partners.
   compedPro            Boolean   @default(false)
   // Whether the account has been through "Choose your plan" (2026-10-08).

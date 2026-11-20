@@ -3,39 +3,87 @@ import type Stripe from "stripe";
 import { prisma } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
 import { planFromSubscription } from "@/lib/plan";
+import {
+  customerIdOf,
+  grantsPro,
+  knownStripePriceIds,
+  stripeEventAt,
+  stripeEventIsCurrent,
+  subscriptionIdFromInvoice,
+  subscriptionItemPriceIds,
+} from "@/lib/stripe-billing";
 
 // Stripe -> Realty Labz (2026-10-05). The ONLY place that grants or removes
 // Pro: a browser returning from checkout proves nothing, a signed event from
 // Stripe does. Every event is verified against STRIPE_WEBHOOK_SECRET using the
 // raw body; anything unsigned or forged is rejected before it's read.
 //
-// Idempotent by construction -- each event just writes the subscription's
-// current state onto the account, so a retried or out-of-order delivery
-// converges on the truth.
+// Each handler re-reads the subscription from Stripe and writes that current
+// state, so a retried delivery converges. An older event that arrives late
+// is dropped by comparing event.created to User.stripeEventAt, which the
+// UPDATE rechecks under the row lock.
 
-async function applySubscription(sub: Stripe.Subscription) {
-  const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
-  const userId = sub.metadata?.userId;
+async function applySubscription(sub: Stripe.Subscription, eventCreated: number) {
+  const eventAt = stripeEventAt(eventCreated);
+  const customerId = customerIdOf(sub.customer);
+  const userId = sub.metadata?.userId || null;
+  const priceIds = subscriptionItemPriceIds(sub.items.data);
+  const known = knownStripePriceIds();
+  const pro = grantsPro(sub.status, priceIds, known);
+  if (!pro && planFromSubscription(sub.status) === "PRO" && known.length > 0) {
+    console.error("[stripe-webhook] subscription is not a known Pro price", sub.id);
+  }
+
   // In this API version the billing period lives on the subscription item.
   const periodEnd = sub.items.data[0]?.current_period_end;
-
   const data = {
     stripeSubscriptionId: sub.id,
     subscriptionStatus: sub.status,
-    plan: planFromSubscription(sub.status),
+    plan: pro ? ("PRO" as const) : ("FREE" as const),
     cancelAtPeriodEnd: sub.cancel_at_period_end,
     currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
+    stripeEventAt: eventAt,
   };
+  // lte, not lt: a retry of the same event still applies.
+  const notStale = { OR: [{ stripeEventAt: null }, { stripeEventAt: { lte: eventAt } }] };
 
-  // Matched by the Stripe customer we created for the account; the userId in
-  // metadata is a fallback for a customer not yet linked.
-  const byCustomer = await prisma.user.updateMany({ where: { stripeCustomerId: customerId }, data });
-  if (byCustomer.count === 0 && userId) {
+  if (customerId) {
+    const byCustomer = await prisma.user.updateMany({
+      where: { stripeCustomerId: customerId, ...notStale },
+      data,
+    });
+    if (byCustomer.count > 0) return;
+    // Linked, but this event is older than one we already applied.
+    const owner = await prisma.user.findFirst({
+      where: { stripeCustomerId: customerId },
+      select: { stripeEventAt: true },
+    });
+    if (owner) {
+      if (!stripeEventIsCurrent(owner.stripeEventAt, eventCreated)) return;
+      // The row moved between the two writes. One more attempt.
+      await prisma.user.updateMany({ where: { stripeCustomerId: customerId, ...notStale }, data });
+      return;
+    }
+  }
+
+  // Customer not linked yet. The userId in metadata is the fallback, and
+  // only while the account has no customer -- never overwrite a different one.
+  if (userId && customerId) {
     await prisma.user.updateMany({
-      where: { id: userId, stripeCustomerId: null },
+      where: { id: userId, stripeCustomerId: null, ...notStale },
       data: { ...data, stripeCustomerId: customerId },
     });
   }
+}
+
+async function syncSubscription(subscriptionId: string, eventCreated: number) {
+  await applySubscription(await getStripe().subscriptions.retrieve(subscriptionId), eventCreated);
+}
+
+function subscriptionIdFromSession(session: Stripe.Checkout.Session): string | null {
+  const subscription = session.subscription;
+  if (!subscription) return null;
+  return typeof subscription === "string" ? subscription : subscription.id;
 }
 
 export async function POST(request: Request) {
@@ -53,21 +101,28 @@ export async function POST(request: Request) {
 
   try {
     switch (event.type) {
-      case "checkout.session.completed": {
+      case "checkout.session.completed":
+      case "checkout.session.async_payment_succeeded":
+      case "checkout.session.async_payment_failed": {
         const session = event.data.object;
-        if (session.mode === "subscription" && session.subscription) {
-          const subId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
-          await applySubscription(await getStripe().subscriptions.retrieve(subId));
+        if (session.mode === "subscription") {
+          const subId = subscriptionIdFromSession(session);
+          if (subId) await syncSubscription(subId, event.created);
         }
         break;
       }
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted":
-        await applySubscription(event.data.object);
+        await syncSubscription(event.data.object.id, event.created);
         break;
+      case "invoice.paid":
+      case "invoice.payment_failed": {
+        const subId = subscriptionIdFromInvoice(event.data.object);
+        if (subId) await syncSubscription(subId, event.created);
+        break;
+      }
       default:
-        // Not something this app tracks.
         break;
     }
   } catch (err) {
