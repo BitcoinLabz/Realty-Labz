@@ -43,18 +43,18 @@ export function PlanCard(props: PlanCardProps) {
     <div className="flex flex-col gap-6">
       {props.justUpgraded && isPro ? (
         <p className="rounded-xl bg-success/10 px-4 py-3 text-sm font-medium text-success">
-          Welcome to Pro. Everything below is switched on.
+          Welcome to Pro. Everything below is ready to use.
         </p>
       ) : props.justUpgraded ? (
         // Stripe's confirmation can take a few seconds to reach us.
         <p className="rounded-xl bg-surface px-4 py-3 text-sm text-muted">
-          Payment received — Pro switches on in a few seconds. Refresh if it hasn&apos;t yet.
+          Payment received. Pro turns on in a few seconds. Refresh if it hasn&apos;t yet.
         </p>
       ) : null}
 
       {props.paymentPastDue ? (
         <p className="rounded-xl bg-danger/10 px-4 py-3 text-sm text-danger">
-          Your last payment didn&apos;t go through. Update your card to keep Pro. It stays on while Stripe retries the card.
+          Your last payment didn&apos;t go through. Update your card to keep Pro. It stays on while the payment is retried.
         </p>
       ) : null}
 

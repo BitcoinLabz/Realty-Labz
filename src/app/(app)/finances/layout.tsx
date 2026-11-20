@@ -28,8 +28,7 @@ export default function FinancesLayout({ children }: { children: React.ReactNode
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="flex w-max gap-1 rounded-full border border-border bg-surface p-1">
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-border bg-surface p-1">
           {tabs.map((tab) => {
             // Transactions has a nested /history route (like Forms' nested
             // /templates/[id]) so it needs startsWith matching -- Overview
@@ -43,7 +42,7 @@ export default function FinancesLayout({ children }: { children: React.ReactNode
               <Link
                 key={tab.href}
                 href={tab.href}
-                className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors ${
                   active
                     ? "bg-background text-foreground shadow-sm"
                     : "text-muted hover:text-foreground"
@@ -53,7 +52,6 @@ export default function FinancesLayout({ children }: { children: React.ReactNode
               </Link>
             );
           })}
-        </div>
       </div>
 
       {children}

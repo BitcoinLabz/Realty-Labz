@@ -110,7 +110,7 @@ export default async function FinancesLoansPage() {
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section id="add-loan" className="rounded-2xl border border-border bg-background p-6 sm:p-8">
         <h2 className="mb-6 text-base font-semibold text-foreground">Add a loan</h2>
         <div className="max-w-md">
           <LoanForm />

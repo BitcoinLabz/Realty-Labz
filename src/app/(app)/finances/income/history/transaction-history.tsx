@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Receipt } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { TransactionList } from "../transaction-list";
 import { CATEGORY_OPTIONS } from "../transaction-form";
 import type { DealOption, TransactionDTO } from "../types";
@@ -49,8 +51,14 @@ export function TransactionHistory({
 
   if (transactions.length === 0) {
     return (
-      <div className="rounded-2xl border border-border bg-background p-8 text-center text-sm text-muted">
-        No transactions yet. Add your first one on the Transactions page.
+      <div className="rounded-2xl border border-border bg-background">
+        <EmptyState
+          icon={Receipt}
+          title="No income or expenses yet"
+          description="Log what you earn and spend. The full history stays here to search, including years you've already closed."
+          actionLabel="Log income or an expense"
+          actionHref="/finances/income"
+        />
       </div>
     );
   }
@@ -66,7 +74,7 @@ export function TransactionHistory({
           className="flex-1 rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
         />
         <select value={scope} onChange={(e) => setScope(e.target.value)} className={selectClass}>
-          <option value="">All scopes</option>
+          <option value="">Business and personal</option>
           <option value="BUSINESS">Business</option>
           <option value="PERSONAL">Personal</option>
         </select>

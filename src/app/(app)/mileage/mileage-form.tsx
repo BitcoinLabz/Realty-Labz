@@ -5,6 +5,7 @@ import { createMileageLogAction, updateMileageLogAction } from "@/app/actions/mi
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { Toast } from "@/components/ui/toast";
 
 const initialState: FormState = {};
 
@@ -97,6 +98,7 @@ export function MileageForm({
       />
 
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
+      <Toast message={succeeded ? (isEdit ? "Trip updated." : "Trip logged.") : null} signal={state} />
 
       <div className="flex gap-2">
         <Button type="submit" disabled={isPending}>

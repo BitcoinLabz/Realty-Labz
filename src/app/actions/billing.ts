@@ -19,10 +19,7 @@ import type { FormState } from "@/app/actions/auth";
 // generic.
 function stripeErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Stripe.errors.StripeError) {
-    if (err.type === "StripeAuthenticationError") {
-      return "Billing isn't set up correctly: Stripe rejected the secret key. (Was it rolled after being added?)";
-    }
-    return `Stripe couldn't start this: ${err.message}`;
+    console.error("[billing]", err.type, err.message);
   }
   return fallback;
 }
@@ -54,7 +51,7 @@ async function customerFor(userId: string): Promise<string> {
 export async function startCheckoutAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
-  if (!isBillingConfigured()) return { error: "Upgrades aren't switched on yet. Check back soon." };
+  if (!isBillingConfigured()) return { error: "Upgrades aren't available right now. Try again in a moment." };
 
   const interval = formData.get("interval") === "annual" ? "annual" : "monthly";
   // Picking Pro counts as choosing a plan, even if checkout is abandoned --
@@ -89,7 +86,7 @@ export async function startCheckoutAction(_prev: FormState, formData: FormData):
 export async function openBillingPortalAction(_prev: FormState, _formData: FormData): Promise<FormState> {
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
-  if (!isBillingConfigured()) return { error: "Billing isn't switched on yet." };
+  if (!isBillingConfigured()) return { error: "Billing isn't available right now. Try again in a moment." };
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },

@@ -507,7 +507,7 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
             id: "billing-past-due",
             kind: "paymentFailed" as const,
             title: "Pro payment didn't go through",
-            detail: "Update your card in Settings. Pro stays on while Stripe retries.",
+            detail: "Update your card in Settings. Pro stays on while the payment is retried.",
             href: "/account#plan",
           },
         ]

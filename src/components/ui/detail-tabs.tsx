@@ -38,21 +38,19 @@ export function DetailTabs({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="overflow-x-auto">
-        <div className="flex w-max gap-1 rounded-full border border-border bg-surface p-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActive(tab.id)}
-              className={`shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                tab.id === active ? "bg-background text-foreground shadow-sm" : "text-muted hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-1 rounded-2xl border border-border bg-surface p-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActive(tab.id)}
+            className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors ${
+              tab.id === active ? "bg-background text-foreground shadow-sm" : "text-muted hover:text-foreground"
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Every tab stays mounted, toggled with CSS rather than conditional
