@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { deleteAssetAction, refreshStockPriceAction, refreshWalletBalanceAction } from "@/app/actions/assets";
 import type { FormState } from "@/app/actions/auth";
+import { RowMenu } from "@/components/ui/row-menu";
 import { formatCurrency } from "@/lib/format";
 import { AssetForm } from "./asset-form";
 import type { AssetDTO } from "./types";
@@ -149,28 +150,24 @@ export function AssetList({ assets }: { assets: AssetDTO[] }) {
             ) : null}
             {a.notes ? <p className="mt-3 break-words text-sm text-muted">{a.notes}</p> : null}
 
-            <div className="mt-4 flex items-start gap-5 border-t border-border pt-3">
-              {a.walletNetwork ? <RefreshButton assetId={a.id} action={refreshWalletBalanceAction} /> : null}
-              {a.stockTicker ? <RefreshButton assetId={a.id} action={refreshStockPriceAction} /> : null}
-              <button
-                type="button"
-                onClick={() => setEditingId(a.id)}
-                className="text-sm font-medium text-muted hover:text-foreground"
-              >
-                Edit
-              </button>
-              <form
-                action={deleteAssetAction}
-                onSubmit={(e) => {
-                  if (!confirm(`Delete "${a.name}"?`)) e.preventDefault();
-                }}
-                className="ml-auto"
-              >
-                <input type="hidden" name="id" value={a.id} />
-                <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                  Delete
-                </button>
-              </form>
+            <div className="mt-4 flex items-start justify-between gap-3 border-t border-border pt-3">
+              <div className="flex min-w-0 flex-wrap items-start gap-5">
+                {a.walletNetwork ? <RefreshButton assetId={a.id} action={refreshWalletBalanceAction} /> : null}
+                {a.stockTicker ? <RefreshButton assetId={a.id} action={refreshStockPriceAction} /> : null}
+              </div>
+              <RowMenu
+                label={`Actions for ${a.name}`}
+                items={[
+                  { label: "Edit", onSelect: () => setEditingId(a.id) },
+                  {
+                    label: "Delete",
+                    destructive: true,
+                    confirm: `Delete "${a.name}"?`,
+                    action: deleteAssetAction,
+                    fields: { id: a.id },
+                  },
+                ]}
+              />
             </div>
           </div>
         ),

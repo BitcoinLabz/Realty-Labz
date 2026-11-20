@@ -6,6 +6,7 @@ import { deleteVendorAction, saveVendorAction } from "@/app/actions/office-setti
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { RowMenu } from "@/components/ui/row-menu";
 import { Select } from "@/components/ui/select";
 import { VENDOR_KIND_LABELS } from "@/lib/vendor-kinds";
 
@@ -80,18 +81,6 @@ function VendorRow({ vendor }: { vendor: VendorDTO }) {
     return (
       <div className="flex flex-col gap-3 rounded-xl border border-accent p-4">
         <VendorForm vendor={vendor} onDone={() => setEditing(false)} />
-        <form
-          action={deleteVendorAction}
-          onSubmit={(e) => {
-            if (!confirm(`Remove ${vendor.name}? It comes off any files it's attached to.`)) e.preventDefault();
-          }}
-          className="border-t border-border pt-3"
-        >
-          <input type="hidden" name="id" value={vendor.id} />
-          <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-            Remove vendor
-          </button>
-        </form>
       </div>
     );
   }
@@ -119,9 +108,19 @@ function VendorRow({ vendor }: { vendor: VendorDTO }) {
           ) : null}
         </div>
       </div>
-      <button type="button" onClick={() => setEditing(true)} className="shrink-0 text-sm font-medium text-muted hover:text-foreground">
-        Edit
-      </button>
+      <RowMenu
+        label={`Actions for ${vendor.name}`}
+        items={[
+          { label: "Edit", onSelect: () => setEditing(true) },
+          {
+            label: "Remove",
+            destructive: true,
+            confirm: `Remove ${vendor.name}? It comes off any files it's attached to.`,
+            action: deleteVendorAction,
+            fields: { id: vendor.id },
+          },
+        ]}
+      />
     </div>
   );
 }

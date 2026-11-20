@@ -154,7 +154,10 @@ export async function analyzeContractAction(
 ): Promise<AnalysisState> {
   const session = await auth();
   if (!session?.user) return { error: "You must be signed in" };
-  if (!isAiConfigured()) return { error: "AI analysis isn't set up yet" };
+  if (!isAiConfigured()) {
+    console.error("[contract-reading] refused a read because ANTHROPIC_API_KEY is not set");
+    return { error: "Contract reading isn't available right now. You can add the deadlines by hand." };
+  }
   // Each read costs real money (Anthropic API), so it's a Pro feature.
   if (!(await userIsPro(session.user.id))) {
     return {

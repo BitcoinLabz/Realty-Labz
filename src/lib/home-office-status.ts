@@ -2,10 +2,18 @@ import type { HomeOfficeYearResult } from "@/lib/home-office";
 
 // The one-line status at the top of the Home Office page and its PDF
 // (2026-11-19), worded the same in both places.
-export function homeOfficeStatus(r: HomeOfficeYearResult): { tone: "success" | "warning"; text: string } {
+export function homeOfficeStatus(r: HomeOfficeYearResult): { tone: "success" | "warning" | "neutral"; text: string } {
   const fmt = (n: number) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const carried = r.carryOut.operating + r.carryOut.depreciation;
-  const loss = r.tentativeProfit <= 0;
+  // Zero is "no profit yet", not a loss. A loss is income below zero.
+  const loss = r.tentativeProfit < 0;
+
+  if (r.tentativeProfit === 0 && r.allowed === 0) {
+    return {
+      tone: "neutral",
+      text: "The home office deduction is limited to business income. Nothing is deducted until the business shows a profit.",
+    };
+  }
 
   if (r.method === "SIMPLIFIED") {
     if (r.simplified.lostToIncomeLimit > 0) {

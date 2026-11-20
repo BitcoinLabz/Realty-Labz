@@ -57,6 +57,20 @@ export const TIER_ONE_KINDS: ExpenseKind[] = ["MORTGAGE_INTEREST", "REAL_ESTATE_
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** A yyyy-mm-dd form value as UTC midnight, the way date-only columns are stored. */
+export function parseDateOnlyUtc(isoDate: string): Date {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate);
+  if (!match) throw new Error(`Not a date: ${isoDate}`);
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+}
+
+/** The calendar date of a UTC-midnight date-only value, for a date input. */
+export function formatDateOnlyUtc(date: Date): string {
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${date.getUTCFullYear()}-${month}-${day}`;
+}
+
 export function businessUsePercent(profile: Pick<HomeOfficeProfile, "officeSqFt" | "homeSqFt">): number | null {
   if (!profile.homeSqFt || profile.homeSqFt <= 0 || profile.officeSqFt <= 0) return null;
   return Math.min(1, profile.officeSqFt / profile.homeSqFt);
@@ -331,6 +345,20 @@ export function recommendMethod(
     };
   }
   if (diff === 0 && simplified.allowed === 0) {
+    const homeCosts =
+      regular.tierOne.direct +
+      regular.tierOne.indirect +
+      regular.tierTwo.direct +
+      regular.tierTwo.indirect +
+      regular.tierThree.depreciation;
+    // Office size is already in the simplified figure. Saying "add your
+    // office size" after they saved it sends them looking for a field they filled.
+    if (simplified.sqFtUsed > 0 && simplified.tentative > 0 && homeCosts === 0) {
+      return {
+        method: "SIMPLIFIED",
+        reason: `Your office size is saved. The simplified method is ${fmt(simplified.tentative)} before the income limit. Add home costs — utilities, insurance, rent, or mortgage interest — to compare the regular method.`,
+      };
+    }
     return {
       method: "SIMPLIFIED",
       reason: "Neither method gives a deduction yet. Add your office size and home costs to compare.",

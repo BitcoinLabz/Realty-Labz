@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { SummaryCard } from "@/components/ui/summary-card";
 import { YearSelect } from "@/components/ui/year-select";
 import { formatCurrency } from "@/lib/format";
-import { businessUsePercent, countableAmount, depreciationBasis, recaptureEstimate } from "@/lib/home-office";
+import { businessUsePercent, countableAmount, depreciationBasis, formatDateOnlyUtc, recaptureEstimate } from "@/lib/home-office";
 import { getHomeOfficeData, saveHomeOfficeSnapshots } from "@/lib/home-office-data";
 import { loadTaxRules } from "@/lib/tax-rules-db";
 import { chooseHomeOfficeMethodAction } from "@/app/actions/home-office";
@@ -29,7 +29,7 @@ import { MortgageHelper } from "./mortgage-helper";
 import { StatusBanner } from "./status-banner";
 
 const str = (v: { toString(): string } | null | undefined) => (v == null ? "" : String(v));
-const ymd = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+const ymd = (d: Date | null) => (d ? formatDateOnlyUtc(d) : "");
 const answer = (v: boolean | null | undefined) => (v === true ? "yes" : v === false ? "no" : "") as "yes" | "no" | "";
 
 export default async function HomeOfficePage({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
@@ -232,7 +232,7 @@ export default async function HomeOfficePage({ searchParams }: { searchParams: P
               );
             })}
           </div>
-          {current.simplified.lostToIncomeLimit > 0 && current.method === "SIMPLIFIED" ? (
+          {current.tentativeProfit > 0 && current.simplified.lostToIncomeLimit > 0 && current.method === "SIMPLIFIED" ? (
             <p className="mt-4 text-sm text-warning">
               Your business didn&apos;t earn enough to use the full simplified deduction. The unused{" "}
               {formatCurrency(current.simplified.lostToIncomeLimit)} is lost: the simplified method has no carryover.
@@ -252,7 +252,7 @@ export default async function HomeOfficePage({ searchParams }: { searchParams: P
         icon={Ruler}
         description="Measure the room you use only for work. Everything else is worked out for you."
       >
-        <SetupForm key={row?.updatedAt.toISOString() ?? "new"} values={setupValues} />
+        <SetupForm key={`${row?.updatedAt.toISOString() ?? "new"}:${setupValues.businessUseStart}`} values={setupValues} />
       </Card>
 
       <Card
@@ -270,15 +270,19 @@ export default async function HomeOfficePage({ searchParams }: { searchParams: P
         />
       </Card>
 
-      {row ? (
-        <Card
-          title={`Home costs for ${year}`}
-          icon={Receipt}
-          description="Bills for the whole home or just the office. These matter for the regular method; keep receipts either way."
-        >
+      <Card
+        title={`Home costs for ${year}`}
+        icon={Receipt}
+        description="Bills for the whole home or just the office. These matter for the regular method; keep receipts either way."
+      >
+        {row ? (
           <ExpensesSection year={year} ownership={ownership} expenses={expenseRows} />
-        </Card>
-      ) : null}
+        ) : (
+          <p className="rounded-xl bg-surface px-4 py-3 text-sm text-muted">
+            Save your office details above, then you can add costs and receipts here.
+          </p>
+        )}
+      </Card>
 
       {row && ownership === "OWN" ? (
         <Card

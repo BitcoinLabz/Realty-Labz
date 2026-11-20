@@ -7,6 +7,7 @@ import { openHouseSchema, openHouseVisitorSchema } from "@/lib/validation";
 import { ownerOnlyFilter } from "@/lib/authorization";
 import type { FormState } from "@/app/actions/auth";
 import type { Role } from "@/generated/prisma/enums";
+import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 
 async function assertDealAccess(
   dealId: string,
@@ -82,6 +83,17 @@ export async function submitOpenHouseVisitorAction(
 ): Promise<FormState> {
   const openHouseId = formData.get("openHouseId");
   if (typeof openHouseId !== "string" || !openHouseId) return { error: "Missing open house id" };
+
+  // One tablet at the door is one IP and can sign in a crowd. The cap is
+  // high enough for that and low enough that a script can't fill the list.
+  // A second cap on the link itself stops a flood from many addresses.
+  const ip = await getClientIp();
+  if (
+    (await isRateLimited(`open-house:${ip}`, { max: 40, windowMinutes: 15 })) ||
+    (await isRateLimited(`open-house-link:${openHouseId}`, { max: 300, windowMinutes: 60 }))
+  ) {
+    return { error: "Too many sign-ins from this connection. Wait a few minutes and try again." };
+  }
 
   const openHouse = await prisma.openHouse.findUnique({ where: { id: openHouseId } });
   if (!openHouse) return { error: "This open house link is no longer valid" };

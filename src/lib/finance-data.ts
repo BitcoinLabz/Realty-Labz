@@ -419,7 +419,7 @@ async function upcomingDeadlinesFor(
 
 export type AttentionItem = {
   id: string;
-  kind: "overdue" | "missingDocs" | "awaitingSignature" | "taxDue";
+  kind: "overdue" | "missingDocs" | "awaitingSignature" | "taxDue" | "paymentFailed";
   title: string;
   detail: string;
   href: string;
@@ -447,7 +447,7 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
     new Date(miToday.getUTCFullYear(), miToday.getUTCMonth(), miToday.getUTCDate()),
   );
 
-  const [overdue, missingDocs, awaitingSignature, earnedInTaxYear] = await Promise.all([
+  const [overdue, missingDocs, awaitingSignature, earnedInTaxYear, billing] = await Promise.all([
     prisma.dealDeadline.findMany({
       // Before today in Michigan, not before this instant: a deadline due
       // today hasn't been missed yet (see isDeadlineOverdue).
@@ -491,12 +491,27 @@ export async function getAttentionItems(userId: string): Promise<AttentionItem[]
           },
         })
       : Promise.resolve(0),
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { subscriptionStatus: true, compedPro: true },
+    }),
   ]);
 
   const daysAgo = (date: Date) =>
     Math.max(1, Math.round((now.getTime() - date.getTime()) / (24 * 60 * 60 * 1000)));
 
   return [
+    ...(billing?.subscriptionStatus === "past_due" && !billing.compedPro
+      ? [
+          {
+            id: "billing-past-due",
+            kind: "paymentFailed" as const,
+            title: "Pro payment didn't go through",
+            detail: "Update your card in Settings. Pro stays on while Stripe retries.",
+            href: "/account#plan",
+          },
+        ]
+      : []),
     ...overdue.map((d) => ({
       id: `overdue-${d.id}`,
       kind: "overdue" as const,

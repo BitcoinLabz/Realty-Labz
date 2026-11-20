@@ -7,6 +7,7 @@ import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { FileDropInput } from "@/components/ui/file-drop-input";
+import { RowMenu } from "@/components/ui/row-menu";
 import { formatFileSize } from "@/lib/format";
 import type { DocumentTemplateDTO } from "./types";
 
@@ -48,6 +49,48 @@ function UploadTemplateForm() {
   );
 }
 
+function LibraryRow({ template, isTeamShared }: { template: DocumentTemplateDTO; isTeamShared: boolean }) {
+  const [state, formAction, isPending] = useActionState(createFormTemplateFromLibraryAction, initialState);
+  const isPdf = template.mimeType === "application/pdf";
+
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <a href={`/api/document-templates/${template.id}`} className="flex min-w-0 flex-col hover:text-accent">
+          <span className="truncate text-sm font-medium text-foreground">{template.name}</span>
+          <span className="text-sm text-muted">
+            {formatFileSize(template.size)}
+            {isTeamShared ? ` · Added by ${template.creatorName}` : ""}
+          </span>
+        </a>
+        <div className="flex shrink-0 items-center gap-3">
+        {isPdf ? (
+          <form action={formAction}>
+            <input type="hidden" name="documentTemplateId" value={template.id} />
+            <button type="submit" disabled={isPending} className="text-sm font-medium text-accent hover:opacity-80 disabled:opacity-60">
+              {isPending ? "Creating…" : "Create fillable template"}
+            </button>
+          </form>
+        ) : null}
+        <RowMenu
+          label={`Actions for ${template.name}`}
+          items={[
+            {
+              label: "Delete",
+              destructive: true,
+              confirm: `Delete "${template.name}" from the library?`,
+              action: deleteTemplateAction,
+              fields: { id: template.id },
+            },
+          ]}
+        />
+        </div>
+      </div>
+      {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
+    </div>
+  );
+}
+
 export function LibraryList({
   templates,
   canManage,
@@ -82,43 +125,24 @@ export function LibraryList({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
-          {templates.map((t) => (
-            <div
-              key={t.id}
-              className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <a href={`/api/document-templates/${t.id}`} className="flex min-w-0 flex-col hover:text-accent">
-                <span className="truncate text-sm font-medium text-foreground">{t.name}</span>
-                <span className="text-sm text-muted">
-                  {formatFileSize(t.size)}
-                  {isTeamShared ? ` · Added by ${t.creatorName}` : ""}
-                </span>
-              </a>
-              {canManage ? (
-                <div className="flex shrink-0 items-center gap-4">
-                  {t.mimeType === "application/pdf" ? (
-                    <form action={createFormTemplateFromLibraryAction}>
-                      <input type="hidden" name="documentTemplateId" value={t.id} />
-                      <button type="submit" className="text-sm font-medium text-accent hover:opacity-80">
-                        Create fillable template
-                      </button>
-                    </form>
-                  ) : null}
-                  <form
-                    action={deleteTemplateAction}
-                    onSubmit={(e) => {
-                      if (!confirm(`Delete "${t.name}" from the library?`)) e.preventDefault();
-                    }}
-                  >
-                    <input type="hidden" name="id" value={t.id} />
-                    <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                      Delete
-                    </button>
-                  </form>
-                </div>
-              ) : null}
-            </div>
-          ))}
+          {templates.map((t) =>
+            canManage ? (
+              <LibraryRow key={t.id} template={t} isTeamShared={isTeamShared} />
+            ) : (
+              <div
+                key={t.id}
+                className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <a href={`/api/document-templates/${t.id}`} className="flex min-w-0 flex-col hover:text-accent">
+                  <span className="truncate text-sm font-medium text-foreground">{t.name}</span>
+                  <span className="text-sm text-muted">
+                    {formatFileSize(t.size)}
+                    {isTeamShared ? ` · Added by ${t.creatorName}` : ""}
+                  </span>
+                </a>
+              </div>
+            ),
+          )}
         </div>
       )}
     </section>

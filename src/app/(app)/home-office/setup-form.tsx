@@ -30,6 +30,7 @@ export function SetupForm({ values }: { values: SetupValues }) {
   const [sqFt, setSqFt] = useState(values.officeSqFt);
   const [homeSqFt, setHomeSqFt] = useState(values.homeSqFt);
   const [ownership, setOwnership] = useState(values.ownership);
+  const [started, setStarted] = useState(values.businessUseStart);
   // Irregular rooms: type the square footage instead of measuring a rectangle.
   const [byDimensions, setByDimensions] = useState(!values.officeSqFt || !!values.officeLengthFt);
 
@@ -126,7 +127,8 @@ export function SetupForm({ values }: { values: SetupValues }) {
         label="Date you started using it for business"
         name="businessUseStart"
         type="date"
-        defaultValue={values.businessUseStart}
+        value={started}
+        onChange={(e) => setStarted(e.target.value)}
         error={state.fieldErrors?.businessUseStart}
         hint="Only costs from this month on count in your first year."
       />

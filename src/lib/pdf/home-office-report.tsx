@@ -74,7 +74,7 @@ export type HomeOfficeReportData = {
   chain: HomeOfficeYearResult[];
   basis: DepreciationBasis | null;
   recapture: number;
-  status: { tone: "success" | "warning"; text: string };
+  status: { tone: "success" | "warning" | "neutral"; text: string };
   expenses: HomeOfficeReportExpense[];
   eligibility: { regularUse: boolean | null; exclusiveUse: boolean | null; principalPlace: boolean | null };
 };
@@ -129,7 +129,9 @@ export function HomeOfficeReport({ data }: { data: HomeOfficeReportData }) {
             styles.banner,
             data.status.tone === "success"
               ? { backgroundColor: "#e8f5ee", color: colors.success }
-              : { backgroundColor: "#fdf3e4", color: colors.warning },
+              : data.status.tone === "warning"
+                ? { backgroundColor: "#fdf3e4", color: colors.warning }
+                : { backgroundColor: "#f4f6f8", color: colors.muted },
           ]}
         >
           {data.status.text}

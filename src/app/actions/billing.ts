@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { APP_URL } from "@/lib/app-url";
 import { getStripe, isBillingConfigured, priceIdFor } from "@/lib/stripe";
+import { automaticTaxEnabled, buildCheckoutSessionParams } from "@/lib/stripe-billing";
 import type { FormState } from "@/app/actions/auth";
 
 // Upgrade and billing management (2026-10-05). Both hand off to Stripe's own
@@ -61,22 +62,21 @@ export async function startCheckoutAction(_prev: FormState, formData: FormData):
   await prisma.user.update({ where: { id: session.user.id }, data: { planChosen: true } });
   let url: string | null;
   try {
-    const checkout = await getStripe().checkout.sessions.create({
-      mode: "subscription",
-      customer: await customerFor(session.user.id),
-      client_reference_id: session.user.id,
-      line_items: [{ price: priceIdFor(interval), quantity: 1 }],
-      subscription_data: { metadata: { userId: session.user.id } },
-      allow_promotion_codes: true,
-      // Stripe's "Managed Payments" (Stripe as merchant of record, handling
-      // sales tax) is on by default for new accounts, adds a fee to every
-      // payment, and refuses checkout until the product has a tax code.
-      // Founder's call (2026-10-08): no extra costs yet, so it's off here.
-      // To use it later: set the product's tax code in Stripe and remove this.
-      managed_payments: { enabled: false },
-      success_url: `${APP_URL}/account?upgraded=1#plan`,
-      cancel_url: `${APP_URL}/account#plan`,
-    });
+    // Managed Payments (Stripe as merchant of record) stays off: it adds a
+    // fee to every payment. Sales tax, when the founder switches it on, is
+    // Stripe Tax via automatic_tax -- a different product. STRIPE_AUTOMATIC_TAX
+    // must be the string "true", and Stripe Tax plus a product tax code must
+    // already be configured in the dashboard or Checkout refuses the session.
+    const checkout = await getStripe().checkout.sessions.create(
+      buildCheckoutSessionParams({
+        userId: session.user.id,
+        customerId: await customerFor(session.user.id),
+        priceId: priceIdFor(interval),
+        successUrl: `${APP_URL}/account?upgraded=1#plan`,
+        cancelUrl: `${APP_URL}/account#plan`,
+        automaticTax: automaticTaxEnabled(),
+      }),
+    );
     url = checkout.url;
   } catch (err) {
     console.error("[billing] checkout failed", err);

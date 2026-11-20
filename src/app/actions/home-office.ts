@@ -10,6 +10,7 @@ import {
   saveDocumentFile,
 } from "@/lib/document-storage";
 import { storageBlockMessage } from "@/lib/user-plan";
+import { parseDateOnlyUtc } from "@/lib/home-office";
 import { homeOfficeExpenseSchema, homeOfficeSetupSchema } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
 
@@ -71,7 +72,7 @@ export async function saveHomeOfficeSetupAction(_prev: FormState, formData: Form
     officeWidthFt: v.officeWidthFt ?? null,
     officeSqFt,
     homeSqFt: v.homeSqFt ?? null,
-    businessUseStart: v.businessUseStart ? new Date(`${v.businessUseStart}T00:00:00.000Z`) : null,
+    businessUseStart: v.businessUseStart ? parseDateOnlyUtc(v.businessUseStart) : null,
     ownership: v.ownership,
     // A renter has nothing to depreciate; clear stale purchase details.
     purchasePrice: owned ? (v.purchasePrice ?? null) : null,
@@ -205,7 +206,10 @@ export async function deleteHomeOfficeExpenseAction(formData: FormData): Promise
   });
   if (!expense) return;
 
-  await prisma.homeOfficeExpense.delete({ where: { id: expense.id } });
+  const removed = await prisma.homeOfficeExpense.deleteMany({
+    where: { id: expense.id, userId: session.user.id },
+  });
+  if (removed.count !== 1) return;
   // The receipt only existed for this expense; remove it too.
   if (expense.receipt) {
     await prisma.document.deleteMany({ where: { id: expense.receipt.id, userId: session.user.id } });

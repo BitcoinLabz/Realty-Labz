@@ -282,3 +282,44 @@ export async function sendOfficeDigestEmail(params: {
     `,
   });
 }
+
+export async function sendPasswordResetEmail(params: { to: string; resetUrl: string }) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: "Reset your Realty Labz password",
+    html: `
+      <p>Someone asked to reset the password for this Realty Labz account.</p>
+      <p><a href="${params.resetUrl}">Choose a new password</a></p>
+      <p style="color:#86868b;font-size:13px;">This link expires in one hour and works once. If you didn't ask, you can ignore this email.</p>
+    `,
+  });
+}
+
+export async function sendGoogleAccountEmail(params: { to: string; loginUrl: string }) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: "Signing in to Realty Labz",
+    html: `
+      <p>This Realty Labz account signs in with Google, so there isn't a password to reset.</p>
+      <p><a href="${params.loginUrl}">Continue with Google</a></p>
+    `,
+  });
+}
+
+export async function sendEmailVerificationEmail(params: { to: string; verifyUrl: string }) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: "Confirm your email for Realty Labz",
+    html: `
+      <p>Confirm this is your email so we can reach you about your account.</p>
+      <p><a href="${params.verifyUrl}">Confirm email</a></p>
+      <p style="color:#86868b;font-size:13px;">This link expires in 3 days. If you didn't create an account, you can ignore this email.</p>
+    `,
+  });
+}

@@ -10,6 +10,7 @@ import {
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
 import { FileDropInput } from "@/components/ui/file-drop-input";
+import { RowMenu } from "@/components/ui/row-menu";
 import { Select } from "@/components/ui/select";
 import { formatFileSize } from "@/lib/format";
 import type { DealOption, DocumentDTO } from "../types";
@@ -114,35 +115,30 @@ export function ClientDocuments({
       ) : (
         <div className="flex flex-col gap-2">
           {documents.map((doc) => (
-            <div key={doc.id} className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3">
-              <div className="flex items-start justify-between gap-4">
-                <a href={`/api/documents/${doc.id}`} className="flex min-w-0 flex-col hover:text-accent">
-                  <span className="break-words text-sm font-medium text-foreground">{doc.fileName}</span>
-                  <span className="text-sm text-muted">{formatFileSize(doc.size)}</span>
-                </a>
+            <div key={doc.id} className="flex flex-col gap-3 rounded-xl border border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <a href={`/api/documents/${doc.id}`} className="flex min-w-0 flex-col hover:text-accent">
+                <span className="break-words text-sm font-medium text-foreground">{doc.fileName}</span>
+                <span className="text-sm text-muted">{formatFileSize(doc.size)}</span>
+              </a>
+              <div className="flex shrink-0 items-center justify-between gap-2 sm:justify-end">
                 <PortalVisibilityToggle id={doc.id} visible={doc.visibleToClient ?? true} />
-              </div>
-              <div className="flex items-center gap-4 border-t border-border pt-3">
-                <form action={updateDocumentLinksAction}>
-                  <input type="hidden" name="id" value={doc.id} />
-                  <input type="hidden" name="clientId" value="" />
-                  <input type="hidden" name="dealId" value={doc.dealId ?? ""} />
-                  <button type="submit" className="text-sm font-medium text-muted hover:text-foreground">
-                    Unlink from this client
-                  </button>
-                </form>
-                <form
-                  action={deleteDocumentAction}
-                  onSubmit={(e) => {
-                    if (!confirm(`Delete ${doc.fileName}?`)) e.preventDefault();
-                  }}
-                  className="ml-auto"
-                >
-                  <input type="hidden" name="id" value={doc.id} />
-                  <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-                    Delete
-                  </button>
-                </form>
+                <RowMenu
+                  label={`Actions for ${doc.fileName}`}
+                  items={[
+                    {
+                      label: "Unlink from this client",
+                      action: updateDocumentLinksAction,
+                      fields: { id: doc.id, clientId: "", dealId: doc.dealId ?? "" },
+                    },
+                    {
+                      label: "Delete",
+                      destructive: true,
+                      confirm: `Delete ${doc.fileName}?`,
+                      action: deleteDocumentAction,
+                      fields: { id: doc.id },
+                    },
+                  ]}
+                />
               </div>
             </div>
           ))}

@@ -1,7 +1,9 @@
 import { auth } from "@/auth";
+import { prisma } from "@/lib/db";
 import { isManager, isOversightRole } from "@/lib/authorization";
 import { getTeamUpcomingDeadlines, getUpcomingDeadlines } from "@/lib/finance-data";
 import { Sidebar } from "@/components/sidebar";
+import { VerifyEmailBanner } from "@/components/verify-email-banner";
 import { autoLogDueRecurringTransactions } from "@/app/actions/recurring-transactions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -47,6 +49,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
+  let showVerifyBanner = false;
+  if (session?.user) {
+    try {
+      const account = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { emailVerifiedAt: true },
+      });
+      showVerifyBanner = !!account && !account.emailVerifiedAt;
+    } catch (err) {
+      console.error("[app-layout] email verification lookup failed", err);
+    }
+  }
+
   return (
     <div className="flex min-h-screen bg-surface">
       <Sidebar
@@ -59,7 +74,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           past the screen; pl-[4.5rem] is the 56px phone icon rail (sidebar.tsx)
           plus a 16px gutter. */}
       <main className="min-w-0 flex-1 py-8 pl-[4.5rem] pr-4 sm:pr-6 md:px-10 md:py-10">
-        <div className="mx-auto max-w-5xl">{children}</div>
+        <div className="mx-auto max-w-5xl">
+          {showVerifyBanner ? <VerifyEmailBanner /> : null}
+          {children}
+        </div>
       </main>
     </div>
   );

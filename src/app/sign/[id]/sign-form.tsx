@@ -8,6 +8,7 @@ import {
 } from "@/app/actions/form-submissions";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { ConfirmSubmit } from "@/components/ui/confirm-submit";
 import { PdfPageCanvas, usePdfDocument } from "@/components/pdf-page-canvas";
 import { SignaturePadModal } from "@/components/signature-pad-modal";
 import type { SignFieldDTO } from "./types";
@@ -199,17 +200,13 @@ export function SignForm({
           </Button>
         </form>
 
-        <form
+        <ConfirmSubmit
           action={declineSignerAction}
-          onSubmit={(e) => {
-            if (!confirm("Are you sure you want to decline to sign this document?")) e.preventDefault();
-          }}
-        >
-          <input type="hidden" name="signerId" value={signerId} />
-          <button type="submit" className="text-sm font-medium text-danger hover:opacity-80">
-            I can&apos;t sign this
-          </button>
-        </form>
+          fields={{ signerId }}
+          label="I can't sign this"
+          confirm="Decline to sign this document?"
+          buttonClassName="text-sm font-medium text-danger hover:opacity-80"
+        />
       </div>
 
       {signingField ? (

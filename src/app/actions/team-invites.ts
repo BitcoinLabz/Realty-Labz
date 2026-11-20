@@ -16,6 +16,7 @@ import {
   joinTeamSchema,
 } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
+import { issueEmailVerification } from "@/lib/account-access";
 
 const INVITE_EXPIRY_DAYS = 7;
 
@@ -147,7 +148,7 @@ export async function joinTeamAction(
 
   const passwordHash = await bcrypt.hash(password, 12);
 
-  await prisma.$transaction([
+  const [created] = await prisma.$transaction([
     prisma.user.create({
       data: {
         name,
@@ -160,12 +161,19 @@ export async function joinTeamAction(
         // Office admins get the oversight app and skip the plan picker.
         planChosen: invite.role === "ADMIN",
       },
+      select: { id: true },
     }),
     prisma.teamInvite.update({
       where: { id: invite.id },
       data: { usedAt: new Date() },
     }),
   ]);
+
+  try {
+    await issueEmailVerification(created.id);
+  } catch (err) {
+    console.error("[join] verification email failed", err);
+  }
 
   await signIn("credentials", { email, password, redirectTo: "/dashboard" });
   return {};
