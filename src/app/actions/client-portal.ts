@@ -9,6 +9,7 @@ import { PORTAL_COOKIE_NAME, getOrCreatePortalSession } from "@/lib/client-porta
 import { sendPortalAccessEmail, sendPortalSignInEmail } from "@/lib/email";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
 import { APP_URL } from "@/lib/app-url";
+import { portalSignInSchema } from "@/lib/validation";
 import type { FormState } from "@/app/actions/auth";
 
 // The link itself comes back to the agent so they can copy it and send it
@@ -80,11 +81,11 @@ export async function requestPortalSignInAction(
   _prevState: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const raw = formData.get("email");
-  const email = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-  if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) {
+  const parsed = portalSignInSchema.safeParse({ email: formData.get("email") ?? "" });
+  if (!parsed.success) {
     return { fieldErrors: { email: "Enter the email address your agent has for you" } };
   }
+  const { email } = parsed.data;
 
   // Per IP stops one visitor spraying addresses; per email stops anyone
   // flooding one inbox with sign-in mail.

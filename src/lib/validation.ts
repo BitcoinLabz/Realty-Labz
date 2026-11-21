@@ -365,6 +365,18 @@ export const contactMessageSchema = z.object({
   message: z.string().trim().min(1, "Message is required").max(2000),
 });
 
+// Public, unauthenticated -- a client asking for a portal sign-in link on
+// /portal. This used to be a hand-written regex, /^[^s@]+@[^s@]+.[^s@]+$/,
+// whose `\s` had lost its backslash: it rejected every address containing
+// the letter "s" (most real ones), so clients couldn't sign in at all. Same
+// z.email() as every other email field in this file.
+export const portalSignInSchema = z.object({
+  email: z.preprocess(
+    (value) => (typeof value === "string" ? value.trim().toLowerCase() : value),
+    z.email("Enter the email address your agent has for you"),
+  ),
+});
+
 export const formSignerSchema = z.object({
   name: z.string().trim().min(1, "Enter a name").max(100),
   email: z.email("Enter a valid email").trim().toLowerCase(),
