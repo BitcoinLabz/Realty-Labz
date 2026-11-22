@@ -18,6 +18,23 @@ export function BreakdownDonutChart({ data }: { data: { label: string; value: nu
   const motion = useChartMotion();
   const [active, setActive] = useState<number | null>(null);
   const total = data.reduce((sum, d) => sum + d.value, 0);
+
+  if (data.length < 2) {
+    const only = data[0];
+    return (
+      <div>
+        <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">{formatCurrency(total)}</p>
+        {only ? (
+          <p className="mt-2 flex items-center justify-between gap-3 border-t border-border pt-2 text-sm">
+            <span className="text-foreground">{only.label}</span>
+            <span className="tabular-nums text-muted">{formatCurrency(only.value)}</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-muted">Nothing to break down yet.</p>
+        )}
+      </div>
+    );
+  }
   const shown = active == null ? total : data[active]?.value ?? total;
   const shownLabel = active == null ? "Total" : data[active]?.label ?? "Total";
 

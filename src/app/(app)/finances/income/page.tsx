@@ -7,6 +7,7 @@ import { getMonthlyIncomeExpense } from "@/lib/finance-data";
 import { StatGrid } from "@/components/ui/stat-grid";
 import { YearSelect } from "@/components/ui/year-select";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
+import { throughCurrentMonth } from "@/lib/months-to-date";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import { TransactionForm } from "./transaction-form";
 import { TransactionList } from "./transaction-list";
@@ -129,7 +130,11 @@ export default async function FinancesTransactionsPage({
             value: formatCurrency(businessNet),
             hint: "What the business earned, minus expenses and the mileage deduction.",
           },
-          { label: "Personal net", value: formatCurrency(personalNet) },
+          {
+            label: "Personal net",
+            value: formatCurrency(personalNet),
+            note: personalNet === 0 ? "Kept off tax reports" : "Kept separate",
+          },
           {
             label: "Mileage deduction",
             value: formatCurrency(mileageDeduction),
@@ -139,10 +144,11 @@ export default async function FinancesTransactionsPage({
         ]}
       />
 
+      <div className="grid items-start gap-5 lg:grid-cols-2">
       <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Money in &amp; out by month</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Money in &amp; out by month</h2>
         {hasMonthlyData ? (
-          <MonthlyBarChart data={monthlySeries} />
+          <MonthlyBarChart data={throughCurrentMonth(monthlySeries, year)} />
         ) : (
           <p className="text-sm text-muted">
             Log your first income or expense below and your month-by-month trend appears here.
@@ -160,6 +166,7 @@ export default async function FinancesTransactionsPage({
           <TransactionForm deals={dealOptions} />
         </div>
       </section>
+      </div>
 
       <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <div className="mb-6 flex items-baseline justify-between">

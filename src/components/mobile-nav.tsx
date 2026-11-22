@@ -69,9 +69,9 @@ export function MobileNav({
 
       <nav
         aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur md:hidden pb-[env(safe-area-inset-bottom)]"
+        className="fixed inset-x-0 bottom-0 z-30 h-[calc(3.5rem+env(safe-area-inset-bottom))] border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       >
-        <div className={`grid ${overflow.length > 0 || tabs.length >= 5 ? "grid-cols-5" : "grid-cols-4"}`}>
+        <div className={`grid h-14 ${overflow.length > 0 || tabs.length >= 5 ? "grid-cols-5" : "grid-cols-4"}`}>
           {tabs.map((item) => {
             const Icon = item.icon;
             const active = item.href === activeHref;

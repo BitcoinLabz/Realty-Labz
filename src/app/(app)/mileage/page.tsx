@@ -68,26 +68,42 @@ export default async function MileagePage({
 
       <StatGrid
         items={[
-          { label: "Business miles", value: businessMiles.toLocaleString() },
-          { label: "Mileage deduction", value: formatCurrency(mileageDeduction) },
+          {
+            label: "Business miles",
+            value: businessMiles.toLocaleString(),
+            note: businessMiles === 0 ? "Log a drive to start" : `In ${year}`,
+          },
+          {
+            label: "Mileage deduction",
+            value: formatCurrency(mileageDeduction),
+            note: mileageDeduction === 0 ? "Shows up with the first trip" : "At this year's rate",
+          },
         ]}
       />
 
+      <div className="grid items-start gap-5 lg:grid-cols-2">
       <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Log a trip</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Log a trip</h2>
         <div className="max-w-md">
           <MileageForm />
         </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Deduction by month</h2>
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Deduction by month</h2>
         {hasData ? (
-          <MileageTrendChart data={monthlySeries} />
+          <MileageTrendChart
+            data={
+              new Date().getFullYear() === year
+                ? monthlySeries.slice(0, new Date().getMonth() + 1)
+                : monthlySeries
+            }
+          />
         ) : (
           <p className="text-sm text-muted">Log a business trip to see your trend here.</p>
         )}
       </section>
+      </div>
 
       <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <div className="mb-6 flex items-baseline justify-between">

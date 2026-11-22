@@ -1,29 +1,38 @@
-// A quiet trend line beside a headline number. Values are already computed
-// by the page; this only draws them.
-export function Sparkline({ values, negative = false }: { values: number[]; negative?: boolean }) {
-  if (values.length < 2 || values.every((v) => v === 0)) return null;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+// Cumulative year-to-date area. Each value is that month's net; the line is
+// the running total, so one busy month doesn't look like a flat line with a spike.
+export function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const cumulative: number[] = [];
+  let run = 0;
+  for (const value of values) {
+    run += value;
+    cumulative.push(run);
+  }
+  if (cumulative.every((v) => v === 0)) return null;
+
+  const min = Math.min(0, ...cumulative);
+  const max = Math.max(0, ...cumulative);
   const span = max - min || 1;
-  const w = 108;
-  const h = 36;
-  const points = values
-    .map((v, i) => {
-      const x = (i / (values.length - 1)) * (w - 2) + 1;
-      const y = h - 2 - ((v - min) / span) * (h - 6);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
+  const w = 168;
+  const h = 48;
+  const coords = cumulative.map((v, i) => {
+    const x = (i / (cumulative.length - 1)) * (w - 2) + 1;
+    const y = h - 4 - ((v - min) / span) * (h - 8);
+    return { x, y };
+  });
+  const line = coords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+  const area = `M${coords[0].x.toFixed(1)},${h} ` + coords.map((p) => `L${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ") + ` L${coords[coords.length - 1].x.toFixed(1)},${h} Z`;
 
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} aria-hidden className="shrink-0">
+    <svg viewBox={`0 0 ${w} ${h}`} aria-hidden className="h-12 w-full">
+      <path d={area} fill="var(--accent)" opacity="0.16" />
       <polyline
         fill="none"
-        stroke={negative ? "var(--danger)" : "var(--accent)"}
+        stroke="var(--accent)"
         strokeWidth="1.75"
         strokeLinejoin="round"
         strokeLinecap="round"
-        points={points}
+        points={line}
       />
     </svg>
   );
