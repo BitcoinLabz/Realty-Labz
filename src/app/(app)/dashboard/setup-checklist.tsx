@@ -38,7 +38,7 @@ export function SetupChecklist({ steps }: { steps: SetupStep[] }) {
   const doneCount = steps.length - remaining.length;
 
   return (
-    <section className="rounded-2xl border border-accent/30 bg-accent/5 p-6 sm:p-8">
+    <section className="rounded-2xl border border-accent/30 bg-accent/5 p-4 sm:p-5">
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">

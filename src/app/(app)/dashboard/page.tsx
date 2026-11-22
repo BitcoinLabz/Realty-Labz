@@ -13,21 +13,10 @@ import {
   getAttentionItems,
   getUpcomingDeadlines,
 } from "@/lib/finance-data";
-import {
-  BadgeCheck,
-  CalendarClock,
-  Car,
-  FileText,
-  HandCoins,
-  PiggyBank,
-  TrendingUp,
-  Users,
-  Wallet,
-} from "lucide-react";
-import { SummaryCard } from "@/components/ui/summary-card";
+import { CalendarClock, PiggyBank, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
-import { PageHeader } from "@/components/ui/page-header";
+import { StatGrid } from "@/components/ui/stat-grid";
+import { Sparkline } from "@/components/charts/sparkline";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
 import { NetWorthChart } from "@/components/charts/net-worth-chart";
@@ -116,6 +105,10 @@ export default async function DashboardPage() {
   ].filter((p) => p.value > 0);
 
   const hasMonthlyData = monthlySeries.some((p) => p.income > 0 || p.expenses > 0);
+  const monthlyNets = monthlySeries.map((p) => p.income - p.expenses);
+  const monthIndex = new Date().getFullYear() === currentYear ? new Date().getMonth() : monthlyNets.length - 1;
+  const monthDelta =
+    monthIndex > 0 ? monthlyNets[monthIndex] - monthlyNets[monthIndex - 1] : null;
 
   const setupSteps: SetupStep[] = [
     {
@@ -161,94 +154,81 @@ export default async function DashboardPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-8">
-      {/* The one decorative touch: a soft wash of the logo's cyan behind the
-          greeting. Low enough contrast that it never competes with content. */}
-      <div className="-mx-2 rounded-3xl border border-(--hero-edge) bg-linear-to-br from-(--hero-from) via-(--hero-via) to-transparent px-6 py-6 [--muted:var(--hero-muted)] sm:-mx-4 sm:px-8">
-        <PageHeader
-          title={`Welcome back, ${session?.user?.name?.split(" ")[0] ?? ""}`}
-          description={team ? `${team.name} · Team account` : "Solo account"}
-        />
+    <div className="flex flex-col gap-5">
+      <div>
+        <h1 className="text-lg font-semibold tracking-tight text-foreground">
+          {session?.user?.name?.split(" ")[0] ?? "Welcome back"}
+        </h1>
+        <p className="text-xs text-muted">{team ? team.name : "Solo account"}</p>
       </div>
 
       <SetupChecklist steps={setupSteps} />
 
       <AttentionList items={attentionItems} />
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href="/finances" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard
-            label={`Net income (${currentYear})`}
-            value={formatCurrency(netIncome)}
-            icon={Wallet}
-            tone="success"
-          />
-        </Link>
-        <Link href="/mileage" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard label="Mileage saved" value={formatCurrency(mileageSaved)} icon={Car} tone="accent" />
-        </Link>
-        <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard label="Clients" value={clientCount.toString()} icon={Users} tone="violet" />
-        </Link>
-        <Link href="/clients" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard label="Documents" value={documentCount.toString()} icon={FileText} tone="accent" />
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard
-            label={`Closed (${currentYear})`}
-            value={closedDeals.count.toString()}
-            icon={BadgeCheck}
-            tone="success"
-            hint="Transactions you've marked as Closed with a closing date this year."
-          />
-        </Link>
-        <Link href="/transactions" className="block transition-transform hover:-translate-y-0.5">
-          <SummaryCard
-            label={`What you kept (${currentYear})`}
-            value={formatCurrency(closedDeals.netCommission)}
-            icon={HandCoins}
-            tone="success"
-            hint="Your commission after the brokerage's cut and any referral fees, team splits, or other deductions come out."
-          />
-        </Link>
-      </div>
-
       <RecurringReminders items={dueRecurring} />
 
+      <section className="rounded-2xl border border-border bg-background px-4 py-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs text-muted">Net income · {currentYear}</p>
+            <p
+              className={`mt-1 text-3xl font-semibold tabular-nums tracking-tight ${
+                netIncome < 0 ? "text-danger" : "text-foreground"
+              }`}
+            >
+              {formatCurrency(netIncome)}
+            </p>
+            <p className="mt-1 text-xs text-muted">After expenses and mileage.</p>
+            {monthDelta != null && monthDelta !== 0 ? (
+              <p className={`mt-1 text-xs tabular-nums ${monthDelta < 0 ? "text-danger" : "text-success"}`}>
+                {monthDelta > 0 ? "+" : ""}
+                {formatCurrency(monthDelta)} this month vs last
+              </p>
+            ) : null}
+          </div>
+          <Link href="/finances" className="pt-1" aria-label="Open income and expenses">
+            <Sparkline values={monthlyNets} negative={netIncome < 0} />
+          </Link>
+        </div>
+      </section>
+
+      <StatGrid
+        items={[
+          { label: "Mileage saved", value: formatCurrency(mileageSaved), href: "/mileage" },
+          { label: "Clients", value: clientCount.toString(), href: "/clients" },
+          { label: "Documents", value: documentCount.toString(), href: "/clients" },
+          {
+            label: `Closed (${currentYear})`,
+            value: closedDeals.count.toString(),
+            href: "/transactions",
+            hint: "Transactions marked Closed with a closing date this year.",
+          },
+          {
+            label: `What you kept (${currentYear})`,
+            value: formatCurrency(closedDeals.netCommission),
+            href: "/transactions",
+            hint: "Commission after the brokerage split, referral fees, team splits, and other deductions.",
+          },
+        ]}
+      />
+
+      {upcomingDeadlines.length > 0 ? (
       <Card
         title="Coming up"
         icon={CalendarClock}
-        tone="warning"
-        description="Deadlines on your transactions in the next 7 days."
+        description="The next 7 days."
         action={
-          upcomingDeadlines.length > 0 ? (
-            <a
-              href="/api/calendar/deadlines"
-              className="text-sm font-medium text-accent hover:opacity-80"
-            >
-              Add to calendar
-            </a>
-          ) : null
+          <a href="/api/calendar/deadlines" className="text-sm font-medium text-accent hover:opacity-80">
+            Add to calendar
+          </a>
         }
       >
-        {upcomingDeadlines.length === 0 ? (
-          <EmptyState
-            icon={CalendarClock}
-            title="Nothing due in the next 7 days"
-            description="Deadlines you add to a transaction — inspection, financing, closing — show up here so nothing sneaks up on you."
-            actionLabel="Go to your transactions"
-            actionHref="/transactions"
-          />
-        ) : (
-          <div className="flex flex-col gap-2">
+          <div className="divide-y divide-border">
             {upcomingDeadlines.map((d) => (
               <Link
                 key={d.id}
                 href={`/transactions/${d.dealId}`}
-                className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-3 hover:border-accent"
+                className="flex items-center justify-between gap-3 py-2.5"
               >
                 <span className="text-sm font-medium text-foreground">
                   {d.label} — {d.propertyAddress}
@@ -265,8 +245,8 @@ export default async function DashboardPage() {
               </Link>
             ))}
           </div>
-        )}
       </Card>
+      ) : null}
 
       {hasMonthlyData ? (
         <Card title="Money in & out this year" icon={TrendingUp} tone="success">
@@ -274,41 +254,33 @@ export default async function DashboardPage() {
         </Card>
       ) : null}
 
-      <Card
-        title="What you're worth"
-        icon={PiggyBank}
-        tone="violet"
-        description="Everything you own, minus what you owe."
-        action={
-          <Link
-            href="/finances/investments"
-            className="text-sm font-medium text-accent hover:opacity-80"
-          >
-            Manage
-          </Link>
-        }
-      >
-        {currentNetWorth !== null ? (
-          <div className="mb-6">
-            <p className="text-2xl font-semibold tracking-tight text-foreground">
+      {currentNetWorth !== null || financialPicture.length > 0 ? (
+        <Card
+          title="What you're worth"
+          icon={PiggyBank}
+          description="Everything you own, minus what you owe."
+          action={
+            <Link href="/finances/investments" className="text-sm font-medium text-accent hover:opacity-80">
+              Manage
+            </Link>
+          }
+        >
+          {currentNetWorth !== null ? (
+            <p
+              className={`mb-3 text-2xl font-semibold tabular-nums tracking-tight ${
+                currentNetWorth < 0 ? "text-danger" : "text-foreground"
+              }`}
+            >
               {formatCurrency(currentNetWorth)}
             </p>
-          </div>
-        ) : null}
-        {netWorthSeries.length >= 2 ? (
-          <NetWorthChart data={netWorthSeries} />
-        ) : financialPicture.length > 0 ? (
-          <BreakdownDonutChart data={financialPicture} />
-        ) : (
-          <EmptyState
-            icon={PiggyBank}
-            title="Nothing to show yet"
-            description="Add savings, a retirement account, or a property you own and this becomes a picture of your whole financial life — personal and business together."
-            actionLabel="Add what you own"
-            actionHref="/finances/investments"
-          />
-        )}
-      </Card>
+          ) : null}
+          {netWorthSeries.length >= 2 ? (
+            <NetWorthChart data={netWorthSeries} />
+          ) : (
+            <BreakdownDonutChart data={financialPicture} />
+          )}
+        </Card>
+      ) : null}
     </div>
   );
 }

@@ -64,7 +64,7 @@ export function CsvImportFlow() {
 
   if (!rows) {
     return (
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-1 text-base font-semibold text-foreground">Import from a bank statement</h2>
         <p className="mb-6 text-sm text-muted">
           Export a CSV from your bank and upload it here — the date, description, and amount (or
@@ -100,7 +100,7 @@ export function CsvImportFlow() {
     }));
 
   return (
-    <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+    <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-base font-semibold text-foreground">
           Review {rows.length} row{rows.length === 1 ? "" : "s"}

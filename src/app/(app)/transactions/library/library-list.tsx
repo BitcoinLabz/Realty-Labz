@@ -101,7 +101,7 @@ export function LibraryList({
   isTeamShared: boolean;
 }) {
   return (
-    <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+    <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
       <h2 className="mb-1 text-base font-semibold text-foreground">
         {isTeamShared ? "Team library" : "Library"}
       </h2>

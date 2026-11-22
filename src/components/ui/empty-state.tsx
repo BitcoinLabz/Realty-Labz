@@ -24,7 +24,7 @@ export function EmptyState({
   actionHref?: string;
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+    <div className="flex flex-col items-center gap-2 px-4 py-6 text-center">
       {Icon ? (
         <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface text-muted">
           <Icon size={20} />

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { formatMileageRate } from "@/lib/mileage-rate";
 import { getMileageMonthlySeries } from "@/lib/finance-data";
-import { SummaryCard } from "@/components/ui/summary-card";
+import { StatGrid } from "@/components/ui/stat-grid";
 import { YearSelect } from "@/components/ui/year-select";
 import { PageHeader } from "@/components/ui/page-header";
 import { MileageTrendChart } from "@/components/charts/mileage-trend-chart";
@@ -66,19 +66,21 @@ export default async function MileagePage({
         action={<YearSelect year={year} options={yearOptions} basePath="/mileage" />}
       />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <SummaryCard label="Business miles" value={businessMiles.toLocaleString()} />
-        <SummaryCard label="Mileage deduction" value={formatCurrency(mileageDeduction)} />
-      </div>
+      <StatGrid
+        items={[
+          { label: "Business miles", value: businessMiles.toLocaleString() },
+          { label: "Mileage deduction", value: formatCurrency(mileageDeduction) },
+        ]}
+      />
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-6 text-base font-semibold text-foreground">Log a trip</h2>
         <div className="max-w-md">
           <MileageForm />
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-6 text-base font-semibold text-foreground">Deduction by month</h2>
         {hasData ? (
           <MileageTrendChart data={monthlySeries} />
@@ -87,7 +89,7 @@ export default async function MileagePage({
         )}
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-base font-semibold text-foreground">Recent trips</h2>
           <Link

@@ -31,12 +31,12 @@ export function Card({
   const hasHeader = !!title || !!action;
 
   return (
-    <section id={id} className={`rounded-2xl border border-border bg-background p-6 sm:p-8 ${className}`}>
+    <section id={id} className={`rounded-2xl border border-border bg-background p-4 sm:p-5 ${className}`}>
       {hasHeader ? (
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
             {title ? (
-              <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
+              <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 {Icon && tone ? (
                   <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${TONE_CHIP[tone]}`}>
                     <Icon size={15} />

@@ -9,7 +9,7 @@ import {
   getMonthlyIncomeExpense,
   getPipelineValue,
 } from "@/lib/finance-data";
-import { SummaryCard } from "@/components/ui/summary-card";
+import { StatGrid } from "@/components/ui/stat-grid";
 import { YearSelect } from "@/components/ui/year-select";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -49,23 +49,26 @@ export default async function FinancesOverviewPage({
   const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-end">
+    <div className="flex flex-col gap-5">
+      <div className="flex justify-end">
         <YearSelect year={year} options={yearOptions} basePath="/finances" />
       </div>
 
       <RecurringReminders items={dueRecurring} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label={`Business net (${year})`} value={formatCurrency(businessNet)} />
-        <SummaryCard label={`Personal net (${year})`} value={formatCurrency(personalNet)} />
-        <SummaryCard
-          label="Work in progress"
-          value={formatCurrency(pipeline.value)}
-          hint="The combined price of every transaction you have going right now that hasn't closed yet."
-        />
-        <SummaryCard label="Total invested" value={formatCurrency(assetBreakdown.total)} />
-      </div>
+      <StatGrid
+        items={[
+          { label: "Business net", value: formatCurrency(businessNet), href: "/finances/income" },
+          { label: "Personal net", value: formatCurrency(personalNet), href: "/finances/income" },
+          {
+            label: "Work in progress",
+            value: formatCurrency(pipeline.value),
+            href: "/transactions",
+            hint: "The combined price of every transaction still open.",
+          },
+          { label: "Invested", value: formatCurrency(assetBreakdown.total), href: "/finances/investments" },
+        ]}
+      />
 
       <Card title="Business money in & out" icon={BarChart3}>
         {hasBusinessData ? (

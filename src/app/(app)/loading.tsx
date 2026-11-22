@@ -23,7 +23,7 @@ export default function Loading() {
         ))}
       </div>
       {[0, 1].map((i) => (
-        <div key={i} className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-6 sm:p-8">
+        <div key={i} className="flex flex-col gap-4 rounded-2xl border border-border bg-background p-4 sm:p-5">
           <Bar className="h-5 w-40" />
           <Bar className="h-4 w-full" />
           <Bar className="h-4 w-5/6" />

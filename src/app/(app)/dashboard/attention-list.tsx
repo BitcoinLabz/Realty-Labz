@@ -38,24 +38,20 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
   const hidden = items.length - shown.length;
 
   return (
-    <Card
-      title="Needs your attention"
-      icon={AlertTriangle}
-      description="Dates that have passed, paperwork and signatures still missing, a card that failed, and tax payments coming up."
-    >
-      <div className="flex flex-col gap-2">
+    <Card title="Needs your attention" icon={AlertTriangle}>
+      <div className="divide-y divide-border">
         {shown.map((item) => {
           const Icon = KIND_ICON[item.kind];
           return (
             <Link
               key={item.id}
               href={item.href}
-              className="flex items-start gap-3 rounded-xl border border-border px-4 py-3 transition-colors hover:border-accent"
+              className="flex items-start gap-3 py-2.5 transition-colors hover:opacity-80"
             >
-              <Icon size={17} className={`mt-0.5 shrink-0 ${KIND_TONE[item.kind]}`} />
+              <Icon size={16} className={`mt-0.5 shrink-0 ${KIND_TONE[item.kind]}`} />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-foreground">{item.title}</p>
-                <p className="mt-0.5 text-sm text-muted">{item.detail}</p>
+                <p className="text-xs text-muted">{item.detail}</p>
               </div>
             </Link>
           );

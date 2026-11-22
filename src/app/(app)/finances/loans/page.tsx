@@ -87,13 +87,13 @@ export default async function FinancesLoansPage() {
         Mortgages, auto loans, and other installment debt — all in one place.
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-2 gap-3">
         <SummaryCard label="Total monthly payments" value={formatCurrency(totalMonthlyPayment)} />
         <SummaryCard label="Total remaining balance" value={formatCurrency(totalRemainingBalance)} />
       </div>
 
       {amortizationData.length > 0 ? (
-        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+        <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
           <h2 className="mb-1 text-base font-semibold text-foreground">How these get paid off</h2>
           <p className="mb-6 text-sm text-muted">
             What you still owe over time, and how much of what you&apos;ve paid went to the loan
@@ -110,7 +110,7 @@ export default async function FinancesLoansPage() {
         </section>
       ) : null}
 
-      <section id="add-loan" className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section id="add-loan" className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-6 text-base font-semibold text-foreground">Add a loan</h2>
         <div className="max-w-md">
           <LoanForm />

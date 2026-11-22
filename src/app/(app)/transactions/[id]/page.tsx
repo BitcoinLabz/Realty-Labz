@@ -416,7 +416,7 @@ export default async function DealDetailPage({
       label: "Overview",
       content: (
         <>
-          <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+          <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
             <h2 className="mb-6 text-base font-semibold text-foreground">Deal details</h2>
             <div className="max-w-md">
               <DealForm
@@ -429,7 +429,7 @@ export default async function DealDetailPage({
           </section>
 
           {grossCommission > 0 ? (
-            <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+            <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
               <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
                 <h2 className="text-base font-semibold text-foreground">Deal financials</h2>
                 {/* The form the office sends title so commission is paid out
@@ -558,7 +558,7 @@ export default async function DealDetailPage({
       label: "Deadlines",
       content: (
         <>
-          <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+          <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
             <div className="mb-6 flex items-baseline justify-between gap-4">
               <h2 className="text-base font-semibold text-foreground">Contingencies &amp; deadlines</h2>
               {deadlineDtos.length > 0 ? (
@@ -619,7 +619,7 @@ export default async function DealDetailPage({
         <>
           <PaperworkList dealId={deal.id} clientId={deal.clientId} items={paperworkItems} mode="agent" />
 
-          <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+          <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
             <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
             <DealDocuments
               dealId={deal.id}
@@ -632,7 +632,7 @@ export default async function DealDetailPage({
           {/* E-signature is switched off (src/lib/features.ts): no new envelopes,
               but ones already sent stay visible here. */}
           {E_SIGNATURE_ENABLED || formSubmissionDtos.length > 0 ? (
-            <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+            <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
               <h2 className="mb-1 text-base font-semibold text-foreground">Forms &amp; envelopes</h2>
               <p className="mb-6 text-sm text-muted">
                 Every contract and signature request sent for this property.
@@ -665,7 +665,7 @@ export default async function DealDetailPage({
       id: "open-houses",
       label: "Open houses",
       content: (
-        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+        <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
           <h2 className="mb-6 text-base font-semibold text-foreground">Open houses</h2>
           <OpenHouseSection dealId={deal.id} openHouses={openHouseDtos} />
         </section>
@@ -728,7 +728,7 @@ export default async function DealDetailPage({
 
       <DetailTabs tabs={tabs} />
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-1 text-base font-semibold text-foreground">Start a similar transaction</h2>
         <p className="mb-4 text-sm text-muted">
           Creates a new transaction with the same client and commission setup, ready for a new
@@ -747,7 +747,7 @@ export default async function DealDetailPage({
         </form>
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-3 text-base font-semibold text-foreground">Danger zone</h2>
         <p className="mb-4 text-sm text-muted">
           Deleting a deal also removes its deadlines. Linked documents and clients are kept.

@@ -155,7 +155,7 @@ export default async function LoanDetailPage({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <SummaryCard
           label="Monthly payment"
           value={summary.isPaidOff ? "Paid off" : formatCurrency(summary.totalMonthlyPayment)}
@@ -168,7 +168,7 @@ export default async function LoanDetailPage({
       </div>
 
       {isMortgage ? (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3">
           <SummaryCard
             label={loan.currentHomeValue ? "Current home value" : "Current home value (estimated)"}
             value={formatCurrency(currentHomeValue)}
@@ -177,14 +177,14 @@ export default async function LoanDetailPage({
         </div>
       ) : null}
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-6 text-base font-semibold text-foreground">Loan details</h2>
         <div className="max-w-md">
           <LoanForm key={loan.updatedAt.toISOString()} defaultValues={defaultValues} />
         </div>
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-2 text-base font-semibold text-foreground">Paydown schedule</h2>
         <p className="mb-6 text-sm text-muted">
           {hasExtraPayments
@@ -208,13 +208,13 @@ export default async function LoanDetailPage({
         <ScheduleTable columns={paydownTableColumns} rows={paydownTableRows} />
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-6 text-base font-semibold text-foreground">Extra payments</h2>
         <ExtraPaymentList loanId={loan.id} payments={extraPaymentDtos} />
       </section>
 
       {isMortgage ? (
-        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+        <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
           <h2 className="mb-1 text-base font-semibold text-foreground">Home value &amp; equity</h2>
           <p className="mb-6 text-sm text-muted">
             30-year projection assuming {Number(loan.appreciationRate)}% annual appreciation — change
@@ -225,7 +225,7 @@ export default async function LoanDetailPage({
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-3 text-base font-semibold text-foreground">Danger zone</h2>
         <p className="mb-4 text-sm text-muted">
           Deleting a loan also removes its logged extra payments.
