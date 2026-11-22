@@ -102,7 +102,7 @@ export default async function ClientDetailPage({
       id: "overview",
       label: "Overview",
       content: (
-        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+        <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
           <h2 className="mb-6 text-base font-semibold text-foreground">Contact info</h2>
           <div className="max-w-md">
             <ClientForm key={client.updatedAt.toISOString()} defaultValues={defaultValues} />
@@ -114,7 +114,7 @@ export default async function ClientDetailPage({
       id: "properties",
       label: "Properties",
       content: (
-        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+        <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
           <h2 className="mb-6 text-base font-semibold text-foreground">Properties &amp; offers</h2>
 
           {deals.length === 0 ? (
@@ -152,7 +152,7 @@ export default async function ClientDetailPage({
       id: "documents",
       label: "Documents",
       content: (
-        <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+        <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
           <h2 className="mb-6 text-base font-semibold text-foreground">Documents</h2>
           <ClientDocuments clientId={client.id} documents={documentDtos} deals={dealOptions} />
         </section>
@@ -163,7 +163,7 @@ export default async function ClientDetailPage({
       label: "Sharing",
       content: (
         <>
-          <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+          <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
             <h2 className="mb-1 text-base font-semibold text-foreground">Client portal</h2>
             <p className="mb-4 text-sm text-muted">
               {client.name} can see where their properties stand, their key dates, and any
@@ -182,7 +182,7 @@ export default async function ClientDetailPage({
           </section>
 
           {E_SIGNATURE_ENABLED || formSubmissionDtos.length > 0 ? (
-            <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+            <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
               <h2 className="mb-6 text-base font-semibold text-foreground">Forms</h2>
 
               {formSubmissionDtos.length > 0 ? (
@@ -229,7 +229,7 @@ export default async function ClientDetailPage({
 
       <DetailTabs tabs={tabs} />
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-3 text-base font-semibold text-foreground">Danger zone</h2>
         <p className="mb-4 text-sm text-muted">
           Deleting a client keeps their deals and documents, just unlinked.

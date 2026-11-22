@@ -39,7 +39,7 @@ export function TaxEstimateCard({
   const [state, formAction, isPending] = useActionState(updateTaxSettingsAction, initialState);
 
   return (
-    <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+    <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
       <h2 className="mb-1 text-base font-semibold text-foreground">Estimated taxes</h2>
       <p className="mb-6 text-sm text-muted">
         What your business profit this year may owe, split into the four quarterly payments. An estimate to plan

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useHydrated, useLocalStorageValue } from "@/lib/use-hydrated";
-import { Check, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 const DISMISS_KEY = "realtylabz:setup-checklist-dismissed";
 
@@ -38,63 +38,45 @@ export function SetupChecklist({ steps }: { steps: SetupStep[] }) {
   const doneCount = steps.length - remaining.length;
 
   return (
-    <section className="rounded-2xl border border-accent/30 bg-accent/5 p-6 sm:p-8">
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="flex items-center gap-2 text-base font-semibold text-foreground">
-            <Sparkles size={17} className="text-accent" />
-            Let&apos;s get you set up
-          </h2>
-          <p className="mt-1 text-sm text-muted">
-            {doneCount} of {steps.length} done — each one takes about a minute.
-          </p>
-        </div>
+    <section className="rounded-2xl border border-accent/30 bg-accent/5 px-4 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <Sparkles size={15} className="text-accent" />
+          {doneCount} of {steps.length} done
+        </p>
         <button
           type="button"
           onClick={() => {
             window.localStorage.setItem(DISMISS_KEY, "true");
             setDismissed(true);
           }}
-          className="shrink-0 text-sm font-medium text-muted hover:text-foreground"
+          className="shrink-0 text-xs font-medium text-muted hover:text-foreground"
         >
-          Hide this
+          Hide
         </button>
       </div>
-
-      <div className="flex flex-col gap-2">
-        {steps.map((step) => (
+      <div className="mt-2 h-1 overflow-hidden rounded-full bg-border">
+        <div
+          className="h-full rounded-full bg-accent"
+          style={{ width: `${Math.round((doneCount / steps.length) * 100)}%` }}
+        />
+      </div>
+      <div className="mt-3 flex flex-col gap-2">
+        {remaining.map((step) => (
           <div
             key={step.id}
-            className="flex flex-col gap-3 rounded-xl border border-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-2 rounded-xl border border-border bg-background px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div className="flex min-w-0 items-start gap-3">
-              <span
-                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-                  step.done ? "border-accent bg-accent text-accent-foreground" : "border-border"
-                }`}
-                aria-hidden="true"
-              >
-                {step.done ? <Check size={13} strokeWidth={3} /> : null}
-              </span>
-              <div className="min-w-0">
-                <p
-                  className={`text-sm font-medium ${
-                    step.done ? "text-muted line-through" : "text-foreground"
-                  }`}
-                >
-                  {step.title}
-                </p>
-                <p className="text-sm text-muted">{step.description}</p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">{step.title}</p>
+              <p className="text-xs text-muted">{step.description}</p>
             </div>
-            {!step.done ? (
-              <Link
-                href={step.href}
-                className="shrink-0 self-start rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-foreground transition-opacity hover:opacity-90 sm:self-auto"
-              >
-                {step.actionLabel}
-              </Link>
-            ) : null}
+            <Link
+              href={step.href}
+              className="inline-flex min-h-11 shrink-0 items-center self-start rounded-full bg-accent px-4 text-sm font-medium text-accent-foreground sm:self-auto"
+            >
+              {step.actionLabel}
+            </Link>
           </div>
         ))}
       </div>

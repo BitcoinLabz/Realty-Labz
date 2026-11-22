@@ -1,7 +1,9 @@
 "use client";
 
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useState } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { formatCurrency } from "@/lib/format";
+import { useChartMotion } from "./chart-theme";
 
 const COLORS = [
   "var(--chart-1)",
@@ -13,12 +15,33 @@ const COLORS = [
 ];
 
 export function BreakdownDonutChart({ data }: { data: { label: string; value: number }[] }) {
+  const motion = useChartMotion();
+  const [active, setActive] = useState<number | null>(null);
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
+  if (data.length < 2) {
+    const only = data[0];
+    return (
+      <div>
+        <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">{formatCurrency(total)}</p>
+        {only ? (
+          <p className="mt-2 flex items-center justify-between gap-3 border-t border-border pt-2 text-sm">
+            <span className="text-foreground">{only.label}</span>
+            <span className="tabular-nums text-muted">{formatCurrency(only.value)}</span>
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-muted">Nothing to break down yet.</p>
+        )}
+      </div>
+    );
+  }
+  const shown = active == null ? total : data[active]?.value ?? total;
+  const shownLabel = active == null ? "Total" : data[active]?.label ?? "Total";
+
   return (
-    <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
-      <div className="h-[220px] w-[220px] shrink-0">
-        <ResponsiveContainer width="100%" height="100%">
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-8">
+      <div className="relative h-[188px] w-[188px] shrink-0">
+        <ResponsiveContainer width={188} height={188}>
           <PieChart>
             <Pie
               data={data}
@@ -26,47 +49,60 @@ export function BreakdownDonutChart({ data }: { data: { label: string; value: nu
               nameKey="label"
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={90}
-              paddingAngle={2}
-              strokeWidth={0}
+              innerRadius={64}
+              outerRadius={82}
+              paddingAngle={3}
+              cornerRadius={5}
+              stroke="none"
+              isAnimationActive={motion}
+              animationDuration={450}
+              onClick={(_, index) => setActive((current) => (current === index ? null : index))}
             >
               {data.map((_, i) => (
-                <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                <Cell
+                  key={i}
+                  fill={COLORS[i % COLORS.length]}
+                  opacity={active == null || active === i ? 1 : 0.35}
+                />
               ))}
             </Pie>
-            <Tooltip
-              formatter={(value) => formatCurrency(Number(value))}
-              contentStyle={{
-                background: "var(--background)",
-                border: "1px solid var(--border)",
-                borderRadius: 12,
-                fontSize: 13,
-              }}
-            />
           </PieChart>
         </ResponsiveContainer>
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-8 text-center">
+          <p className="max-w-[7rem] truncate text-[11px] text-muted">{shownLabel}</p>
+          <p className="text-sm font-semibold tabular-nums tracking-tight text-foreground">
+            {formatCurrency(shown)}
+          </p>
+        </div>
       </div>
-      {/* min-w-0 + wrapping so a seven-figure amount next to a long label
-          drops below it instead of pushing the page sideways (2026-11-19). */}
-      <div className="flex w-full min-w-0 flex-1 flex-col gap-2">
-        {data.map((d, i) => (
-          <div key={d.label} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 text-sm">
-            <span className="flex min-w-0 items-center gap-2 break-words text-foreground">
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-full"
-                style={{ background: COLORS[i % COLORS.length] }}
-              />
-              {d.label}
-            </span>
-            <span className="whitespace-nowrap font-medium tabular-nums text-foreground">
-              {formatCurrency(d.value)}
-              <span className="ml-1.5 text-muted">
-                ({total > 0 ? Math.round((d.value / total) * 100) : 0}%)
+      <div className="flex w-full min-w-0 flex-1 flex-col">
+        {data.map((d, i) => {
+          const selected = active === i;
+          return (
+            <button
+              key={d.label}
+              type="button"
+              onClick={() => setActive((current) => (current === i ? null : i))}
+              className={`flex min-h-11 items-center justify-between gap-3 border-b border-border py-2 text-left last:border-0 ${
+                selected ? "opacity-100" : active == null ? "opacity-100" : "opacity-45"
+              }`}
+            >
+              <span className="flex min-w-0 items-center gap-2 text-sm text-foreground">
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ background: COLORS[i % COLORS.length] }}
+                />
+                <span className="truncate">{d.label}</span>
               </span>
-            </span>
-          </div>
-        ))}
+              <span className="shrink-0 text-right text-sm tabular-nums text-foreground">
+                {formatCurrency(d.value)}
+                <span className="ml-1.5 text-xs text-muted">
+                  {total > 0 ? Math.round((d.value / total) * 100) : 0}%
+                </span>
+              </span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

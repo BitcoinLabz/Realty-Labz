@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { formatCurrency } from "@/lib/format";
+import { ChartTooltip, axisTick, chartMargin, formatAxisCurrency, useChartMotion } from "./chart-theme";
 
 const SERIES = [
   { key: "homeValue", label: "Home value", color: "var(--chart-2)" },
@@ -14,6 +14,7 @@ export type EquityPoint = { label: string; homeValue: number; balance: number; e
 
 export function HomeEquityChart({ data }: { data: EquityPoint[] }) {
   const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const motion = useChartMotion();
 
   function toggle(key: string) {
     setHidden((prev) => {
@@ -48,31 +49,13 @@ export function HomeEquityChart({ data }: { data: EquityPoint[] }) {
         })}
       </div>
 
-      <ResponsiveContainer width="100%" height={320}>
-        <LineChart data={data} margin={{ top: 8, right: 8, left: 8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-          <XAxis
-            dataKey="label"
-            tick={{ fill: "var(--muted)", fontSize: 12 }}
-            axisLine={{ stroke: "var(--border)" }}
-            tickLine={false}
-          />
-          <YAxis
-            tick={{ fill: "var(--muted)", fontSize: 12 }}
-            axisLine={false}
-            tickLine={false}
-            tickFormatter={(v) => formatCurrency(v).replace(".00", "")}
-            width={72}
-          />
-          <Tooltip
-            formatter={(value) => formatCurrency(Number(value))}
-            contentStyle={{
-              background: "var(--background)",
-              border: "1px solid var(--border)",
-              borderRadius: 12,
-              fontSize: 13,
-            }}
-          />
+      <div className="h-[240px] w-full">
+      <ResponsiveContainer width="100%" height={240}>
+        <LineChart data={data} margin={chartMargin}>
+          <CartesianGrid stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="label" tick={axisTick} axisLine={false} tickLine={false} />
+          <YAxis tick={axisTick} axisLine={false} tickLine={false} tickFormatter={formatAxisCurrency} width={44} />
+          <Tooltip content={<ChartTooltip />} />
           {SERIES.map((s) =>
             !hidden.has(s.key) ? (
               <Line
@@ -83,11 +66,14 @@ export function HomeEquityChart({ data }: { data: EquityPoint[] }) {
                 stroke={s.color}
                 strokeWidth={2}
                 dot={false}
+                isAnimationActive={motion}
+                animationDuration={450}
               />
             ) : null,
           )}
         </LineChart>
       </ResponsiveContainer>
+      </div>
     </div>
   );
 }

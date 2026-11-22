@@ -58,7 +58,9 @@ export function ScheduleTable({
                   {columns.map((c) => (
                     <th
                       key={c.key}
-                      className="whitespace-nowrap border-b border-border px-4 py-2 text-left font-medium text-muted"
+                      className={`sticky top-0 whitespace-nowrap border-b border-border bg-surface px-4 py-2 font-medium text-muted ${
+                        c.key === "label" ? "text-left" : "text-right"
+                      }`}
                     >
                       {c.label}
                     </th>
@@ -71,7 +73,12 @@ export function ScheduleTable({
                     {columns.map((c) => {
                       const value = row[c.key];
                       return (
-                        <td key={c.key} className="whitespace-nowrap px-4 py-2 text-foreground">
+                        <td
+                          key={c.key}
+                          className={`whitespace-nowrap px-4 py-2 tabular-nums text-foreground ${
+                            c.key === "label" ? "text-left" : "text-right"
+                          }`}
+                        >
                           {typeof value === "number" ? formatCurrency(value) : value}
                         </td>
                       );

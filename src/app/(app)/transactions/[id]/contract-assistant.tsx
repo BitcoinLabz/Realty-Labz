@@ -174,7 +174,7 @@ export function ContractAssistant({
   }
 
   return (
-    <section id="contract-assistant" className="scroll-mt-6 rounded-2xl border border-border bg-background p-6 sm:p-8">
+    <section id="contract-assistant" className="scroll-mt-6 rounded-2xl border border-border bg-background p-4 sm:p-5">
       <div className="mb-6 flex items-start gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent">
           <Sparkles size={18} />

@@ -4,9 +4,10 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { formatCurrency } from "@/lib/format";
 import { getMonthlyIncomeExpense } from "@/lib/finance-data";
-import { SummaryCard } from "@/components/ui/summary-card";
+import { StatGrid } from "@/components/ui/stat-grid";
 import { YearSelect } from "@/components/ui/year-select";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
+import { throughCurrentMonth } from "@/lib/months-to-date";
 import { dealDisplayName } from "@/app/(app)/transactions/types";
 import { TransactionForm } from "./transaction-form";
 import { TransactionList } from "./transaction-list";
@@ -122,25 +123,32 @@ export default async function FinancesTransactionsPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard
-          label="Business net"
-          value={formatCurrency(businessNet)}
-          hint="What your business earned, minus business expenses and your mileage deduction."
-        />
-        <SummaryCard label="Personal net" value={formatCurrency(personalNet)} />
-        <SummaryCard
-          label="Mileage deduction"
-          value={formatCurrency(mileageDeduction)}
-          hint="What your logged business driving is worth as a tax deduction this year."
-        />
-        <SummaryCard label="Overall net" value={formatCurrency(overallNet)} />
-      </div>
+      <StatGrid
+        items={[
+          {
+            label: "Business net",
+            value: formatCurrency(businessNet),
+            hint: "What the business earned, minus expenses and the mileage deduction.",
+          },
+          {
+            label: "Personal net",
+            value: formatCurrency(personalNet),
+            note: personalNet === 0 ? "Kept off tax reports" : "Kept separate",
+          },
+          {
+            label: "Mileage deduction",
+            value: formatCurrency(mileageDeduction),
+            hint: "What logged business driving is worth as a deduction this year.",
+          },
+          { label: "Overall net", value: formatCurrency(overallNet) },
+        ]}
+      />
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
-        <h2 className="mb-6 text-base font-semibold text-foreground">Money in &amp; out by month</h2>
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
+        <h2 className="mb-3 text-sm font-semibold text-foreground">Money in &amp; out by month</h2>
         {hasMonthlyData ? (
-          <MonthlyBarChart data={monthlySeries} />
+          <MonthlyBarChart data={throughCurrentMonth(monthlySeries, year)} />
         ) : (
           <p className="text-sm text-muted">
             Log your first income or expense below and your month-by-month trend appears here.
@@ -148,7 +156,7 @@ export default async function FinancesTransactionsPage({
         )}
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-1 text-base font-semibold text-foreground">Log income or an expense</h2>
         <p className="mb-6 text-sm text-muted">
           A one-time entry by default. If it&apos;s something that repeats every month, tick
@@ -158,8 +166,9 @@ export default async function FinancesTransactionsPage({
           <TransactionForm deals={dealOptions} />
         </div>
       </section>
+      </div>
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <div className="mb-6 flex items-baseline justify-between">
           <h2 className="text-base font-semibold text-foreground">Latest entries</h2>
           <Link

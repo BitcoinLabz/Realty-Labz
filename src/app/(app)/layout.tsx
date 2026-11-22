@@ -80,8 +80,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           homeHref={oversight ? "/team" : "/dashboard"}
         />
         {/* Bottom padding clears the phone tab bar and the home-indicator inset. */}
-        <main className="min-w-0 flex-1 px-4 pb-[calc(4.75rem+env(safe-area-inset-bottom))] pt-6 md:px-10 md:py-10 md:pb-10">
-          <div className="mx-auto max-w-5xl">
+        <main className="min-w-0 flex-1 px-4 pb-[calc(3.5rem+env(safe-area-inset-bottom))] pt-6 md:px-10 md:py-10 md:pb-10">
+          <div className="mx-auto w-full max-w-[1200px]">
             {showVerifyBanner ? <VerifyEmailBanner /> : null}
             {children}
           </div>

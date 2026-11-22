@@ -9,11 +9,12 @@ import {
   getMonthlyIncomeExpense,
   getPipelineValue,
 } from "@/lib/finance-data";
-import { SummaryCard } from "@/components/ui/summary-card";
+import { StatGrid } from "@/components/ui/stat-grid";
 import { YearSelect } from "@/components/ui/year-select";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { MonthlyBarChart } from "@/components/charts/monthly-bar-chart";
+import { throughCurrentMonth } from "@/lib/months-to-date";
 import { BreakdownDonutChart } from "@/components/charts/breakdown-donut-chart";
 import { RecurringReminders } from "./recurring-reminders";
 
@@ -49,27 +50,47 @@ export default async function FinancesOverviewPage({
   const yearOptions = [currentYear, currentYear - 1, currentYear - 2];
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-end">
+    <div className="flex flex-col gap-5">
+      <div className="flex justify-end">
         <YearSelect year={year} options={yearOptions} basePath="/finances" />
       </div>
 
       <RecurringReminders items={dueRecurring} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <SummaryCard label={`Business net (${year})`} value={formatCurrency(businessNet)} />
-        <SummaryCard label={`Personal net (${year})`} value={formatCurrency(personalNet)} />
-        <SummaryCard
-          label="Work in progress"
-          value={formatCurrency(pipeline.value)}
-          hint="The combined price of every transaction you have going right now that hasn't closed yet."
-        />
-        <SummaryCard label="Total invested" value={formatCurrency(assetBreakdown.total)} />
-      </div>
+      <StatGrid
+        items={[
+          {
+            label: "Business net",
+            value: formatCurrency(businessNet),
+            href: "/finances/income",
+            note: businessNet === 0 ? "Nothing logged yet" : "Income minus expenses",
+          },
+          {
+            label: "Personal net",
+            value: formatCurrency(personalNet),
+            href: "/finances/income",
+            note: personalNet === 0 ? "Personal stays off tax reports" : "Kept separate",
+          },
+          {
+            label: "Work in progress",
+            value: formatCurrency(pipeline.value),
+            href: "/transactions",
+            hint: "The combined price of every transaction still open.",
+            note: pipeline.value === 0 ? "No open transactions" : "Still open",
+          },
+          {
+            label: "Invested",
+            value: formatCurrency(assetBreakdown.total),
+            href: "/finances/investments",
+            note: assetBreakdown.total === 0 ? "Add what you own" : "What you own",
+          },
+        ]}
+      />
 
+      <div className="grid items-start gap-5 lg:grid-cols-2">
       <Card title="Business money in & out" icon={BarChart3}>
         {hasBusinessData ? (
-          <MonthlyBarChart data={businessSeries} />
+          <MonthlyBarChart data={throughCurrentMonth(businessSeries, year)} />
         ) : (
           <EmptyState
             icon={BarChart3}
@@ -94,15 +115,17 @@ export default async function FinancesOverviewPage({
           />
         )}
       </Card>
+      </div>
 
+      <div className="grid items-start gap-5 lg:grid-cols-2">
       <Card title="Personal money in & out" icon={TrendingUp}>
         {hasPersonalData ? (
-          <MonthlyBarChart data={personalSeries} />
+          <MonthlyBarChart data={throughCurrentMonth(personalSeries, year)} />
         ) : (
           <EmptyState
             icon={TrendingUp}
             title="No personal income or expenses yet"
-            description="Track your personal side here too — it stays completely separate from your business numbers and never appears on tax exports."
+            description="Track your personal side here too. It stays separate from your business numbers and off tax exports."
             actionLabel="Log something personal"
             actionHref="/finances/income"
           />
@@ -133,6 +156,7 @@ export default async function FinancesOverviewPage({
           />
         )}
       </Card>
+      </div>
     </div>
   );
 }

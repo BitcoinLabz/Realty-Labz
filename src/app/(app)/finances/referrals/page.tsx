@@ -74,7 +74,7 @@ export default async function ReferralsPage({ searchParams }: { searchParams: Pr
         <YearSelect year={year} options={yearOptions} basePath="/finances/referrals" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <SummaryCard label={`Referral fees (${year})`} value={formatCurrency(yearTotal)} icon={Handshake} tone="violet" />
         <SummaryCard
           label={`1099s likely needed (${year})`}

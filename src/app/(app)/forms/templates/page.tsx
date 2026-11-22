@@ -55,7 +55,7 @@ export default async function TemplatesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-1 text-base font-semibold text-foreground">
           {isTeamShared ? "Team fillable templates" : "Fillable templates"}
         </h2>
@@ -74,7 +74,7 @@ export default async function TemplatesPage() {
         <TemplateList templates={templateDtos} canManage={canManage} isTeamShared={isTeamShared} />
       </section>
 
-      <section className="rounded-2xl border border-border bg-background p-6 sm:p-8">
+      <section className="rounded-2xl border border-border bg-background p-4 sm:p-5">
         <h2 className="mb-6 text-base font-semibold text-foreground">Recent activity</h2>
         <SubmissionList submissions={submissionDtos} />
       </section>
