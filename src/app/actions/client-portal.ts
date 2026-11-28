@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { isPlausibleEmail } from "@/lib/email-format";
 import { PORTAL_COOKIE_NAME, getOrCreatePortalSession } from "@/lib/client-portal";
 import { sendPortalAccessEmail, sendPortalSignInEmail } from "@/lib/email";
 import { getClientIp, isRateLimited } from "@/lib/rate-limit";
@@ -82,7 +83,7 @@ export async function requestPortalSignInAction(
 ): Promise<FormState> {
   const raw = formData.get("email");
   const email = typeof raw === "string" ? raw.trim().toLowerCase() : "";
-  if (!/^[^s@]+@[^s@]+.[^s@]+$/.test(email)) {
+  if (!isPlausibleEmail(email)) {
     return { fieldErrors: { email: "Enter the email address your agent has for you" } };
   }
 
