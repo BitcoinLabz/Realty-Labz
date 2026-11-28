@@ -29,7 +29,14 @@ export function ProfileForm({
         required
         error={state.fieldErrors?.name}
       />
-      <Field label="Email" name="email" type="email" defaultValue={email} disabled />
+      <Field
+        label="Email"
+        name="email"
+        type="email"
+        defaultValue={email}
+        disabled
+        hint="Used to sign in. Change it under Sign-in & security."
+      />
       <Field
         label="Real estate license number"
         name="licenseNumber"

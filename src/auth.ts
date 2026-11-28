@@ -121,13 +121,15 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: token.id },
-            select: { role: true, teamId: true },
+            select: { role: true, teamId: true, email: true },
           });
           // A genuinely missing row means the account is gone: end the
           // session rather than honouring a token for a deleted user.
           if (!dbUser) return null;
           token.role = dbUser.role;
           token.teamId = dbUser.teamId;
+          // Picks up a changed sign-in email (2026-11-28).
+          token.email = dbUser.email;
           token.refreshedAt = Date.now();
         } catch (err) {
           // A transient database problem must not sign the whole app out.

@@ -323,3 +323,46 @@ export async function sendEmailVerificationEmail(params: { to: string; verifyUrl
     `,
   });
 }
+
+// Changing the sign-in email (2026-11-28): the link goes to the NEW address;
+// the old address gets told when a change is requested and again when it
+// happens, so nobody can quietly take an account over.
+export async function sendEmailChangeConfirmEmail(params: { to: string; confirmUrl: string }) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: "Confirm your new Realty Labz email",
+    html: `
+      <p>You asked to make this address the sign-in email for your Realty Labz account.</p>
+      <p><a href="${params.confirmUrl}">Confirm new email</a></p>
+      <p style="color:#86868b;font-size:13px;">Nothing changes until you click. This link expires in 24 hours and works once. If you didn't ask for this, you can ignore this email.</p>
+    `,
+  });
+}
+
+export async function sendEmailChangeRequestedNotice(params: { to: string; newEmail: string; settingsUrl: string }) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: "Your Realty Labz sign-in email is being changed",
+    html: `
+      <p>Someone signed in to your Realty Labz account asked to change its sign-in email to <strong>${escapeHtml(params.newEmail)}</strong>.</p>
+      <p>Nothing changes until that address confirms. If this wasn't you, <a href="${params.settingsUrl}">cancel it in Settings</a> and change your password.</p>
+    `,
+  });
+}
+
+export async function sendEmailChangedNotice(params: { to: string; newEmail: string; supportUrl: string }) {
+  const resend = getResendClient();
+  await resend.emails.send({
+    from: getFromAddress(),
+    to: params.to,
+    subject: "Your Realty Labz sign-in email was changed",
+    html: `
+      <p>Your Realty Labz account now signs in with <strong>${escapeHtml(params.newEmail)}</strong>. This address won't receive account emails any more.</p>
+      <p style="color:#86868b;font-size:13px;">If you didn't make this change, contact us right away at <a href="${params.supportUrl}">${params.supportUrl}</a>.</p>
+    `,
+  });
+}

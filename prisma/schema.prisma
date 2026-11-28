@@ -55,18 +55,18 @@ model Team {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String?
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String?
   // Null until the address is confirmed. The migration backfills every
   // account that already existed, so nobody is nagged or locked out for an
   // email they typed before this shipped. New signups leave it null.
   // Google sign-in sets it, because Google already verified the address.
   emailVerifiedAt DateTime?
-  name         String?
-  role         Role     @default(AGENT)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  name            String?
+  role            Role      @default(AGENT)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   team   Team?   @relation(fields: [teamId], references: [id])
   teamId String?
@@ -148,28 +148,29 @@ model User {
   // are created with false and see the plan picker once, after sign-up.
   planChosen           Boolean   @default(true)
 
-  clients            Client[]
-  transactions       Transaction[]
-  mileageLogs        MileageLog[]
-  homeOffice         HomeOffice?
-  extensionsApplied  DealExtension[]                @relation("ExtensionsApplied")
-  homeOfficeExpenses HomeOfficeExpense[]
-  homeOfficeYears    HomeOfficeYear[]
-  documents          Document[]
-  sentInvites        TeamInvite[]
-  deals              Deal[]
-  documentTemplates  DocumentTemplate[]
-  deadlineTemplates  DeadlineTemplate[]
-  assets             Asset[]
-  loans              Loan[]
-  formTemplates      FormTemplate[]
-  formSubmissions    FormSubmission[]
-  budgets            Budget[]
-  financialGoals     FinancialGoal[]
-  recurringTemplates RecurringTransactionTemplate[]
-  referralPartners   ReferralPartner[]
-  passwordResetTokens PasswordResetToken[]
+  clients                 Client[]
+  transactions            Transaction[]
+  mileageLogs             MileageLog[]
+  homeOffice              HomeOffice?
+  extensionsApplied       DealExtension[]                @relation("ExtensionsApplied")
+  homeOfficeExpenses      HomeOfficeExpense[]
+  homeOfficeYears         HomeOfficeYear[]
+  documents               Document[]
+  sentInvites             TeamInvite[]
+  deals                   Deal[]
+  documentTemplates       DocumentTemplate[]
+  deadlineTemplates       DeadlineTemplate[]
+  assets                  Asset[]
+  loans                   Loan[]
+  formTemplates           FormTemplate[]
+  formSubmissions         FormSubmission[]
+  budgets                 Budget[]
+  financialGoals          FinancialGoal[]
+  recurringTemplates      RecurringTransactionTemplate[]
+  referralPartners        ReferralPartner[]
+  passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
+  emailChangeTokens       EmailChangeToken[]
 
   // Backs every teamOrOwnFilter()/teamSharedFilter() manager-view query
   // (src/lib/authorization.ts), which joins through user: { teamId } —
@@ -1525,6 +1526,23 @@ model EmailVerificationToken {
 
   @@index([userId])
   @@map("email_verification_tokens")
+}
+
+// Changing the sign-in email (2026-11-28). The link goes to the NEW address
+// and the change only happens when it's clicked, so a typo can't lock
+// anyone out. Same hashed, single-use shape as the tokens above.
+model EmailChangeToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newEmail  String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("email_change_tokens")
 }
 
 // Basic rate limiting (2026-07-30) -- one row per attempt, keyed by e.g.

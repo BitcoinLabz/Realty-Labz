@@ -43,6 +43,7 @@ export function DetailTabs({
           <button
             key={tab.id}
             type="button"
+            aria-pressed={tab.id === active}
             onClick={() => setActive(tab.id)}
             className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-full px-4 text-sm font-medium transition-colors ${
               tab.id === active ? "bg-background text-foreground shadow-sm" : "text-muted hover:text-foreground"

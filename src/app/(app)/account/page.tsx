@@ -1,4 +1,4 @@
-import { Eye, KeyRound, Sparkles, User, Users } from "lucide-react";
+import { Eye, KeyRound, Mail, Sparkles, User, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import {
@@ -13,6 +13,7 @@ import { DetailTabs } from "@/components/ui/detail-tabs";
 import { PageHeader } from "@/components/ui/page-header";
 import { ProfileForm } from "./profile-form";
 import { PasswordForm } from "./password-form";
+import { ChangeEmailForm } from "./change-email-form";
 import { InviteForm } from "./invite-form";
 import { InviteByLicenseForm } from "./invite-by-license-form";
 import { LeaveTeamForm } from "./leave-team-form";
@@ -38,6 +39,13 @@ export default async function AccountPage({
   });
 
   if (!user) return null;
+
+  // A sign-in email change waiting on its confirmation link (2026-11-28).
+  const pendingEmailChange = await prisma.emailChangeToken.findFirst({
+    where: { userId: user.id, usedAt: null, expiresAt: { gt: new Date() } },
+    orderBy: { createdAt: "desc" },
+    select: { newEmail: true },
+  });
 
   // Any teammate sees the roster; only some can change it.
   const onATeam = !!user.team;
@@ -112,17 +120,28 @@ export default async function AccountPage({
       id: "security",
       label: "Sign-in & security",
       content: (
-        <Card title="Password" icon={KeyRound}>
-          {user.passwordHash ? (
+        <>
+          <Card title="Sign-in email" icon={Mail}>
             <div className="max-w-sm">
-              <PasswordForm />
+              <ChangeEmailForm
+                currentEmail={user.email}
+                hasPassword={!!user.passwordHash}
+                pendingEmail={pendingEmailChange?.newEmail ?? null}
+              />
             </div>
-          ) : (
-            <p className="text-sm text-muted">
-              You sign in with Google, so there&apos;s no password to manage here.
-            </p>
-          )}
-        </Card>
+          </Card>
+          <Card title="Password" icon={KeyRound}>
+            {user.passwordHash ? (
+              <div className="max-w-sm">
+                <PasswordForm />
+              </div>
+            ) : (
+              <p className="text-sm text-muted">
+                You sign in with Google, so there&apos;s no password to manage here.
+              </p>
+            )}
+          </Card>
+        </>
       ),
     },
   ];
