@@ -19,7 +19,7 @@ export function Textarea({
         id={name}
         name={name}
         rows={3}
-        className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+        className="min-h-11 rounded-xl border border-border bg-background px-4 py-2.5 text-base text-foreground md:text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
         {...props}
       />
       {error ? <p className="text-sm text-danger">{error}</p> : null}

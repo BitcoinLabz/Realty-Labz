@@ -123,7 +123,7 @@ export default async function DashboardPage() {
       title: "Add your first client",
       description: "Everything else hangs off a client — buyers, sellers, renters.",
       actionLabel: "Add a client",
-      href: "/clients",
+      href: "/clients?new=1",
       done: clientCount > 0,
     },
     {

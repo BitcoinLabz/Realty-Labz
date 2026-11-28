@@ -1,15 +1,17 @@
-import { FolderOpen, UserPlus, Users } from "lucide-react";
+import { Download, FolderOpen, Users } from "lucide-react";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { Card } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
-import { ClientForm } from "./client-form";
+import { AddClientButton } from "./add-client-form";
 import { ClientList } from "./client-list";
 import { UnfiledDocuments } from "./unfiled-documents";
 import type { ClientDTO, ClientOption, DocumentDTO } from "./types";
 
-export default async function ClientsPage() {
+export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ new?: string }> }) {
   const session = await auth();
+  // /clients?new=1 (the empty state, the dashboard checklist) opens the form.
+  const { new: openNew } = await searchParams;
 
   const [clients, unfiledDocuments] = await Promise.all([
     prisma.client.findMany({
@@ -49,16 +51,24 @@ export default async function ClientsPage() {
       <PageHeader
         title="Clients"
         description="The people you're working with — buyers, sellers, renters, and landlords."
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <AddClientButton defaultOpen={openNew === "1"} />
+            {dtos.length > 0 ? (
+              <a
+                href="/api/clients/export"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-surface px-4 text-sm font-medium text-foreground transition-colors hover:bg-border/40"
+              >
+                <Download size={15} />
+                Export to CSV
+              </a>
+            ) : null}
+          </div>
+        }
       />
 
       <Card title={`Your clients${dtos.length > 0 ? ` (${dtos.length})` : ""}`} icon={Users}>
         <ClientList clients={dtos} />
-      </Card>
-
-      <Card id="add-client" title="Add a client" icon={UserPlus}>
-        <div className="max-w-md">
-          <ClientForm />
-        </div>
       </Card>
 
       <Card

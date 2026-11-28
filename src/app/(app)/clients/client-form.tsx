@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react";
 import { createClientAction, updateClientAction } from "@/app/actions/clients";
 import type { FormState } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { submitKeepingValues } from "@/lib/form-submit";
 import { Field } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +18,10 @@ export type ClientFormValues = {
   email: string;
   phone: string;
   notes: string;
+  street: string;
+  city: string;
+  state: string;
+  zip: string;
   source: string;
   stage: string;
   emailDeadlineReminders: boolean;
@@ -25,9 +30,15 @@ export type ClientFormValues = {
 export function ClientForm({
   defaultValues,
   onDone,
+  onCancel,
+  inModal = false,
 }: {
   defaultValues?: ClientFormValues;
   onDone?: () => void;
+  /** Shows a Cancel button that closes without saving. */
+  onCancel?: () => void;
+  /** Pins Save/Cancel to the bottom of a Modal's scrolling body. */
+  inModal?: boolean;
 }) {
   const isEdit = !!defaultValues?.id;
   const action = isEdit ? updateClientAction : createClientAction;
@@ -49,7 +60,7 @@ export function ClientForm({
   }, [succeeded]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-4">
+    <form ref={formRef} onSubmit={submitKeepingValues(formAction)} className="flex flex-col gap-4">
       {isEdit ? <input type="hidden" name="id" defaultValue={defaultValues!.id} /> : null}
 
       <Field
@@ -103,6 +114,53 @@ export function ClientForm({
           ))}
         </Select>
       </div>
+      <fieldset className="flex flex-col gap-4">
+        <legend className="mb-1 text-sm font-medium text-foreground">Address (optional)</legend>
+        <Field
+          label="Street"
+          name="street"
+          type="text"
+          autoComplete="off"
+          defaultValue={defaultValues?.street}
+          error={state.fieldErrors?.street}
+        />
+        <div className="grid grid-cols-6 gap-3">
+          <div className="col-span-6 sm:col-span-3">
+            <Field
+              label="City"
+              name="city"
+              type="text"
+              autoComplete="off"
+              defaultValue={defaultValues?.city}
+              error={state.fieldErrors?.city}
+            />
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <Field
+              label="State"
+              name="state"
+              type="text"
+              autoComplete="off"
+              maxLength={50}
+              defaultValue={defaultValues?.state ?? (isEdit ? "" : "MI")}
+              error={state.fieldErrors?.state}
+            />
+          </div>
+          <div className="col-span-4 sm:col-span-2">
+            <Field
+              label="ZIP"
+              name="zip"
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={10}
+              defaultValue={defaultValues?.zip}
+              error={state.fieldErrors?.zip}
+            />
+          </div>
+        </div>
+      </fieldset>
+
       <Textarea
         label="Notes (optional)"
         name="notes"
@@ -123,12 +181,23 @@ export function ClientForm({
 
       {state.error ? <p className="text-sm text-danger">{state.error}</p> : null}
 
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isPending}>
-          {isPending ? "Saving…" : isEdit ? "Save changes" : "Add client"}
+      <div
+        className={
+          inModal
+            ? "sticky -bottom-5 -mx-5 -mb-5 flex gap-2 border-t border-border bg-background px-5 py-4 sm:-mx-6 sm:px-6"
+            : "flex gap-2"
+        }
+      >
+        <Button type="submit" disabled={isPending} className={inModal ? "min-h-11 flex-1 sm:flex-none" : ""}>
+          {isPending ? "Saving…" : isEdit ? "Save changes" : "Save"}
         </Button>
-        {isEdit ? (
-          <Button type="button" variant="secondary" onClick={onDone}>
+        {onCancel || isEdit ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onCancel ?? onDone}
+            className={inModal ? "min-h-11 flex-1 sm:flex-none" : ""}
+          >
             Cancel
           </Button>
         ) : null}

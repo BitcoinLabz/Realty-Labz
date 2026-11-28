@@ -19,7 +19,7 @@ export function Select({
       <select
         id={name}
         name={name}
-        className="w-full min-w-0 rounded-xl border border-border bg-background px-4 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
+        className="w-full min-w-0 min-h-11 rounded-xl border border-border bg-background px-4 py-2.5 text-base text-foreground md:text-sm outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent/20"
         {...props}
       >
         {children}

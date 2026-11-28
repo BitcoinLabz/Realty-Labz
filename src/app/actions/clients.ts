@@ -13,6 +13,10 @@ function parseClientForm(formData: FormData) {
     email: formData.get("email") || undefined,
     phone: formData.get("phone") || undefined,
     notes: formData.get("notes") || undefined,
+    street: formData.get("street") || undefined,
+    city: formData.get("city") || undefined,
+    state: formData.get("state") || undefined,
+    zip: formData.get("zip") || undefined,
     source: formData.get("source") || undefined,
     stage: formData.get("stage") || undefined,
   });
@@ -65,10 +69,21 @@ export async function updateClientAction(
     return { fieldErrors };
   }
 
+  // A field left blank is cleared, not skipped: Prisma ignores undefined on
+  // update, so without the explicit nulls an agent could never remove a
+  // client's phone, email or address once entered (2026-11-28).
   const result = await prisma.client.updateMany({
     where: { id, userId: session.user.id },
     data: {
       ...parsed.data,
+      email: parsed.data.email ?? null,
+      phone: parsed.data.phone ?? null,
+      notes: parsed.data.notes ?? null,
+      street: parsed.data.street ?? null,
+      city: parsed.data.city ?? null,
+      state: parsed.data.state ?? null,
+      zip: parsed.data.zip ?? null,
+      source: parsed.data.source ?? null,
       emailDeadlineReminders: formData.get("emailDeadlineReminders") === "true",
     },
   });

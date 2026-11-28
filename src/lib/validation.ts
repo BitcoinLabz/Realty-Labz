@@ -133,6 +133,14 @@ export const clientSchema = z.object({
   email: z.email("Enter a valid email address").optional(),
   phone: z.string().trim().max(30).optional(),
   notes: z.string().trim().max(1000).optional(),
+  street: z.string().trim().max(200, "Keep the street under 200 characters").optional(),
+  city: z.string().trim().max(100, "Keep the city under 100 characters").optional(),
+  state: z.string().trim().max(50, "Keep the state under 50 characters").optional(),
+  zip: z
+    .string()
+    .trim()
+    .regex(/^\d{5}(-\d{4})?$/, "Enter a 5-digit ZIP, like 48116")
+    .optional(),
   source: z.enum(CLIENT_SOURCES).optional(),
   stage: z.enum(CLIENT_STAGES).default("NEW"),
 });

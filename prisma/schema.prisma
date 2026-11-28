@@ -207,6 +207,12 @@ model Client {
   email                  String?
   phone                  String?
   notes                  String?
+  // Mailing address (2026-11-28), four plain fields -- no autocomplete,
+  // no geocoding. All optional.
+  street                 String?
+  city                   String?
+  state                  String?
+  zip                    String?
   source                 ClientSource?
   stage                  ClientStage   @default(NEW)
   // Email is the only real notification channel this app has (Resend is
